@@ -96,6 +96,8 @@
   .input::placeholder,.textarea::placeholder{color:#6f7aa5}
   .input:focus,.textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 18px rgba(34,243,255,.35)}
   .input:disabled{opacity:.6}
+  .textarea[readonly],.input[readonly]{background:rgba(34,243,255,.05);border-color:rgba(34,243,255,.28);color:var(--text);cursor:default}
+  .textarea[readonly]:focus,.input[readonly]:focus{box-shadow:none;border-color:rgba(34,243,255,.28)}
   .err{display:none;margin:8px 2px 0;font-size:14px;color:var(--rose)}
   .invalid .err{display:block}
   .invalid .input{border-color:var(--rose);box-shadow:0 0 0 1px var(--rose),0 0 16px rgba(255,77,133,.3)}
@@ -293,6 +295,7 @@
     <!-- ============ INPUT ============ -->
     <section id="viewForm" class="view active" aria-label="Form input">
       <form id="wipForm" novalidate autocomplete="off">
+        <p class="hint">Tanda <span class="req">*</span> wajib diisi. Pilihan Shift, Grup, dan QC boleh dikosongkan, ketuk pilihan yang sama sekali lagi untuk membatalkannya.</p>
 
         <!-- KIKC -->
         <div class="field" id="fKikc">
@@ -325,6 +328,11 @@
         </div>
 
         <div class="field">
+          <label class="label" for="ketKikc"><span>Keterangan KIKC</span><span class="opt">otomatis dari KIKC</span></label>
+          <textarea class="textarea" id="ketKikc" rows="2" readonly tabindex="-1" placeholder="Terisi otomatis setelah KIKC dipilih"></textarea>
+        </div>
+
+        <div class="field">
           <div class="label" id="lShift"><span>Shift</span><span class="opt">opsional</span></div>
           <div class="chips" id="cShift" role="radiogroup" aria-labelledby="lShift" data-optional></div>
         </div>
@@ -352,7 +360,7 @@
 
         <div class="field">
           <label class="label" for="keterangan"><span>Keterangan</span><span class="opt">opsional</span></label>
-          <textarea class="textarea" id="keterangan" rows="2" placeholder="Tulis keterangan tambahan"></textarea>
+          <input class="input" id="keterangan" type="text" placeholder="Tulis keterangan jika ada" enterkeyhint="done">
         </div>
 
         <div class="actions">
@@ -394,6 +402,7 @@
               <th>No benang</th>
               <th>Warna</th>
               <th>Mesin</th>
+              <th>Keterangan KIKC</th>
               <th>Kg</th>
               <th>Cone</th>
               <th>Shift</th>
@@ -490,6 +499,11 @@
         </div>
 
         <div class="field">
+          <label class="label" for="eKetKikc"><span>Keterangan KIKC</span><span class="opt">ikut KIKC</span></label>
+          <textarea class="textarea" id="eKetKikc" rows="2" readonly tabindex="-1"></textarea>
+        </div>
+
+        <div class="field">
           <div class="label" id="eLShift"><span>Shift</span><span class="opt">opsional</span></div>
           <div class="chips" id="eCShift" role="radiogroup" aria-labelledby="eLShift" data-optional></div>
         </div>
@@ -517,7 +531,7 @@
 
         <div class="field" style="margin-bottom:6px">
           <label class="label" for="eKeterangan"><span>Keterangan</span><span class="opt">opsional</span></label>
-          <textarea class="textarea" id="eKeterangan" rows="2" placeholder="Tulis keterangan tambahan"></textarea>
+          <input class="input" id="eKeterangan" type="text" placeholder="Tulis keterangan jika ada" enterkeyhint="done">
         </div>
 
       </div>
@@ -918,7 +932,7 @@ var Code128 = (function () {
         list.innerHTML = '<li class="combo-empty">KIKC tidak ditemukan. Cek ejaan atau ketik lebih sedikit huruf.</li>';
       } else {
         list.innerHTML = shown.map(function (it, idx) {
-          var sub = [it.noBenang, it.warna].filter(Boolean).join(' / ');
+          var sub = [it.noBenang, it.warna].filter(Boolean).join(' / ') + (it.src === 'GRM' ? ' \u00b7 GRM' : '');
           return '<li class="combo-item' + (idx === activeIdx ? ' active' : '') + '" role="option" data-i="' + idx + '"><b>' + hl(it.kikc, q) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</li>';
         }).join('');
       }
@@ -993,6 +1007,7 @@ var Code128 = (function () {
     function (item, pulse) {
       fillHud($('#hud'), item, pulse);
       $('#mesinInput').value = item ? (item.mesin || '') : '';   // terisi dari referensi KIKC, tetap bisa diubah
+      $('#ketKikc').value = item ? (item.ketKikc || '') : '';   // Keterangan KIKC: dari WOD kolom L / GRM kolom H (hanya baca)
       if (item) setErr('fKikc', '');
     }
   );
@@ -1001,11 +1016,12 @@ var Code128 = (function () {
     { combo: '#eCombo', input: '#eKikcInput', list: '#eKikcList', clear: '#eKikcClear', scan: '#eKikcScan' },
     function (item, pulse) {
       if (!item) { fillHud($('#eHud'), null, false); return; }
-      // KIKC dikembalikan ke aslinya: pakai data tersimpan. KIKC diganti: ikut referensi WOD.
+      // KIKC dikembalikan ke aslinya: pakai data tersimpan. KIKC diganti: ikut referensi WOD/GRM.
       var useOrig = edit.orig && item.kikc === edit.orig.kikc;
       var ref = useOrig ? edit.orig : item;
       fillHud($('#eHud'), ref, pulse);
       $('#eMesin').value = ref.mesin || '';
+      $('#eKetKikc').value = ref.ketKikc || '';   // ikut KIKC; kolom Keterangan (teks bebas) tidak disentuh
       setErr('eFKikc', '');
     }
   );
@@ -1364,7 +1380,7 @@ var Code128 = (function () {
       setTimeout(function () { closeScanner(); if (cb) cb(item, text); }, 350);
     } else if (text !== scan.lastMiss) {
       scan.lastMiss = text;
-      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
+      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD dan GRM). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
     }
   }
 
@@ -1508,7 +1524,7 @@ var Code128 = (function () {
   function setKikcStatus(type, msg) {
     var s = $('#kikcStatus');
     if (type === 'loading') {
-      s.textContent = 'Memuat daftar KIKC dari sheet WOD...';
+      s.textContent = 'Memuat daftar KIKC dari sheet WOD dan GRM...';
     } else if (type === 'ready') {
       s.textContent = msg;
     } else {
@@ -1526,7 +1542,7 @@ var Code128 = (function () {
     $('#mesinList').innerHTML = out.map(function (m) { return '<option value="' + esc(m) + '"></option>'; }).join('');
   }
   function readKikcCache() {
-    try { var a = JSON.parse(lsGet('wipyd_kikc') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    try { var a = JSON.parse(lsGet('wipyd_kikc2') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
 
   function loadKikc() {
@@ -1546,11 +1562,12 @@ var Code128 = (function () {
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
       state.kikc = r.data || [];
-      lsSet('wipyd_kikc', JSON.stringify(state.kikc));
+      lsSet('wipyd_kikc2', JSON.stringify(state.kikc));
       fillMesinList();
       inCombo.setEnabled(true, 'Ketik untuk cari KIKC');
       edCombo.setEnabled(true, 'Ketik untuk cari KIKC');
-      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.');
+      var cn = r.counts;
+      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia' + (cn ? ' (WOD ' + cn.wod + ', GRM ' + cn.grm + ')' : '') + '. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.' + (r.warn ? ' Catatan: ' + r.warn : ''));
     }).catch(function (e) {
       if (state.kikc.length) {   // masih ada daftar tersimpan: tetap bisa dipakai
         setKikcStatus('ready', state.kikc.length + ' KIKC (daftar tersimpan). Gagal memperbarui: ' + errMsg(e));
@@ -1755,7 +1772,7 @@ var Code128 = (function () {
     var rows = state.rows.filter(function (r) {
       if (state.filterPos && r.posisi !== state.filterPos) return false;
       if (!q) return true;
-      return [r.kikc, r.warna, r.noBenang, r.mesin, r.noteQc, r.keterangan].join(' ').toLowerCase().indexOf(q) >= 0;
+      return [r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.noteQc, r.keterangan].join(' ').toLowerCase().indexOf(q) >= 0;
     });
     renderSummary(rows);
 
@@ -1778,6 +1795,7 @@ var Code128 = (function () {
         '<td>' + esc(r.noBenang) + '</td>' +
         '<td>' + esc(r.warna) + '</td>' +
         '<td>' + esc(r.mesin) + '</td>' +
+        '<td class="wrap">' + esc(r.ketKikc) + '</td>' +
         '<td>' + esc(r.kg) + '</td>' +
         '<td>' + esc(r.cone) + '</td>' +
         '<td>' + esc(r.shift) + '</td>' +
@@ -1858,7 +1876,10 @@ var Code128 = (function () {
 
   function openEdit(row) {
     edit.row = row;
-    edit.orig = { kikc: row.kikc, noBenang: row.noBenang, warna: row.warna, mesin: row.mesin, kg: row.kg, cone: row.cone };
+    edit.orig = { kikc: row.kikc, noBenang: row.noBenang, warna: row.warna, mesin: row.mesin, kg: row.kg, cone: row.cone, ketKikc: row.ketKikc };
+    if (!edit.orig.ketKikc) {   // baris lama tanpa Ket KIKC: ambil dari daftar KIKC bila ada
+      for (var q = 0; q < state.kikc.length; q++) { if (state.kikc[q].kikc === row.kikc) { edit.orig.ketKikc = state.kikc[q].ketKikc || ''; break; } }
+    }
     ['eFKikc', 'eFPosisi'].forEach(function (id) { setErr(id, ''); });
 
     edCombo.reset();
