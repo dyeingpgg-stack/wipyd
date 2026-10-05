@@ -236,6 +236,8 @@
   .sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px}
   .sheet-foot{flex:none;padding:12px 16px calc(14px + var(--safe-bottom));border-top:1px solid var(--edge);margin:0}
   .sheet-foot .btn-ghost{width:36%}
+  .sheet-alert{flex:none;margin:0 16px 10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,77,133,.6);background:rgba(255,77,133,.12);color:#ffd3df;font-size:14.5px;font-weight:600;overflow-wrap:anywhere}
+  .sheet-alert[hidden]{display:none}
 
   /* ---------- Pemindai barcode / QR ---------- */
   .scanner{position:absolute;top:0;left:0;right:0;bottom:0;z-index:80;display:none;flex-direction:column;background:#02040c}
@@ -511,12 +513,18 @@
           <p class="err"></p>
         </div>
 
+        <div class="field">
+          <label class="label" for="eNoteQc"><span>Catatan QC</span><span class="opt">opsional</span></label>
+          <input class="input" id="eNoteQc" type="text" placeholder="Tulis catatan jika ada" enterkeyhint="next">
+        </div>
+
         <div class="field" style="margin-bottom:6px">
           <label class="label" for="eKeterangan"><span>Keterangan</span><span class="opt">opsional</span></label>
           <textarea class="textarea" id="eKeterangan" rows="2" placeholder="Tulis keterangan tambahan"></textarea>
         </div>
 
       </div>
+      <div class="sheet-alert" id="eAlert" role="alert" hidden></div>
       <div class="sheet-foot actions">
         <button type="button" class="btn btn-ghost" id="editCancel">Batal</button>
         <button type="button" class="btn btn-update" id="editSave">Simpan perubahan</button>
@@ -529,6 +537,7 @@
     <div class="sheet">
       <h2 id="delTitle">Hapus data ini?</h2>
       <p id="delText"></p>
+      <div class="sheet-alert" id="delAlert" role="alert" hidden style="margin:0 0 12px"></div>
       <div class="actions">
         <button type="button" class="btn btn-ghost" id="delNo">Batal</button>
         <button type="button" class="btn btn-danger" id="delYes">Hapus</button>
@@ -537,6 +546,186 @@
   </div>
 </div>
 
+<script src="config.js"></script>
+<script>
+/* Pembaca Code 128 mandiri (tanpa pustaka). Dipakai di Index.html dan diuji di Node.
+ * Tidak mensyaratkan ruang kosong (quiet zone), membaca dua arah, banyak baris pindai,
+ * tepi batang dihitung sub-piksel. Validasi: pola start, pola stop, dan checksum modulo 103. */
+var Code128 = (function () {
+  'use strict';
+  var P = ['212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213',
+    '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132',
+    '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211',
+    '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313',
+    '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331',
+    '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111',
+    '314111', '221411', '431111', '111224', '111422', '121124', '121421', '141122', '141221', '112214',
+    '112412', '122114', '122411', '142112', '142211', '241211', '221114', '413111', '241112', '134111',
+    '111242', '121142', '121241', '114212', '124112', '124211', '411212', '421112', '421211', '212141',
+    '214121', '412121', '111143', '111341', '131141', '114113', '114311', '411113', '411311', '113141',
+    '114131', '311141', '411131', '211412', '211214', '211232'];
+  var PAT = P.map(function (s) { return s.split('').map(Number); });
+  var STOP = [2, 3, 3, 1, 1, 1, 2];
+  var MAX_AVG = 0.25, MAX_IND = 0.7;
+
+  function variance(c, off, pat) {
+    var n = pat.length, total = 0, ptot = 0, i;
+    for (i = 0; i < n; i++) { total += c[off + i]; ptot += pat[i]; }
+    if (total < ptot) return Infinity;
+    var unit = total / ptot, tv = 0, v, sc;
+    for (i = 0; i < n; i++) {
+      sc = pat[i] * unit; v = Math.abs(c[off + i] - sc) / sc;
+      if (v > MAX_IND) return Infinity;
+      tv += Math.abs(c[off + i] - sc);
+    }
+    return tv / total;
+  }
+  function bestSymbol(c, off) {
+    var best = -1, bv = MAX_AVG;
+    for (var k = 0; k < 106; k++) { var v = variance(c, off, PAT[k]); if (v < bv) { bv = v; best = k; } }
+    return { code: best, v: bv };
+  }
+
+  function toText(vals) {
+    var set = vals[0] === 103 ? 'A' : vals[0] === 104 ? 'B' : 'C', out = '', shift = false, i, v, s;
+    for (i = 1; i < vals.length; i++) {
+      v = vals[i]; s = set;
+      if (shift) { s = (set === 'A') ? 'B' : 'A'; shift = false; }
+      if (s === 'C') {
+        if (v < 100) out += (v < 10 ? '0' : '') + v;
+        else if (v === 100) set = 'B'; else if (v === 101) set = 'A';
+      } else if (s === 'B') {
+        if (v < 96) out += String.fromCharCode(32 + v);
+        else if (v === 98) shift = true; else if (v === 99) set = 'C'; else if (v === 101) set = 'A';
+      } else {
+        if (v < 64) out += String.fromCharCode(32 + v);
+        else if (v < 96) out += String.fromCharCode(v - 64);
+        else if (v === 98) shift = true; else if (v === 99) set = 'C'; else if (v === 100) set = 'B';
+      }
+    }
+    return out;
+  }
+
+  // runs: lebar tiap batang/spasi berurutan; j = indeks batang pertama dari simbol start
+  function decodeAt(runs, j) {
+    var st = bestSymbol(runs, j);
+    if (st.code < 103) return null;
+    var vals = [st.code], pos = j + 6, guard = 0;
+    while (pos + 6 <= runs.length && guard++ < 60) {
+      var sym = bestSymbol(runs, pos);
+      var sv = (pos + 7 <= runs.length) ? variance(runs, pos, STOP) : Infinity;
+      if (sv < MAX_AVG && sv <= sym.v) {
+        if (vals.length < 3) return null;
+        var chk = vals.pop(), sum = vals[0], i;
+        for (i = 1; i < vals.length; i++) sum += i * vals[i];
+        if (sum % 103 !== chk) return null;
+        var t = toText(vals);
+        return t.length >= 2 ? t : null;
+      }
+      if (sym.code < 0 || sym.code > 102) return null;
+      vals.push(sym.code); pos += 6;
+    }
+    return null;
+  }
+
+  // Satu baris piksel -> lebar run (sub-piksel). Mengembalikan {runs, firstDark}
+  function rowRuns(v, w, win, mode) {
+    var i, half = win >> 1, s = new Float32Array(w), lo, hi, j, mn, mx, x;
+    if (mode === 0) {                                             // ambang = rata-rata lokal (tahan cahaya tidak merata)
+      var pre = new Float64Array(w + 1);
+      for (i = 0; i < w; i++) pre[i + 1] = pre[i] + v[i];
+      for (i = 0; i < w; i++) {
+        lo = Math.max(0, i - half); hi = Math.min(w, i + half + 1);
+        s[i] = v[i] - (pre[hi] - pre[lo]) / (hi - lo);
+      }
+    } else {                                                      // ambang = titik tengah gelap/terang lokal (tahan batang sangat rapat)
+      var dqMin = new Int32Array(w), dqMax = new Int32Array(w), a0 = 0, a1 = 0, b0 = 0, b1 = 0, nxt = 0;   // min/maks bergeser, O(w)
+      for (i = 0; i < w; i++) {
+        hi = Math.min(w - 1, i + half); lo = Math.max(0, i - half);
+        while (nxt <= hi) {
+          while (a1 > a0 && v[dqMin[a1 - 1]] >= v[nxt]) a1--; dqMin[a1++] = nxt;
+          while (b1 > b0 && v[dqMax[b1 - 1]] <= v[nxt]) b1--; dqMax[b1++] = nxt;
+          nxt++;
+        }
+        while (dqMin[a0] < lo) a0++;
+        while (dqMax[b0] < lo) b0++;
+        s[i] = v[i] - (v[dqMin[a0]] + v[dqMax[b0]]) / 2;
+      }
+    }
+    var gmin = 255, gmax = 0, k;
+    for (i = 0; i < w; i++) { if (v[i] < gmin) gmin = v[i]; if (v[i] > gmax) gmax = v[i]; }
+    var rng = gmax - gmin;
+    if (rng < 40) return { runs: [], firstDark: false };          // tidak ada kontras
+    var H = 5, state = 0, edges = [], firstDark = null;
+    var fdark = gmin + 0.25 * rng, flight = gmin + 0.75 * rng;    // batas mutlak: menjamin tepi akhir di area putih rata
+    for (i = 0; i < w; i++) {
+      if (state <= 0 && (s[i] > H || v[i] > flight)) {            // menuju terang
+        if (state === -1) edges.push(cross(s, i));
+        state = 1; if (firstDark === null) firstDark = false;
+      } else if (state >= 0 && (s[i] < -H || v[i] < fdark)) {     // menuju gelap
+        if (state === 1) edges.push(cross(s, i));
+        state = -1; if (firstDark === null) firstDark = true;
+      }
+    }
+    var runs = [];
+    for (k = 1; k < edges.length; k++) runs.push(edges[k] - edges[k - 1]);
+    // run pertama (setelah edge pertama) berwarna kebalikan dari state awal
+    return { runs: runs, firstDark: firstDark === null ? false : !firstDark };
+  }
+  function cross(s, i) {
+    var k = i; while (k > 0 && s[k - 1] * s[i] > 0) k--;      // mundur sampai tanda berubah
+    if (k === 0) return 0;
+    var a = s[k - 1], b = s[k];
+    return (k - 1) + (a === b ? 0.5 : a / (a - b));
+  }
+
+  function sharpen(v, w, r) {
+    var out = new Float32Array(w), pre = new Float64Array(w + 1), i, lo, hi, m;
+    for (i = 0; i < w; i++) pre[i + 1] = pre[i] + v[i];
+    for (i = 0; i < w; i++) {
+      lo = Math.max(0, i - r); hi = Math.min(w, i + r + 1); m = (pre[hi] - pre[lo]) / (hi - lo);
+      out[i] = Math.max(0, Math.min(255, v[i] + 2.2 * (v[i] - m)));
+    }
+    return out;
+  }
+
+  function tryRuns(rr) {
+    var runs = rr.runs, n = runs.length, j, t;
+    if (n < 30) return null;
+    for (j = rr.firstDark ? 0 : 1; j + 6 <= n; j += 2) {      // hanya mulai dari batang (gelap)
+      t = decodeAt(runs, j); if (t) return t;
+    }
+    return null;
+  }
+
+  // lum: Uint8 luminans w*h. opt.rows = jumlah baris pindai, opt.y0/y1 = rentang (0..1)
+  function decode(lum, w, h, opt) {
+    opt = opt || {};
+    var rows = opt.rows || 24, y0 = Math.round((opt.y0 === undefined ? 0.04 : opt.y0) * (h - 1)), y1 = Math.round((opt.y1 === undefined ? 0.96 : opt.y1) * (h - 1));
+    var win = Math.max(31, Math.round(w / 10)), r, y, x, row = new Float32Array(w), t, rr;
+    for (r = 0; r < rows; r++) {
+      y = y0 + Math.round((y1 - y0) * (rows === 1 ? 0.5 : r / (rows - 1)));
+      for (x = 0; x < w; x++) {                                  // rata-rata 3 baris menekan derau
+        var a = lum[Math.max(0, y - 1) * w + x], b = lum[y * w + x], c = lum[Math.min(h - 1, y + 1) * w + x];
+        row[x] = (a + b + c) / 3;
+      }
+      var sharp = null;
+      for (var mode = 0; mode < (opt.modes || 4); mode++) {
+        if (mode >= 2 && !sharp) sharp = sharpen(row, w, opt.sharpR || 2);   // cadangan untuk gambar buram
+        rr = rowRuns(mode >= 2 ? sharp : row, w, win, mode & 1);
+        t = tryRuns(rr); if (t) return t;
+        if (rr.runs.length > 30) {                               // arah sebaliknya (barcode terbalik)
+          var n = rr.runs.length, lastDark = ((n - 1) % 2 === 0) ? rr.firstDark : !rr.firstDark;
+          t = tryRuns({ runs: rr.runs.slice().reverse(), firstDark: lastDark }); if (t) return t;
+        }
+      }
+    }
+    return null;
+  }
+
+  return { decode: decode, _decodeAt: decodeAt, _rowRuns: rowRuns };
+})();
+</script>
 <script>
 (function () {
   'use strict';
@@ -574,7 +763,8 @@
   /* ---------- Koneksi ke server ----------
      Mode 1: dibuka dari URL Apps Script  -> google.script.run
      Mode 2: PWA (dihosting sendiri)      -> fetch ke API_URL (web app Apps Script) */
-  var API_URL = 'https://script.google.com/macros/s/AKfycbzEdhVk7SRQ20WVkETvU-Kyma-ohYBTZ-fPS8uYKMOeVb64ybLUi_bUiycRo_skDmdYJg/exec';   // contoh: https://script.google.com/macros/s/AKfycb.../exec
+  // URL web app Apps Script (berakhiran /exec). Urutan: config.js -> tersimpan di HP -> ditanya saat pertama dibuka.
+  var API_URL = String(window.WIPYD_API_URL || '').trim() || lsGet('wipyd_api') || '';
   var IN_GAS = !!(window.google && google.script && google.script.run);
   var API_TIMEOUT = 60000;
 
@@ -583,8 +773,20 @@
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* abaikan */ } }
   function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) { /* abaikan */ } }
 
+  function askApiUrl() {
+    var u = window.prompt('Tempel URL web app Apps Script (berakhiran /exec). Cukup sekali di HP ini.');
+    if (u === null) return false;
+    u = String(u).trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u)) {
+      window.alert('URL tidak valid. Harus diawali https://script.google.com/ dan berakhiran /exec');
+      return false;
+    }
+    API_URL = u; lsSet('wipyd_api', u);
+    return true;
+  }
+
   function callApi(fn, args, retried) {
-    if (!apiReady()) return Promise.reject(new Error('URL web app belum diisi. Buka Index.html, isi API_URL di bagian atas script dengan URL deploy Apps Script.'));
+    if (!apiReady() && !askApiUrl()) return Promise.reject(new Error('URL web app belum diisi. Ketuk tombol muat ulang di kanan atas lalu tempel URL web app (berakhiran /exec).'));
     var ctrl = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, API_TIMEOUT);
     return fetch(API_URL, {
@@ -922,22 +1124,225 @@
     return work;
   }
 
-  // Satu putaran baca dari bingkai video: pemindai bawaan dulu, lalu ZXing (pita lebar untuk barcode panjang, kotak tengah untuk QR)
+  /* ---------- Pembaca Code 128 buatan sendiri ----------
+     Kartu KIKC mencetak barcode tanpa zona kosong (quiet zone) di kiri-kanan. Pembaca standar menolak barcode
+     seperti itu, jadi di sini dibaca langsung dari lebar garis, lalu divalidasi dengan checksum Code 128. */
+  var C128 = ['212222','222122','222221','121223','121322','131222','122213','122312','132212','221213','221312','231212','112232','122132','122231','113222','123122','123221','223211','221132','221231','213212','223112','312131','311222','321122','321221','312212','322112','322211','212123','212321','232121','111323','131123','131321','112313','132113','132311','211313','231113','231311','112133','112331','132131','113123','113321','133121','313121','211331','231131','213113','213311','213131','311123','311321','331121','312113','312311','332111','314111','221411','431111','111224','111422','121124','121421','141122','141221','112214','112412','122114','122411','142112','142211','241211','221114','413111','241112','134111','111242','121142','121241','114212','124112','124211','411212','421112','421211','212141','214121','412121','111143','111341','131141','114113','114311','411113','411311','113141','114131','311141','411131','211412','211214','211232']
+    .map(function (s) { return s.split('').map(Number); });
+  var C128_STOP = [2, 3, 3, 1, 1, 1, 2];
+  var C128_YS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82];
+  var C128_YS_PHOTO = [];
+  (function () { for (var i = 0; i < 40; i++) C128_YS_PHOTO.push(0.04 + i * 0.0235); })();
+  var C128_SLOPES = [0, 0.05, -0.05, 0.11, -0.11];
+
+  // Sinyal 1 baris -> daftar lebar garis (posisi tepi dihitung sub-piksel)
+  function sigRuns(sig, off) {
+    var n = sig.length, B = 16, nb = Math.ceil(n / B), mins = new Float32Array(nb), maxs = new Float32Array(nb), i, b, k;
+    for (b = 0; b < nb; b++) { mins[b] = 255; maxs[b] = 0; }
+    for (i = 0; i < n; i++) { b = (i / B) | 0; if (sig[i] < mins[b]) mins[b] = sig[i]; if (sig[i] > maxs[b]) maxs[b] = sig[i]; }
+    var thr = new Float32Array(n), ok = new Uint8Array(n), R = 7;
+    for (b = 0; b < nb; b++) {
+      var lo = 255, hi = 0;
+      for (k = Math.max(0, b - R); k <= Math.min(nb - 1, b + R); k++) { if (mins[k] < lo) lo = mins[k]; if (maxs[k] > hi) hi = maxs[k]; }
+      var t = lo + (hi - lo) * (0.5 + off), good = (hi - lo) >= 35 ? 1 : 0;
+      for (i = b * B; i < Math.min(n, (b + 1) * B); i++) { thr[i] = t; ok[i] = good; }
+    }
+    var pos = [], isBar = [], prev = (ok[0] && sig[0] < thr[0]) ? 1 : 0, cur, x, den;
+    for (i = 1; i < n; i++) {
+      cur = (ok[i] && sig[i] < thr[i]) ? 1 : 0;
+      if (cur !== prev) {
+        den = sig[i] - sig[i - 1];
+        x = Math.abs(den) < 1e-6 ? i - 0.5 : (i - 1) + (((thr[i] + thr[i - 1]) / 2) - sig[i - 1]) / den;
+        if (x < i - 1) x = i - 1; if (x > i) x = i;
+        pos.push(x); isBar.push(cur === 1);
+        prev = cur;
+      }
+    }
+    var w = [], bar = [];
+    for (k = 0; k + 1 < pos.length; k++) { w.push(pos[k + 1] - pos[k]); bar.push(isBar[k]); }
+    return { w: w, bar: bar };
+  }
+
+  // Tinta/blur membuat garis hitam tampak lebih tebal (atau tipis) dan spasi sebaliknya. Koreksi kecil dicoba per simbol.
+  var C128_BIAS = [0, 0.12, -0.12, 0.25, -0.25];
+  // Daftar simbol yang mungkin untuk 6 garis mulai indeks j (error terkecil dulu, maksimal 3)
+  function c128Cands(w, j, from, to) {
+    var T = 0, k, u, c, e, p, d, x, bi, ws = [0, 0, 0, 0, 0, 0], errs = [], list = [];
+    for (k = 0; k < 6; k++) T += w[j + k];
+    u = T / 11;
+    for (c = from; c <= to; c++) errs[c] = 1e9;
+    for (bi = 0; bi < C128_BIAS.length; bi++) {
+      d = C128_BIAS[bi] * u;
+      for (k = 0; k < 6; k++) ws[k] = (w[j + k] + (k % 2 === 0 ? -d : d)) / u;
+      for (c = from; c <= to; c++) {
+        p = C128[c]; e = 0;
+        for (k = 0; k < 6; k++) { x = ws[k] - p[k]; e += x < 0 ? -x : x; }
+        if (e < errs[c]) errs[c] = e;
+      }
+    }
+    for (c = from; c <= to; c++) if (errs[c] <= 2.0) list.push({ code: c, err: errs[c] });
+    list.sort(function (a, b) { return a.err - b.err; });
+    if (!list.length) return list;
+    var lim = list[0].err + 0.9, out = [];
+    for (k = 0; k < list.length && out.length < 3; k++) if (list[k].err <= lim) out.push(list[k]);
+    return out;
+  }
+
+  function c128Text(codes) {
+    var set = codes[0] === 103 ? 'A' : codes[0] === 104 ? 'B' : 'C', out = '', shift = false, i, c, cs;
+    for (i = 1; i < codes.length - 1; i++) {
+      c = codes[i]; cs = set;
+      if (shift) { cs = set === 'A' ? 'B' : 'A'; shift = false; }
+      if (cs === 'C') {
+        if (c < 100) out += (c < 10 ? '0' : '') + c;
+        else if (c === 100) set = 'B';
+        else if (c === 101) set = 'A';
+      } else if (c === 99) set = 'C';
+      else if (c === 100) { if (cs === 'A') set = 'B'; }
+      else if (c === 101) { if (cs === 'B') set = 'A'; }
+      else if (c === 98) shift = true;
+      else if (c >= 96) { /* FNC, dilewati */ }
+      else if (cs === 'B') out += String.fromCharCode(32 + c);
+      else out += String.fromCharCode(c < 64 ? 32 + c : c - 64);
+    }
+    return out;
+  }
+
+  function c128Finish(codes) {
+    var n = codes.length, sum = codes[0], i;
+    if (n < 3) return null;
+    for (i = 1; i < n - 1; i++) sum += i * codes[i];
+    if (sum % 103 !== codes[n - 1]) return null;
+    var t = c128Text(codes);
+    return t ? t : null;
+  }
+
+  // Cari kombinasi simbol yang lolos checksum dan punya total error terkecil
+  function c128Search(cands, idx, sum, codes, errSum, budget, st) {
+    var cnt = cands.length, list = cands[idx], i, c, add, t;
+    if (st.evals++ > 6000) return;
+    if (idx === cnt - 1) {
+      for (i = 0; i < list.length; i++) {
+        if (list[i].code === sum % 103) {
+          codes.push(list[i].code);
+          t = c128Finish(codes);
+          codes.pop();
+          if (t && (errSum + list[i].err) < st.bestErr) { st.bestErr = errSum + list[i].err; st.text = t; }
+        }
+      }
+      return;
+    }
+    for (i = 0; i < list.length; i++) {
+      c = list[i]; add = c.err - list[0].err;
+      if (add > budget) continue;
+      codes.push(c.code);
+      c128Search(cands, idx + 1, sum + (idx === 0 ? c.code : idx * c.code), codes, errSum + c.err, budget - add, st);
+      codes.pop();
+    }
+  }
+
+  function c128From(w, j) {
+    var n = w.length, T = 0, k, u, r, cnt, pos, T7, u7, e, cands, c, st, best = null, bestAvg = 1e9, avg, S, ok;
+    for (k = 0; k < 6; k++) T += w[j + k];
+    u = T / 11;
+    if (u < 0.7) return null;
+    for (k = 0; k < 6; k++) { r = w[j + k] / u; if (r < 0.4 || r > 4.8) return null; }
+    S = c128Cands(w, j, 103, 105);
+    if (!S.length) return null;
+    cands = [S];
+    for (cnt = 3; cnt <= 40; cnt++) {
+      ok = true;
+      while (cands.length < cnt) {
+        pos = j + 6 * cands.length;
+        if (pos + 6 > n) { ok = false; break; }
+        c = c128Cands(w, pos, 0, 102);
+        if (!c.length) { ok = false; break; }   // simbol tak terbaca: barcode tidak mungkin lebih panjang
+        cands.push(c);
+      }
+      if (!ok) break;
+      pos = j + 6 * cnt;
+      if (pos + 7 > n) break;
+      T7 = 0; for (k = 0; k < 7; k++) T7 += w[pos + k];
+      u7 = T7 / 13; e = 0;
+      for (k = 0; k < 7; k++) e += Math.abs(w[pos + k] / u7 - C128_STOP[k]);
+      if (e > 2.0) continue;
+      st = { evals: 0, bestErr: 1e9, text: null };
+      c128Search(cands.slice(0, cnt), 0, 0, [], 0, 1.2, st);
+      if (st.text) {
+        avg = (st.bestErr + e) / (cnt + 1);
+        if (avg <= 1.3 && avg < bestAvg) { bestAvg = avg; best = st.text; }
+      }
+    }
+    return best;
+  }
+
+  function c128Try(w, bar) {
+    var n = w.length, j, t;
+    for (j = 0; j + 12 < n; j++) {
+      if (!bar[j]) continue;
+      t = c128From(w, j);
+      if (t) return t;
+    }
+    return null;
+  }
+
+  // Sinyal diperhalus dan diperbesar 2x (membantu barcode beresolusi rendah)
+  function up2(sig) {
+    var n = sig.length, o = new Float32Array(2 * n - 1), i;
+    for (i = 0; i < n - 1; i++) { o[2 * i] = sig[i]; o[2 * i + 1] = (sig[i] + sig[i + 1]) / 2; }
+    o[2 * n - 2] = sig[n - 1];
+    return o;
+  }
+
+  // lum = piksel abu-abu (w x h). Mencoba beberapa garis baca, sedikit miring, dua arah, tiga ambang.
+  function c128Lum(lum, w, h, ys, slopes) {
+    var sig = new Float32Array(w), si, yi_, o, x, y, yi, y0, slope, offs = [0, -0.1, 0.1], r, t, rw, rb;
+    for (si = 0; si < slopes.length; si++) {
+      slope = slopes[si];
+      for (yi_ = 0; yi_ < ys.length; yi_++) {
+        y0 = ys[yi_] * (h - 1);
+        for (x = 0; x < w; x++) {
+          y = Math.round(y0 + (x - w / 2) * slope);
+          yi = y < 1 ? 1 : (y > h - 2 ? h - 2 : y);
+          sig[x] = (lum[(yi - 1) * w + x] + lum[yi * w + x] + lum[(yi + 1) * w + x]) / 3;
+        }
+        var sigs = [sig, up2(sig)], vi;
+        for (vi = 0; vi < 2; vi++) {
+          for (o = 0; o < offs.length; o++) {
+            r = sigRuns(sigs[vi], offs[o]);
+            t = c128Try(r.w, r.bar);
+            if (t) return t;
+            rw = r.w.slice().reverse(); rb = r.bar.slice().reverse();
+            t = c128Try(rw, rb);
+            if (t) return t;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Satu putaran baca dari bingkai video. Urutan: pembaca Code 128 bawaan aplikasi (toleran, tanpa pustaka luar),
+  // lalu pemindai bawaan Chrome, lalu ZXing (QR dan jenis lain).
+  function c128(canvas, rows, modes) {
+    try { return Code128.decode(lumOf(canvas), canvas.width, canvas.height, { rows: rows, modes: modes }); } catch (e) { return null; }
+  }
   function readFrame(v) {
-    var w = v.videoWidth, h = v.videoHeight;
-    return bdDetect(v).then(function (t) {
-      if (t || !window.ZXing) return t;
-      var n = ++scan.n, r;
-      // 1. pita mendatar di tengah (barcode panjang); tiap 3 putaran dipertajam
-      r = zxDecode(region(v, 0, Math.round(h * 0.3), w, Math.round(h * 0.4), 1600), n % 3 === 0);
+    var w = v.videoWidth, h = v.videoHeight, n = ++scan.n, t;
+    // 1. pita tengah (barcode panjang mendatar)
+    t = c128(region(v, 0, Math.round(h * 0.25), w, Math.round(h * 0.5), 1100), 16, n % 2 ? 4 : 2);
+    if (t) return Promise.resolve(t);
+    // 2. seluruh bingkai, lalu diputar 90 derajat (barcode tegak)
+    if (n % 3 === 0) { t = c128(region(v, 0, 0, w, h, 1100), 36, 4); if (t) return Promise.resolve(t); }
+    if (n % 5 === 0) { t = c128(rotate90(region(v, 0, 0, w, h, 900)), 24, 4); if (t) return Promise.resolve(t); }
+    return bdDetect(v).then(function (t2) {
+      if (t2 || !window.ZXing) return t2;
+      var r = zxDecode(region(v, 0, Math.round(h * 0.3), w, Math.round(h * 0.4), 1600), n % 3 === 0);
       if (r) return r;
-      // 2. kotak tengah (QR)
       var side = Math.round(Math.min(w, h) * 0.8);
       r = zxDecode(region(v, Math.round((w - side) / 2), Math.round((h - side) / 2), side, side, 900), false);
       if (r) return r;
-      // 3. seluruh bingkai, dan bingkai diputar 90 derajat (barcode tegak)
       if (n % 4 === 0) { r = zxDecode(region(v, 0, 0, w, h, 1600), n % 8 === 0); if (r) return r; }
-      if (n % 5 === 0) { r = zxDecode(rotate90(region(v, 0, 0, w, h, 1200)), false); }
       return r;
     });
   }
@@ -1018,8 +1423,11 @@
       var v = $('#scanVideo'); v.srcObject = stream; v.muted = true;
       var p = v.play(); if (p && p.catch) p.catch(function () {});
       setupTrack();
-      setScanMsg('Arahkan barcode atau QR ke dalam bingkai. Barcode panjang: posisikan mendatar dan dekatkan sampai garisnya tajam, atau geser Zoom.');
+      setScanMsg('Arahkan barcode atau QR ke dalam bingkai. Barcode mendatar, jarak sekitar 15-25 cm sampai garisnya tajam. Jika buram, jauhkan sedikit atau geser Zoom.');
       scan.timer = setInterval(tick, 150);
+      setTimeout(function () {
+        if (scan.active && !scan.lastMiss) setScanMsg('Belum terbaca. Dekatkan sampai garis barcode tajam, jaga HP tetap mendatar dan stabil, tambah cahaya (tombol Senter), atau pakai Ambil foto.');
+      }, 8000);
     }).catch(function (e) { camFail(camMessage(e)); });
   }
 
@@ -1032,7 +1440,7 @@
     setScanMsg('Menyalakan kamera...');
     // Siapkan pemindai cadangan: langsung jika Chrome tidak punya pemindai bawaan, jika ada cukup setelah 4 detik tanpa hasil
     getDetector().then(function (bd) {
-      if (!bd) return loadZXing().catch(function (e) { if (scan.active) setScanMsg(errMsg(e) + ' Pakai ketik manual atau alat scan.', true); });
+      if (!bd) return loadZXing().catch(function () { /* pembaca Code 128 bawaan tetap jalan; hanya QR yang butuh ZXing */ });
       setTimeout(function () { if (scan.active) loadZXing().catch(function () {}); }, 4000);
     });
     startCamera();
@@ -1059,8 +1467,12 @@
     return r;
   }
   function decodeCanvas(c) {
+    var own = c128(c, 80, 4);
+    if (own) return Promise.resolve(own);
     return bdDetect(c).then(function (t) {
       if (t) return t;
+      var d = c128Lum(lumOf(c), c.width, c.height, C128_YS_PHOTO, C128_SLOPES);
+      if (d) return d;
       return loadZXing().then(function () { return zxDecode(c, false) || zxDecode(c, true); }).catch(function () { return null; });
     });
   }
@@ -1103,8 +1515,11 @@
     } else if (type === 'ready') {
       s.textContent = msg;
     } else {
-      s.innerHTML = '<div class="alert"><b>Daftar KIKC belum bisa dimuat.</b><br>' + esc(msg) + '<br><button type="button" class="btn-sm" id="retryKikc">Coba lagi</button></div>';
+      var canChange = !IN_GAS && !String(window.WIPYD_API_URL || '').trim();
+      s.innerHTML = '<div class="alert"><b>Daftar KIKC belum bisa dimuat.</b><br>' + esc(msg) + '<br><button type="button" class="btn-sm" id="retryKikc">Coba lagi</button>' +
+        (canChange ? ' <button type="button" class="btn-sm" id="chgApi">Ganti URL server</button>' : '') + '</div>';
       $('#retryKikc').addEventListener('click', loadKikc);
+      if (canChange) $('#chgApi').addEventListener('click', function () { lsDel('wipyd_api'); API_URL = ''; loadKikc(); });
     }
   }
   function fillMesinList() {
@@ -1349,6 +1764,7 @@
     renderSummary(rows);
 
     if (!state.rows.length) {
+      $('#tbody').innerHTML = '';
       var t = state.date === todayStr() ? 'hari ini' : 'pada ' + dateLabel(state.date);
       setTableState('<div class="state">Belum ada data ' + esc(t) + '. Simpan data dari tab Input, atau pilih tanggal lain.</div>');
       return;
@@ -1424,6 +1840,26 @@
   });
 
   /* ---------- Ubah data ---------- */
+  // Nilai lama di Sheet yang tidak ada di daftar pilihan (mis. data lama) tetap ditampilkan sebagai pilihan,
+  // supaya tidak memblokir penyimpanan dan tidak hilang tanpa sengaja.
+  function syncExtraChips(cid, name, list, value) {
+    var box = $(cid);
+    $$(cid + ' .chip.extra').forEach(function (n) { n.parentNode.removeChild(n); });
+    var v = String(value || '').trim();
+    if (!v) return;
+    var known = list.some(function (o) { return (typeof o === 'string' ? o : o.v) === v; });
+    if (known) return;
+    var l = document.createElement('label');
+    l.className = 'chip extra sm';
+    l.innerHTML = '<input type="radio" name="' + name + '" value="' + esc(v) + '"><span>' + esc(v) + '</span>';
+    box.appendChild(l);
+  }
+  function setEditAlert(msg) {
+    var a = $('#eAlert');
+    a.textContent = msg || ''; a.hidden = !msg;
+    if (msg && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
+  }
+
   function openEdit(row) {
     edit.row = row;
     edit.orig = { kikc: row.kikc, noBenang: row.noBenang, warna: row.warna, mesin: row.mesin, kg: row.kg, cone: row.cone };
@@ -1435,14 +1871,20 @@
     $('#eStatus').textContent = ok ? '' : 'Daftar KIKC belum termuat, jadi KIKC belum bisa diganti. Bagian lain tetap bisa diubah.';
     edCombo.select(edit.orig, false);
 
+    syncExtraChips('#eCShift', 'eshift', OPT.shift, row.shift);
+    syncExtraChips('#eCGrup', 'egrup', OPT.grup, row.grup);
+    syncExtraChips('#eCPosisi', 'eposisi', OPT.posisi, row.posisi);
+    syncExtraChips('#eCQc', 'eqc', OPT.qc, row.qc);
     setRadio('eshift', row.shift); setRadio('egrup', row.grup);
     setRadio('eposisi', row.posisi); setRadio('eqc', row.qc);
+    $('#eNoteQc').value = row.noteQc || '';
     $('#eKeterangan').value = row.keterangan || '';
+    setEditAlert('');
 
     $('#editSheet').classList.add('show');
     $('#eBody').scrollTop = 0;
   }
-  function closeEdit() { $('#editSheet').classList.remove('show'); edit.row = null; edit.orig = null; }
+  function closeEdit() { $('#editSheet').classList.remove('show'); edit.row = null; edit.orig = null; setEditAlert(''); }
 
   function renderEditSave() {
     var b = $('#editSave');
@@ -1475,8 +1917,10 @@
       mesin: $('#eMesin').value.trim(),
       shift: getRadio('eshift'), grup: getRadio('egrup'),
       posisi: getRadio('eposisi'), qc: getRadio('eqc'),
+      noteQc: $('#eNoteQc').value.trim(),
       keterangan: $('#eKeterangan').value.trim()
     };
+    setEditAlert('');
     state.savingEdit = true; renderEditSave();
 
     gs('updateRowData', payload).then(function (msg) {
@@ -1484,6 +1928,7 @@
       closeEdit();
       return loadData();
     }).catch(function (err) {
+      setEditAlert('Gagal menyimpan. ' + errMsg(err));
       toast('Gagal menyimpan. ' + errMsg(err), 'err', 8000);
     }).then(function () {
       state.savingEdit = false; renderEditSave();
@@ -1496,6 +1941,7 @@
   /* ---------- Hapus ---------- */
   function askDelete(row) {
     state.pendingDelete = row;
+    $('#delAlert').hidden = true;
     $('#delText').textContent = 'Data KIKC ' + row.kikc + (row.posisi ? ' di posisi ' + row.posisi : '') + ' akan dihapus permanen dari Sheet.';
     $('#delSheet').classList.add('show');
   }
@@ -1510,8 +1956,8 @@
       closeDel();
       return loadData();
     }).catch(function (err) {
+      var a = $('#delAlert'); a.textContent = 'Gagal menghapus. ' + errMsg(err); a.hidden = false;
       toast('Gagal menghapus. ' + errMsg(err), 'err', 8000);
-      closeDel();
     }).then(function () { yes.disabled = false; yes.textContent = 'Hapus'; });
   });
 
