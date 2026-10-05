@@ -1,5 +1,5 @@
 /* Service worker WIP YD: cangkang aplikasi tersimpan agar cepat dibuka. Data selalu dari server. */
-const VER = 'wipyd-v2';
+const VER = 'wipyd-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
