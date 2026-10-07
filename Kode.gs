@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v11: tab WOD, GRM, Celup hanya baca + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v12: tab WOD, GRM, Celup hanya baca + kolom TANGGAL + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -8,10 +8,11 @@
  *   Jika satu KIKC ada di WOD dan GRM, data WOD yang dipakai.
  *
  * Tab daftar (hanya baca, ditampilkan di tab bawah aplikasi):
- *   WOD : C KIKC | D NO BENANG | E WARNA | F KG | G CONE | I MESIN | K SUPPLIER | L KETERANGAN
+ *   WOD : A TANGGAL | C KIKC | D NO BENANG | E WARNA | F KG | G CONE | I MESIN | K SUPPLIER | L KETERANGAN
  *         hanya baris berstatus "B" di kolom O, dan MESIN tidak berisi "BAK-" (BAK-1, BAK-2, BAK-3, ...)
- *   GRM : B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
+ *   GRM : A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
  *   CLP : A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
+ * Ketiganya diurutkan dari TANGGAL (kolom A) terbaru; tanggal sama: baris paling bawah di sheet lebih dulu.
  *
  * Sheet "WIP YD (Jawaban)":
  *   A Timestamp | B ID UNIK | C KIKC | D No Benang | E Warna | F Mesin | G Kg | H Cone
@@ -32,10 +33,14 @@ const WOD_FIRST_COL = 3;         // kolom C = KIKC
 const WOD_WIDTH = 10;            // C..L
 const GRM_FIRST_COL = 2;         // kolom B = KIKC
 const GRM_WIDTH = 7;             // B..H
-const WOD_LIST_WIDTH = 13;       // C..O (O = status)
-const WOD_STATUS_IDX = 12;       // kolom O di dalam C..O
+const WOD_LIST_FIRST_COL = 1;    // tab WOD dibaca dari kolom A (TANGGAL)
+const WOD_LIST_WIDTH = 15;       // A..O (O = status)
+const WOD_STATUS_IDX = 14;       // kolom O di dalam A..O
+const WOD_KIKC_IDX = 2;          // kolom C di dalam A..O
+const GRM_LIST_FIRST_COL = 1;    // tab GRM dibaca dari kolom A (TANGGAL)
+const GRM_LIST_WIDTH = 8;        // A..H
 const WOD_STATUS_SHOW = 'B';     // hanya baris berstatus ini yang tampil di tab WOD
-const WOD_MESIN_IDX = 6;         // kolom I di dalam C..O
+const WOD_MESIN_IDX = 8;         // kolom I di dalam A..O
 const WOD_HIDE_MESIN = 'BAK-';   // baris WOD dengan mesin berisi teks ini disembunyikan dari tab WOD
 const CLP_FIRST_COL = 1;         // kolom A = TANGGAL
 const CLP_WIDTH = 10;            // A..J (J = KET)
@@ -358,24 +363,45 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst_';
+const LIST_PREFIX = 'lst3_';
+
+// Nilai urut dari sel tanggal: tanggal asli Sheet dipakai langsung; teks dibaca sebagai dd/mm/yyyy, yyyy-mm-dd, dst.
+function sortKey_(v, disp) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) return v.getTime();
+  const t = str_(disp || v).trim();
+  if (!t) return 0;
+  let m = t.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+  m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (m) {
+    let d = +m[1], mo = +m[2], y = +m[3];
+    if (y < 100) y += 2000;
+    if (mo > 12 && d <= 12) { const x = d; d = mo; mo = x; }
+    return new Date(y, mo - 1, d).getTime();
+  }
+  const p = Date.parse(t);
+  return isNaN(p) ? 0 : p;
+}
 
 // Membaca satu blok kolom, mengambil kolom yang diminta (pick = indeks di dalam blok, urutan = urutan tampil).
 // keepFn (opsional) menyaring baris berdasarkan seluruh blok. Baris kosong dan baris judul dilewati.
-function readList_(sheet, firstCol, width, pick, keepFn) {
+// Hasil diurutkan dari tanggal terbaru (dateIdx = indeks kolom tanggal di dalam blok).
+function readList_(sheet, firstCol, width, pick, keepFn, dateIdx) {
   const last = sheet.getLastRow();
   if (last < 2) return [];
   const nCols = Math.min(width, sheet.getMaxColumns() - firstCol + 1);
   const values = sheet.getRange(2, firstCol, last - 1, nCols).getDisplayValues();
-  const out = [];
+  const raw = sheet.getRange(2, firstCol + dateIdx, last - 1, 1).getValues();   // nilai asli kolom tanggal untuk pengurutan
+  const items = [];
   for (let i = 0; i < values.length; i++) {
     const r = padRow_(values[i], width);
     if (keepFn && !keepFn(r)) continue;
     const row = pick.map(function (k) { return str_(r[k]).trim(); });
     if (!row.some(function (x) { return x; })) continue;
-    out.push(row);
+    items.push({ row: row, key: sortKey_(raw[i][0], r[dateIdx]), i: i });
   }
-  return out;
+  items.sort(function (x, y) { return (y.key - x.key) || (y.i - x.i); });
+  return items.map(function (x) { return x.row; });
 }
 
 function listResult_(headers, rows) {
@@ -384,28 +410,28 @@ function listResult_(headers, rows) {
 
 function buildList_(key) {
   if (key === 'wod') {
-    // C, D, E, F, G, I, K, L. Hanya status "B" (kolom O) dan mesin yang tidak berisi "BAK-"
-    const rows = readList_(getWodSheet_(), WOD_FIRST_COL, WOD_LIST_WIDTH, [0, 1, 2, 3, 4, 6, 8, 9], function (r) {
+    // A, C, D, E, F, G, I, K, L. Hanya status "B" (kolom O) dan mesin yang tidak berisi "BAK-"
+    const rows = readList_(getWodSheet_(), WOD_LIST_FIRST_COL, WOD_LIST_WIDTH, [0, 2, 3, 4, 5, 6, 8, 10, 11], function (r) {
       if (str_(r[WOD_STATUS_IDX]).trim().toUpperCase() !== WOD_STATUS_SHOW) return false;
-      if (str_(r[0]).trim().toUpperCase() === 'KIKC') return false;
+      if (str_(r[WOD_KIKC_IDX]).trim().toUpperCase() === 'KIKC') return false;
       const mesin = str_(r[WOD_MESIN_IDX]).replace(/\s+/g, '').toUpperCase();
       return mesin.indexOf(WOD_HIDE_MESIN) < 0;
-    });
-    return listResult_(['KIKC', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
+    }, 0);
+    return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
   }
   if (key === 'grm') {
     const sh = getGrmSheet_();
     if (!sh) throw new Error('Tab "' + SHEET_GRM + '" tidak ditemukan di spreadsheet.');
-    const rows = readList_(sh, GRM_FIRST_COL, GRM_WIDTH, [0, 1, 2, 3, 4, 5, 6], function (r) {
-      return str_(r[0]).trim().toUpperCase() !== 'KIKC';
-    });
-    return listResult_(['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
+    const rows = readList_(sh, GRM_LIST_FIRST_COL, GRM_LIST_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7], function (r) {
+      return str_(r[1]).trim().toUpperCase() !== 'KIKC';
+    }, 0);
+    return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
   }
   const sh = findSheet_(ss_(), SHEET_CLP);
   if (!sh) throw new Error('Tab "' + SHEET_CLP + '" tidak ditemukan di spreadsheet.');
   const rows = readList_(sh, CLP_FIRST_COL, CLP_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], function (r) {
     return str_(r[1]).trim().toUpperCase() !== 'KIKC';
-  });
+  }, 0);
   return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'KET'], rows);
 }
 
