@@ -120,6 +120,8 @@
   .combo-item small{font-size:13px;color:var(--dim)}
   .combo-item.active,.combo-item:hover{background:rgba(34,243,255,.12)}
   .combo-item mark{background:none;color:var(--cyan);text-shadow:0 0 8px rgba(34,243,255,.6)}
+  .combo-add b{color:var(--lime)}
+  .combo-add{border:1px dashed rgba(93,255,160,.45);margin-top:4px}
   .combo-empty{padding:14px;color:var(--dim);font-size:15px}
   .combo-status{margin:8px 2px 0;font-size:13px;color:var(--dim)}
 
@@ -193,6 +195,17 @@
   td{background:#0a1030}
   tbody tr:nth-child(even) td{background:#0d1438}
   tbody tr:hover td{background:#122052}
+  /* KIKC ganda: kuning = KIKC sama (posisi beda), merah = KIKC dan posisi sama (kemungkinan input dobel) */
+  tbody tr.dup td{background:#2b2410}
+  tbody tr.dup:hover td{background:#3a3014}
+  tbody tr.dup td.c-act{box-shadow:inset 4px 0 0 var(--amber)}
+  tbody tr.dup td.c-kikc{color:var(--amber)}
+  tbody tr.dup2 td{background:#3a1226}
+  tbody tr.dup2:hover td{background:#4a1830}
+  tbody tr.dup2 td.c-act{box-shadow:inset 4px 0 0 var(--rose)}
+  tbody tr.dup2 td.c-kikc{color:var(--rose)}
+  .dupbadge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font:700 12px var(--body);color:#1a1200;background:var(--amber)}
+  tr.dup2 .dupbadge{color:#fff;background:var(--rose)}
   th.sticky,td.sticky{position:sticky;z-index:3}
   th.sticky{z-index:4}
   .c-act{left:0;width:94px;min-width:94px;padding:8px}
@@ -310,6 +323,7 @@
             <ul class="combo-list" id="kikcList" role="listbox"></ul>
           </div>
           <div class="combo-status" id="kikcStatus"></div>
+          <p class="hint-sm" id="newNote" hidden style="margin:6px 2px 0;color:var(--lime)">KIKC baru (tidak ada di sheet WOD/GRM): No benang, Warna, Kg, Cone, dan Keterangan KIKC dikosongkan. Mesin bisa diisi manual.</p>
           <div class="hud" id="hud">
             <div class="cell w3"><small>No benang</small><span data-f="noBenang" class="empty">-</span></div>
             <div class="cell w3"><small>Warna</small><span data-f="warna" class="empty">-</span></div>
@@ -479,6 +493,7 @@
             <ul class="combo-list" id="eKikcList" role="listbox"></ul>
           </div>
           <div class="combo-status" id="eStatus"></div>
+          <p class="hint-sm" id="eNewNote" hidden style="margin:6px 2px 0;color:var(--lime)">KIKC baru (tidak ada di sheet WOD/GRM): data referensi dikosongkan.</p>
           <p class="err"></p>
         </div>
 
@@ -743,12 +758,14 @@ var Code128 = (function () {
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
 
-  var POSISI = ['1. CELUP', '2. HDX', '3. RF', '4. WIP', '5. KELOS', '6. PACK'];
+  var POSISI = ['CELUP', 'HDX', 'RF', 'WIP', 'KELOS', 'PACK'];
+  // Data lama di Sheet masih bisa berawalan nomor ("1. CELUP"): nomor dibuang saat ditampilkan
+  function stripNum(v) { return String(v === null || v === undefined ? '' : v).replace(/^\s*\d+\s*[.)]\s*/, '').trim(); }
   var OPT = {
     shift: ['Shift 1', 'Shift 2', 'Shift 3'],
     grup: ['A', 'B', 'C', 'N'],
     posisi: POSISI,
-    qc: [{ v: '1. LAYAK', c: 'good' }, { v: 'UJI QC', c: 'warn' }, { v: 'TIDAK LAYAK', c: 'bad' }]
+    qc: [{ v: 'LAYAK', c: 'good' }, { v: 'UJI QC', c: 'warn' }, { v: 'TIDAK LAYAK', c: 'bad' }]
   };
   var ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   var ICON_TRASH = '<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
@@ -928,13 +945,20 @@ var Code128 = (function () {
       if (!state.kikc.length) {
         list.innerHTML = '<li class="combo-empty">Daftar KIKC belum termuat.</li>';
       } else if (!shown.length) {
-        list.innerHTML = '<li class="combo-empty">KIKC tidak ditemukan. Cek ejaan atau ketik lebih sedikit huruf.</li>';
+        list.innerHTML = '<li class="combo-empty">KIKC tidak ada di daftar.</li>';
       } else {
         list.innerHTML = shown.map(function (it, idx) {
           var sub = [it.noBenang, it.warna].filter(Boolean).join(' / ') + (it.src === 'GRM' ? ' \u00b7 GRM' : '');
           return '<li class="combo-item' + (idx === activeIdx ? ' active' : '') + '" role="option" data-i="' + idx + '"><b>' + hl(it.kikc, q) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</li>';
         }).join('');
       }
+      var typed = input.value.trim();
+      if (typed && !state.kikc.some(function (k) { return k.kikc.toLowerCase() === typed.toLowerCase(); })) {
+        list.innerHTML += '<li class="combo-item combo-add" role="option" data-new="1"><b>+ Tambah KIKC baru</b><small>' + esc(typed) + ' (isi manual, data lain dikosongkan)</small></li>';
+      }
+    }
+    function newItem() {
+      return { kikc: input.value.replace(/\s+/g, ' ').trim(), noBenang: '', warna: '', kg: '', cone: '', mesin: '', ketKikc: '', src: 'BARU', isNew: true };
     }
     function open() { activeIdx = -1; render(); combo.classList.add('open'); input.setAttribute('aria-expanded', 'true'); }
     function close() { combo.classList.remove('open'); input.setAttribute('aria-expanded', 'false'); }
@@ -974,6 +998,7 @@ var Code128 = (function () {
             var m = matchKikc(input.value);
             if (m) pick(m);
             else if (shown.length === 1) pick(shown[0]);
+            else if (shown.length === 0 && input.value.trim()) pick(newItem());
             else close();
           } else close();
         }
@@ -982,6 +1007,7 @@ var Code128 = (function () {
     list.addEventListener('mousedown', function (e) { e.preventDefault(); });
     list.addEventListener('click', function (e) {
       var li = e.target.closest('.combo-item');
+      if (li && li.getAttribute('data-new')) { if (input.value.trim()) pick(newItem()); return; }
       if (li && shown[+li.getAttribute('data-i')]) pick(shown[+li.getAttribute('data-i')]);
     });
     clearBtn.addEventListener('click', function () { dropSelection(); input.value = ''; input.focus(); });
@@ -1005,6 +1031,7 @@ var Code128 = (function () {
     { combo: '#combo', input: '#kikcInput', list: '#kikcList', clear: '#kikcClear', scan: '#kikcScan' },
     function (item, pulse) {
       fillHud($('#hud'), item, pulse);
+      $('#newNote').hidden = !(item && item.isNew);
       $('#mesinInput').value = item ? (item.mesin || '') : '';   // terisi dari referensi KIKC, tetap bisa diubah
       $('#ketKikc').value = item ? (item.ketKikc || '') : '';   // Keterangan KIKC: dari WOD kolom L / GRM kolom H (hanya baca)
       if (item) setErr('fKikc', '');
@@ -1014,6 +1041,7 @@ var Code128 = (function () {
   var edCombo = createCombo(
     { combo: '#eCombo', input: '#eKikcInput', list: '#eKikcList', clear: '#eKikcClear', scan: '#eKikcScan' },
     function (item, pulse) {
+      $('#eNewNote').hidden = !(item && item.isNew);
       if (!item) { fillHud($('#eHud'), null, false); return; }
       // KIKC dikembalikan ke aslinya: pakai data tersimpan. KIKC diganti: ikut referensi WOD/GRM.
       var useOrig = edit.orig && item.kikc === edit.orig.kikc;
@@ -1609,7 +1637,7 @@ var Code128 = (function () {
   /* ---------- Simpan data baru ---------- */
   function validateForm() {
     var first = null;
-    if (!inCombo.get()) { setErr('fKikc', 'Pilih KIKC dari daftar. Ketik sebagian kode lalu ketuk hasilnya.'); first = first || $('#fKikc'); } else setErr('fKikc', '');
+    if (!inCombo.get()) { setErr('fKikc', 'Pilih KIKC dari daftar, atau ketik kode lalu ketuk "+ Tambah KIKC baru".'); first = first || $('#fKikc'); } else setErr('fKikc', '');
     if (!getRadio('posisi')) { setErr('fPosisi', 'Pilih salah satu posisi.'); first = first || $('#fPosisi'); } else setErr('fPosisi', '');
     if (first) {
       if (first.scrollIntoView) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1642,6 +1670,7 @@ var Code128 = (function () {
 
     var payload = {
       kikc: inCombo.get().kikc,
+      baru: !!inCombo.get().isNew,
       mesin: $('#mesinInput').value.trim(),
       shift: getRadio('shift'), grup: getRadio('grup'),
       posisi: getRadio('posisi'), qc: getRadio('qc'),
@@ -1729,7 +1758,7 @@ var Code128 = (function () {
     $('#sumNote').textContent = note || '';
   }
   // Kg dan Cone dihitung satu kali per KIKC (satu lot bisa diinput di beberapa posisi dalam sehari)
-  function renderSummary(rows) {
+  function renderSummary(rows, dupInfo) {
     var seen = {}, lots = 0, kg = 0, cone = 0;
     rows.forEach(function (r) {
       if (!r.kikc || seen[r.kikc]) return;
@@ -1738,8 +1767,11 @@ var Code128 = (function () {
     });
     setStat('#sLot', fmtNum(lots)); setStat('#sKg', fmtNum(kg)); setStat('#sCone', fmtNum(cone));
     var scope = dateLabel(state.date) + (state.filterPos ? ', posisi ' + state.filterPos : ', semua posisi') + (state.query.trim() ? ', sesuai pencarian' : '');
+    var dupN = 0, dupKeys = {};
+    rows.forEach(function (r) { if (r.kikc && dupInfo.cnt[r.kikc] > 1 && !dupKeys[r.kikc]) { dupKeys[r.kikc] = 1; dupN++; } });
     $('#sumNote').textContent = rows.length
-      ? scope + ': ' + rows.length + ' input untuk ' + lots + ' lot KIKC.' + (rows.length > lots ? ' Kg dan Cone dihitung sekali per KIKC.' : '')
+      ? scope + ': ' + rows.length + ' input untuk ' + lots + ' lot KIKC.' + (rows.length > lots ? ' Kg dan Cone dihitung sekali per KIKC.' : '') +
+        (dupN ? ' ' + dupN + ' KIKC ganda disorot (kuning: posisi beda, merah: posisi sama).' : '')
       : scope + ': belum ada input.';
   }
 
@@ -1773,7 +1805,13 @@ var Code128 = (function () {
       if (!q) return true;
       return [r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.noteQc, r.keterangan].join(' ').toLowerCase().indexOf(q) >= 0;
     });
-    renderSummary(rows);
+    var dupInfo = { cnt: {}, kp: {} };   // dihitung dari semua data hari itu, bukan hanya yang lolos filter
+    state.rows.forEach(function (r) {
+      if (!r.kikc) return;
+      dupInfo.cnt[r.kikc] = (dupInfo.cnt[r.kikc] || 0) + 1;
+      var k = r.kikc + '|' + r.posisi; dupInfo.kp[k] = (dupInfo.kp[k] || 0) + 1;
+    });
+    renderSummary(rows, dupInfo);
 
     if (!state.rows.length) {
       $('#tbody').innerHTML = '';
@@ -1785,12 +1823,13 @@ var Code128 = (function () {
 
     $('#tbody').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
-      return '<tr>' +
+      var n = dupInfo.cnt[r.kikc] || 0, cls = n > 1 ? (dupInfo.kp[r.kikc + '|' + r.posisi] > 1 ? 'dup dup2' : 'dup') : '';
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
         '<td class="sticky c-act"><div class="row-actions">' +
           '<button type="button" class="icon-btn sm" data-act="edit" data-row="' + r.rowIndex + '" aria-label="Ubah ' + esc(r.kikc) + '" title="Ubah">' + ICON_EDIT + '</button>' +
           '<button type="button" class="icon-btn sm danger" data-act="del" data-row="' + r.rowIndex + '" aria-label="Hapus ' + esc(r.kikc) + '" title="Hapus">' + ICON_TRASH + '</button>' +
         '</div></td>' +
-        '<td class="sticky c-kikc">' + esc(r.kikc) + '</td>' +
+        '<td class="sticky c-kikc">' + esc(r.kikc) + (n > 1 ? '<span class="dupbadge" title="KIKC ini diinput ' + n + ' kali">\u00d7' + n + '</span>' : '') + '</td>' +
         '<td>' + esc(r.noBenang) + '</td>' +
         '<td>' + esc(r.warna) + '</td>' +
         '<td>' + esc(r.mesin) + '</td>' +
@@ -1823,6 +1862,7 @@ var Code128 = (function () {
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
       state.rows = (r.data || []).slice().sort(function (a, b) { return b.rowIndex - a.rowIndex; });
+      state.rows.forEach(function (x) { x.posisi = stripNum(x.posisi); x.qc = stripNum(x.qc); });
       state.total = r.total || 0;
       renderRows();
     }).catch(function (e) {
@@ -1929,6 +1969,7 @@ var Code128 = (function () {
     var payload = {
       rowIndex: edit.row.rowIndex, tk: edit.row.tk,
       kikc: edCombo.get().kikc,
+      baru: !!edCombo.get().isNew,
       mesin: $('#eMesin').value.trim(),
       shift: getRadio('eshift'), grup: getRadio('egrup'),
       posisi: getRadio('eposisi'), qc: getRadio('eqc'),
