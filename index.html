@@ -925,8 +925,9 @@ var Code128 = (function () {
   /* ---------- Koneksi ke server ----------
      Mode 1: dibuka dari URL Apps Script  -> google.script.run
      Mode 2: PWA (dihosting sendiri)      -> fetch ke API_URL (web app Apps Script) */
-  // URL web app Apps Script (berakhiran /exec). Urutan: config.js -> tersimpan di HP -> ditanya saat pertama dibuka.
-  var API_URL = String(window.WIPYD_API_URL || '').trim() || lsGet('wipyd_api') || '';
+  // URL web app Apps Script (berakhiran /exec). Urutan: Pengaturan tersembunyi di HP (ketuk 2x ikon bulat kiri atas)
+  // -> config.js -> ditanya saat pertama dibuka.
+  var API_URL = lsGet('wipyd_api') || String(window.WIPYD_API_URL || '').trim() || '';
   var IN_GAS = !!(window.google && google.script && google.script.run);
   var API_TIMEOUT = 60000;
 
@@ -935,11 +936,12 @@ var Code128 = (function () {
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* abaikan */ } }
   function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) { /* abaikan */ } }
 
+  function validApiUrl(u) { return /^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u); }
   function askApiUrl() {
     var u = window.prompt('Tempel URL web app Apps Script (berakhiran /exec). Cukup sekali di HP ini.');
     if (u === null) return false;
     u = String(u).trim();
-    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u)) {
+    if (!validApiUrl(u)) {
       window.alert('URL tidak valid. Harus diawali https://script.google.com/ dan berakhiran /exec');
       return false;
     }
@@ -947,8 +949,41 @@ var Code128 = (function () {
     return true;
   }
 
+  /* ---------- Pengaturan tersembunyi: ketuk 2x ikon bulat di kiri atas ----------
+     Dipakai setelah deploy ulang Apps Script menghasilkan URL /exec baru, tanpa uninstall/pasang ulang. */
+  function openApiSetting() {
+    var cur = lsGet('wipyd_api') || String(window.WIPYD_API_URL || '').trim();
+    var u = window.prompt('PENGATURAN\nTempel URL web app Apps Script (berakhiran /exec).\nKosongkan lalu Oke untuk memakai URL bawaan (config.js).', cur);
+    if (u === null) return;
+    u = String(u).trim();
+    if (!u) {
+      lsDel('wipyd_api');
+      API_URL = String(window.WIPYD_API_URL || '').trim();
+      toast('URL pengaturan dihapus. Memakai URL bawaan.', 'ok', 3500);
+    } else if (!validApiUrl(u)) {
+      window.alert('URL tidak valid. Harus diawali https://script.google.com/ dan berakhiran /exec');
+      return;
+    } else {
+      API_URL = u; lsSet('wipyd_api', u);
+      toast('URL server disimpan. Memuat ulang data...', 'ok', 3500);
+    }
+    // Data lama dari server sebelumnya dibuang, lalu semua dimuat ulang dari URL baru
+    Object.keys(lst).forEach(function (k) { lst[k].rows = []; lst[k].headers = []; lst[k].sig = ''; lst[k].at = 0; lst[k].rk = ''; lsDel(listCacheKey(k)); });
+    loadKikc().then(function () { setTimeout(prefetchLists, 0); });
+  }
+  (function () {
+    var orb = document.querySelector('.orb');
+    if (!orb) return;
+    orb.style.touchAction = 'manipulation';
+    var last = 0;
+    orb.addEventListener('click', function (ev) {
+      var now = Date.now();
+      if (now - last < 450) { last = 0; ev.preventDefault(); openApiSetting(); } else { last = now; }
+    });
+  })();
+
   function callApi(fn, args, retried) {
-    if (!apiReady() && !askApiUrl()) return Promise.reject(new Error('URL web app belum diisi. Ketuk tombol muat ulang di kanan atas lalu tempel URL web app (berakhiran /exec).'));
+    if (!apiReady() && !askApiUrl()) return Promise.reject(new Error('URL web app belum diisi. Ketuk 2x ikon bulat di kiri atas, lalu tempel URL web app (berakhiran /exec).'));
     var ctrl = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, API_TIMEOUT);
     return fetch(API_URL, {
@@ -975,7 +1010,7 @@ var Code128 = (function () {
     }).catch(function (e) {
       clearTimeout(timer);
       if (e && e.name === 'AbortError') throw new Error('Server terlalu lama menjawab. Coba lagi.');
-      if (e instanceof TypeError) throw new Error('Tidak bisa menghubungi server. Cek internet dan URL web app.');
+      if (e instanceof TypeError) throw new Error('Tidak bisa menghubungi server. Cek internet dan URL web app (ketuk 2x ikon bulat di kiri atas untuk mengganti URL).');
       throw e;
     });
   }
@@ -1691,11 +1726,11 @@ var Code128 = (function () {
     } else if (type === 'ready') {
       s.textContent = msg;
     } else {
-      var canChange = !IN_GAS && !String(window.WIPYD_API_URL || '').trim();
+      var canChange = !IN_GAS;
       s.innerHTML = '<div class="alert"><b>Daftar KIKC belum bisa dimuat.</b><br>' + esc(msg) + '<br><button type="button" class="btn-sm" id="retryKikc">Coba lagi</button>' +
         (canChange ? ' <button type="button" class="btn-sm" id="chgApi">Ganti URL server</button>' : '') + '</div>';
       $('#retryKikc').addEventListener('click', loadKikc);
-      if (canChange) $('#chgApi').addEventListener('click', function () { lsDel('wipyd_api'); API_URL = ''; loadKikc(); });
+      if (canChange) $('#chgApi').addEventListener('click', openApiSetting);
     }
   }
   function fillMesinList() {
@@ -1749,9 +1784,9 @@ var Code128 = (function () {
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (PAGE_SIZE baris) yang digambar. */
   var LISTS = {
-    wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 1, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
-    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 1, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
-    clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 1, wrap: /^KET$/, num: /^(KG|CONE)$/ }
+    wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
+    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
+    clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
   };
   var PAGE_SIZE = 50;       // baris per halaman
   var LIST_FRESH = 60000;   // data lebih baru dari ini tidak diambil ulang saat tab dibuka lagi
@@ -1761,7 +1796,7 @@ var Code128 = (function () {
   });
 
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
-  function listCacheKey(k) { return 'wipyd_list3_' + k; }
+  function listCacheKey(k) { return 'wipyd_list4_' + k; }
   function restoreList(k) {
     var m = lst[k];
     if (m.rows.length) return;
@@ -1801,9 +1836,10 @@ var Code128 = (function () {
     if (m.page < 1) m.page = 1;
     var start = (m.page - 1) * PAGE_SIZE, shown = rows.slice(start, start + PAGE_SIZE);
     var hd = m.headers;
+    var kIdx = hd.indexOf('KIKC'); if (kIdx < 0) kIdx = d.key;   // KIKC menempel di kiri, TANGGAL ada setelahnya
     var cls = function (i, h, td) {
       var c = [];
-      if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
+      if (i === kIdx) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
       if (td) { if (/^TANGGAL$/.test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
       return c.length ? ' class="' + c.join(' ') + '"' : '';
     };
@@ -1811,7 +1847,7 @@ var Code128 = (function () {
     var out = [];
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], tr = '<tr>';
-      for (var j = 0; j < r.length; j++) tr += '<td' + cls(j, hd[j], true) + '>' + (r[j] === '' ? '<span class="dim">-</span>' : esc(r[j])) + '</td>';
+      for (var j = 0; j < r.length; j++) tr += '<td' + cls(j, hd[j], true) + '>' + (r[j] === '' ? '<span class="dim">-</span>' : esc(hd[j] === 'TANGGAL' ? dmy(r[j]) : r[j])) + '</td>';
       out.push(tr + '</tr>');
     }
     $('#b' + d.id).innerHTML = out.join('');
@@ -2050,6 +2086,19 @@ var Code128 = (function () {
 
   /* ---------- Tanggal & ringkasan ---------- */
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  // Seragamkan teks tanggal menjadi DD-MM-YYYY (jam di belakangnya, bila ada, dipertahankan)
+  function dmy(t) {
+    t = String(t == null ? '' : t).trim();
+    var m = t.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(.*)$/), d, mo, y, rest;
+    if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; rest = m[4]; }
+    else {
+      m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(.*)$/);
+      if (!m) return t;
+      d = +m[1]; mo = +m[2]; y = +m[3]; rest = m[4];
+      if (y < 100) y += 2000;
+    }
+    return pad2(d) + '-' + pad2(mo) + '-' + y + rest;
+  }
   function dateStr(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   function todayStr() { return dateStr(new Date()); }
   function shiftDate(s, delta) {
@@ -2193,7 +2242,7 @@ var Code128 = (function () {
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
         '<td class="wrap dim">' + esc(r.noteQc) + '</td>' +
-        '<td class="dim">' + esc(r.timestamp) + '</td>' +
+        '<td class="dim">' + esc(dmy(r.timestamp)) + '</td>' +
       '</tr>';
     }).join('');
     setTableState('');
