@@ -1,11 +1,17 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v6: penyimpanan dipercepat, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v11: tab WOD, GRM, Celup hanya baca + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
  *   Sheet "GRM": A = Tanggal Celup | B = KIKC | C = No Benang | D = Warna | E = Mesin | F = Kg | G = Cone | H = Keterangan KIKC
  *   Server selalu mengambil ulang data KIKC dari sheet (tidak percaya kiriman browser).
  *   Jika satu KIKC ada di WOD dan GRM, data WOD yang dipakai.
+ *
+ * Tab daftar (hanya baca, ditampilkan di tab bawah aplikasi):
+ *   WOD : C KIKC | D NO BENANG | E WARNA | F KG | G CONE | I MESIN | K SUPPLIER | L KETERANGAN
+ *         hanya baris berstatus "B" di kolom O, dan MESIN tidak berisi "BAK-" (BAK-1, BAK-2, BAK-3, ...)
+ *   GRM : B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
+ *   CLP : A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
  *
  * Sheet "WIP YD (Jawaban)":
  *   A Timestamp | B ID UNIK | C KIKC | D No Benang | E Warna | F Mesin | G Kg | H Cone
@@ -20,11 +26,19 @@
 const SPREADSHEET_ID = '13M-SaO4YYpnSke--WFHYSrA5X7NlKjj0IFDxHKHOpIY';
 const SHEET_WOD = 'WOD';
 const SHEET_GRM = 'GRM';
+const SHEET_CLP = 'CLP';
 const SHEET_JAWABAN = 'WIP YD (Jawaban)';
 const WOD_FIRST_COL = 3;         // kolom C = KIKC
 const WOD_WIDTH = 10;            // C..L
 const GRM_FIRST_COL = 2;         // kolom B = KIKC
 const GRM_WIDTH = 7;             // B..H
+const WOD_LIST_WIDTH = 13;       // C..O (O = status)
+const WOD_STATUS_IDX = 12;       // kolom O di dalam C..O
+const WOD_STATUS_SHOW = 'B';     // hanya baris berstatus ini yang tampil di tab WOD
+const WOD_MESIN_IDX = 6;         // kolom I di dalam C..O
+const WOD_HIDE_MESIN = 'BAK-';   // baris WOD dengan mesin berisi teks ini disembunyikan dari tab WOD
+const CLP_FIRST_COL = 1;         // kolom A = TANGGAL
+const CLP_WIDTH = 10;            // A..J (J = KET)
 const MAX_ROWS = 300;
 const TOKEN_SALT = 'wipyd-v1';
 const APP_PIN = '';              // OPSIONAL: isi mis. '2468'. Kosong = tanpa PIN.
@@ -48,7 +62,9 @@ const API_FUNCS = {
   getData: function (a) { return getData(a[0]); },
   saveData: function (a) { return saveData(a[0]); },
   updateRowData: function (a) { return updateRowData(a[0]); },
-  deleteData: function (a) { return deleteData(a[0], a[1]); }
+  deleteData: function (a) { return deleteData(a[0], a[1]); },
+  getList: function (a) { return getList(a[0], a[1]); },
+  getLists: function (a) { return getLists(a[0]); }
 };
 
 function doPost(e) {
@@ -77,6 +93,8 @@ function ss_() { return SS_ || (SS_ = SpreadsheetApp.openById(SPREADSHEET_ID)); 
 function normName_(s) { return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
 
 function findSheet_(ss, name) {
+  const direct = ss.getSheetByName(name);   // cepat; pemindaian semua tab hanya jika nama tidak persis sama
+  if (direct) return direct;
   const want = normName_(name);
   const all = ss.getSheets();
   for (let i = 0; i < all.length; i++) {
@@ -112,13 +130,18 @@ function getJawabanSheet_(createIfMissing) {
 // (ditandai di Script Properties), jadi simpan data tidak perlu membaca header setiap kali.
 function ensureColumns_(sheet) {
   const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('colsOk') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
+  if (props.getProperty('colsOk2') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
   if (sheet.getMaxColumns() < TOTAL_COLS) sheet.insertColumnsAfter(sheet.getMaxColumns(), TOTAL_COLS - sheet.getMaxColumns());
   const h = sheet.getRange(1, COL_KET_KIKC).getDisplayValue();
   if (!String(h).trim()) {
     sheet.getRange(1, COL_KET_KIKC).setValue(HEADERS[COL_KET_KIKC - 1]).setFontWeight('bold').setBackground('#d9ead3');
   }
-  props.setProperty('colsOk', '1');
+  // Format kolom diatur SEKALI untuk seluruh kolom, jadi setiap simpan tidak perlu mengatur format sel lagi.
+  try {
+    sheet.getRangeList(['C:F', 'I:O']).setNumberFormat('@');
+    sheet.getRange('A:A').setNumberFormat('dd/MM/yyyy HH:mm:ss');
+  } catch (e) { /* abaikan jika dikunci */ }
+  props.setProperty('colsOk2', '1');
 }
 
 function str_(v) { return (v === undefined || v === null) ? '' : String(v); }
@@ -178,6 +201,8 @@ function findInSheet_(sheet, firstCol, width, mapFn, want) {
 function lookupKikc_(kikc) {
   const want = str_(kikc).trim();
   if (!want) return null;
+  const cached = idxGet_(want);
+  if (cached) return cached;
   const fromWod = findInSheet_(getWodSheet_(), WOD_FIRST_COL, WOD_WIDTH, mapWod_, want);
   if (fromWod) { fromWod.src = 'WOD'; return fromWod; }
   const grm = getGrmSheet_();
@@ -186,6 +211,45 @@ function lookupKikc_(kikc) {
     if (fromGrm) { fromGrm.src = 'GRM'; return fromGrm; }
   }
   return null;
+}
+
+function baruRef_(kikc) {
+  return { kikc: kikc, noBenang: '', warna: '', kg: '', cone: '', mesin: '', ketKikc: '', src: 'BARU' };
+}
+
+// ---- Indeks KIKC di CacheService ----
+// getKikcData (dipanggil tiap aplikasi dibuka) mengisi cache. Saat simpan, KIKC dicari di cache (puluhan ms)
+// tanpa membuka sheet WOD/GRM. Jika tidak ada di cache (KIKC baru ditambah di sheet), dicari langsung di sheet.
+const IDX_PREFIX = 'kidx_';
+const IDX_TTL = 7200;
+const IDX_CHUNK = 45000;
+
+function idxPut_(list) {
+  try {
+    const m = {};
+    list.forEach(function (i) { m[i.kikc] = [i.noBenang, i.warna, i.kg, i.cone, i.mesin, i.ketKikc, i.src]; });
+    const s = JSON.stringify(m);
+    const n = Math.ceil(s.length / IDX_CHUNK), put = {};
+    for (let i = 0; i < n; i++) put[IDX_PREFIX + i] = s.substr(i * IDX_CHUNK, IDX_CHUNK);
+    put[IDX_PREFIX + 'n'] = String(n);
+    CacheService.getScriptCache().putAll(put, IDX_TTL);
+  } catch (e) { /* cache gagal: tidak masalah, jatuh ke pencarian sheet */ }
+}
+
+function idxGet_(kikc) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = parseInt(cache.get(IDX_PREFIX + 'n') || '0', 10);
+    if (!n) return null;
+    const keys = [];
+    for (let i = 0; i < n; i++) keys.push(IDX_PREFIX + i);
+    const got = cache.getAll(keys);
+    let s = '';
+    for (let i = 0; i < n; i++) { const c = got[IDX_PREFIX + i]; if (c === undefined || c === null) return null; s += c; }
+    const v = JSON.parse(s)[kikc];
+    if (!v) return null;
+    return { kikc: kikc, noBenang: v[0], warna: v[1], kg: v[2], cone: v[3], mesin: v[4], ketKikc: v[5], src: v[6] };
+  } catch (e) { return null; }
 }
 
 function newId_(ts) {
@@ -280,10 +344,119 @@ function getKikcData() {
       warn = 'Sheet GRM gagal dibaca (' + e2.message + '), hanya KIKC dari WOD yang dimuat.';
     }
 
+    idxPut_(out);
     return { success: true, data: out, counts: { wod: nWod, grm: nGrm }, warn: warn };
   } catch (e) {
     return { error: e.message };
   }
+}
+
+// ================= 2b. Tab daftar WOD / GRM / Celup (hanya baca) =================
+// Satu panggilan (getLists) mengambil ketiga daftar sekaligus, dan hasilnya disimpan di CacheService
+// selama LIST_TTL detik, jadi membuka tab atau pengguna lain tidak perlu membaca sheet lagi.
+// force = true (tombol muat ulang) melewati cache dan membaca langsung dari sheet.
+const LIST_KEYS = ['wod', 'grm', 'clp'];
+const LIST_TTL = 90;
+const LIST_CHUNK = 40000;
+const LIST_PREFIX = 'lst_';
+
+// Membaca satu blok kolom, mengambil kolom yang diminta (pick = indeks di dalam blok, urutan = urutan tampil).
+// keepFn (opsional) menyaring baris berdasarkan seluruh blok. Baris kosong dan baris judul dilewati.
+function readList_(sheet, firstCol, width, pick, keepFn) {
+  const last = sheet.getLastRow();
+  if (last < 2) return [];
+  const nCols = Math.min(width, sheet.getMaxColumns() - firstCol + 1);
+  const values = sheet.getRange(2, firstCol, last - 1, nCols).getDisplayValues();
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const r = padRow_(values[i], width);
+    if (keepFn && !keepFn(r)) continue;
+    const row = pick.map(function (k) { return str_(r[k]).trim(); });
+    if (!row.some(function (x) { return x; })) continue;
+    out.push(row);
+  }
+  return out;
+}
+
+function listResult_(headers, rows) {
+  return { success: true, headers: headers, rows: rows, total: rows.length };
+}
+
+function buildList_(key) {
+  if (key === 'wod') {
+    // C, D, E, F, G, I, K, L. Hanya status "B" (kolom O) dan mesin yang tidak berisi "BAK-"
+    const rows = readList_(getWodSheet_(), WOD_FIRST_COL, WOD_LIST_WIDTH, [0, 1, 2, 3, 4, 6, 8, 9], function (r) {
+      if (str_(r[WOD_STATUS_IDX]).trim().toUpperCase() !== WOD_STATUS_SHOW) return false;
+      if (str_(r[0]).trim().toUpperCase() === 'KIKC') return false;
+      const mesin = str_(r[WOD_MESIN_IDX]).replace(/\s+/g, '').toUpperCase();
+      return mesin.indexOf(WOD_HIDE_MESIN) < 0;
+    });
+    return listResult_(['KIKC', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
+  }
+  if (key === 'grm') {
+    const sh = getGrmSheet_();
+    if (!sh) throw new Error('Tab "' + SHEET_GRM + '" tidak ditemukan di spreadsheet.');
+    const rows = readList_(sh, GRM_FIRST_COL, GRM_WIDTH, [0, 1, 2, 3, 4, 5, 6], function (r) {
+      return str_(r[0]).trim().toUpperCase() !== 'KIKC';
+    });
+    return listResult_(['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
+  }
+  const sh = findSheet_(ss_(), SHEET_CLP);
+  if (!sh) throw new Error('Tab "' + SHEET_CLP + '" tidak ditemukan di spreadsheet.');
+  const rows = readList_(sh, CLP_FIRST_COL, CLP_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], function (r) {
+    return str_(r[1]).trim().toUpperCase() !== 'KIKC';
+  });
+  return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'KET'], rows);
+}
+
+function listCacheGet_(key) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = parseInt(cache.get(LIST_PREFIX + key + '_n') || '0', 10);
+    if (!n) return null;
+    const keys = [];
+    for (let i = 0; i < n; i++) keys.push(LIST_PREFIX + key + '_' + i);
+    const got = cache.getAll(keys);
+    let s = '';
+    for (let i = 0; i < n; i++) {
+      const c = got[LIST_PREFIX + key + '_' + i];
+      if (c === undefined || c === null) return null;
+      s += c;
+    }
+    return JSON.parse(s);
+  } catch (e) { return null; }
+}
+
+function listCachePut_(key, obj) {
+  try {
+    const s = JSON.stringify(obj);
+    const n = Math.ceil(s.length / LIST_CHUNK), put = {};
+    for (let i = 0; i < n; i++) put[LIST_PREFIX + key + '_' + i] = s.substr(i * LIST_CHUNK, LIST_CHUNK);
+    put[LIST_PREFIX + key + '_n'] = String(n);
+    CacheService.getScriptCache().putAll(put, LIST_TTL);
+  } catch (e) { /* terlalu besar untuk cache: tidak masalah, tetap dibaca dari sheet */ }
+}
+
+function getList(key, force) {
+  try {
+    key = String(key || '').toLowerCase();
+    if (LIST_KEYS.indexOf(key) < 0) throw new Error('Daftar tidak dikenal: ' + key);
+    if (!force) {
+      const hit = listCacheGet_(key);
+      if (hit) return hit;
+    }
+    const res = buildList_(key);
+    listCachePut_(key, res);
+    return res;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+function getLists(force) {
+  const lists = {};
+  LIST_KEYS.forEach(function (k) { lists[k] = getList(k, force); });
+  return { success: true, lists: lists };
 }
 
 // ================= 3. Simpan data baru =================
@@ -293,24 +466,29 @@ function saveData(p) {
   p = p || {};
   need_(p.kikc, 'KIKC');
   need_(p.posisi, 'Posisi');
+  p.kikc = str_(p.kikc).replace(/\s+/g, ' ').trim();
 
-  const ref = lookupKikc_(p.kikc);
-  if (!ref) throw new Error('KIKC "' + p.kikc + '" tidak ditemukan di sheet WOD maupun GRM.');
+  let ref = lookupKikc_(p.kikc);
+  if (!ref) {
+    // KIKC baru (tidak ada di WOD/GRM): hanya diterima jika form mengirim tanda "baru"; data referensi dikosongkan.
+    if (p.baru !== true) throw new Error('KIKC "' + p.kikc + '" tidak ditemukan di sheet WOD maupun GRM. Gunakan "Tambah KIKC baru" untuk mengisi manual.');
+    ref = baruRef_(p.kikc);
+  }
 
   const mesin = (p.mesin === undefined || p.mesin === null) ? ref.mesin : str_(p.mesin).trim();
   const ket = str_(p.keterangan).trim();
   const posisi = stripNum_(p.posisi);
   const qc = stripNum_(p.qc);
-
+  const cid = str_(p.cid).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
   const lock = lock_();
   try {
+    // Pengiriman ulang dari antrean HP (mis. balasan hilang saat sinyal jelek) tidak boleh menyimpan dua kali
+    if (cid && CacheService.getScriptCache().get('cid_' + cid)) return 'Data tersimpan.';
+
     const sheet = getJawabanSheet_(true);
     ensureColumns_(sheet);
     const ts = new Date();
     const row = sheet.getLastRow() + 1;
-
-    setTextFormats_(sheet, row);
-    try { sheet.getRange(row, 1).setNumberFormat('dd/MM/yyyy HH:mm:ss'); } catch (e) { /* abaikan */ }
 
     sheet.getRange(row, 1, 1, TOTAL_COLS).setValues([[
       ts, newId_(ts),
@@ -320,6 +498,7 @@ function saveData(p) {
       ref.ketKikc
     ]]);
 
+    if (cid) { try { CacheService.getScriptCache().put('cid_' + cid, '1', 21600); } catch (e) { /* abaikan */ } }
     return 'Data tersimpan.';
   } finally {
     unlock_(lock);
@@ -401,7 +580,7 @@ function updateRowData(p) {
   p = p || {};
   need_(p.kikc, 'KIKC');
   need_(p.posisi, 'Posisi');
-  const newKikc = str_(p.kikc).trim();
+  const newKikc = str_(p.kikc).replace(/\s+/g, ' ').trim();
 
   const lock = lock_();
   try {
@@ -413,8 +592,11 @@ function updateRowData(p) {
     const cur = sheet.getRange(row, 1, 1, TOTAL_COLS).getDisplayValues()[0];
     const want = {};
     if (newKikc !== str_(cur[2]).trim()) {
-      const ref = lookupKikc_(newKikc);
-      if (!ref) throw new Error('KIKC "' + newKikc + '" tidak ditemukan di sheet WOD maupun GRM.');
+      let ref = lookupKikc_(newKikc);
+      if (!ref) {
+        if (p.baru !== true) throw new Error('KIKC "' + newKikc + '" tidak ditemukan di sheet WOD maupun GRM. Gunakan "Tambah KIKC baru" untuk mengisi manual.');
+        ref = baruRef_(newKikc);
+      }
       want[3] = ref.kikc; want[4] = ref.noBenang; want[5] = ref.warna; want[7] = ref.kg; want[8] = ref.cone;
       want[COL_KET_KIKC] = ref.ketKikc;
     } else if (!str_(cur[COL_KET_KIKC - 1]).trim()) {

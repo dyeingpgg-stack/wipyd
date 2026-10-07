@@ -82,7 +82,7 @@
   main.is-data{overflow:hidden;display:flex;flex-direction:column;padding-bottom:12px}
   .view{display:none}
   .view.active{display:block}
-  #viewData.active{display:flex;flex-direction:column;flex:1;min-height:0}
+  #viewData.active,.view.list.active{display:flex;flex-direction:column;flex:1;min-height:0}
   .hint{margin:0 0 18px;font-size:13.5px;color:var(--dim)}
   .hint .req{color:var(--rose)}
   .hint-sm{margin:0 2px 10px;font-size:12.5px;color:var(--dim)}
@@ -224,13 +224,24 @@
   .skeleton{height:48px;border-radius:12px;margin-bottom:10px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(34,243,255,.09),rgba(255,255,255,.04));background-size:200% 100%;animation:shimmer 1.4s linear infinite}
   @keyframes shimmer{to{background-position:-200% 0}}
 
+  /* ---------- Tab daftar (WOD, GRM, Celup) ---------- */
+  .lcount{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
+  .lstate{flex:1}
+  .lmore{flex:none;width:100%;margin-top:8px}
+  th.l-s,td.l-s{position:sticky;z-index:3}
+  th.l-s{z-index:4}
+  td.l-s{font:600 15px var(--display);color:var(--cyan)}
+  th.l-s0,td.l-s0{left:0}
+  th.l-last,td.l-last{box-shadow:8px 0 14px -8px rgba(34,243,255,.45)}
+  td.num{font-variant-numeric:tabular-nums}
+
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--edge);background:rgba(8,12,30,.94);padding-bottom:var(--safe-bottom)}
-  .tab{position:relative;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 14px var(--body);cursor:pointer}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--edge);background:rgba(8,12,30,.94);padding-bottom:var(--safe-bottom)}
+  .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(34,243,255,.7)}
   .tab.active svg{filter:drop-shadow(0 0 5px rgba(34,243,255,.9))}
-  .tab.active::before{content:"";position:absolute;top:-1px;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--cyan);box-shadow:0 0 14px var(--cyan),0 0 30px rgba(34,243,255,.6)}
+  .tab.active::before{content:"";position:absolute;top:-1px;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--cyan);box-shadow:0 0 14px var(--cyan),0 0 30px rgba(34,243,255,.6)}
 
   /* ---------- Toast & lembar (sheet) ---------- */
   .toast{position:absolute;left:14px;right:14px;bottom:calc(78px + var(--safe-bottom));z-index:90;padding:13px 16px;border-radius:16px;background:rgba(8,12,30,.97);border:1px solid var(--edge-strong);font-size:15px;font-weight:600;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s;overflow-wrap:anywhere}
@@ -434,9 +445,68 @@
       </div>
     </section>
 
+    <!-- ============ WOD ============ -->
+    <section id="viewWod" class="view list" aria-label="Daftar WOD">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qWod" type="search" placeholder="Cari di daftar WOD" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar WOD">
+      </div>
+      <p class="lcount" id="nWod" aria-live="polite"></p>
+      <div class="lstate" id="sWod"></div>
+      <div class="table-wrap hidden" id="wWod">
+        <table>
+          <thead><tr id="hWod"></tr></thead>
+          <tbody id="bWod"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn-sm lmore" id="mWod" hidden></button>
+    </section>
+
+    <!-- ============ GRM ============ -->
+    <section id="viewGrm" class="view list" aria-label="Daftar GRM">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qGrm" type="search" placeholder="Cari di daftar GRM" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar GRM">
+      </div>
+      <p class="lcount" id="nGrm" aria-live="polite"></p>
+      <div class="lstate" id="sGrm"></div>
+      <div class="table-wrap hidden" id="wGrm">
+        <table>
+          <thead><tr id="hGrm"></tr></thead>
+          <tbody id="bGrm"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn-sm lmore" id="mGrm" hidden></button>
+    </section>
+
+    <!-- ============ CELUP ============ -->
+    <section id="viewClp" class="view list" aria-label="Daftar Celup">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qClp" type="search" placeholder="Cari di daftar Celup" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Celup">
+      </div>
+      <p class="lcount" id="nClp" aria-live="polite"></p>
+      <div class="lstate" id="sClp"></div>
+      <div class="table-wrap hidden" id="wClp">
+        <table>
+          <thead><tr id="hClp"></tr></thead>
+          <tbody id="bClp"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn-sm lmore" id="mClp" hidden></button>
+    </section>
+
   </main>
 
   <nav class="tabbar" aria-label="Menu utama">
+    <button type="button" class="tab" id="tabWod" data-view="wod" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg>
+      WOD
+    </button>
+    <button type="button" class="tab" id="tabGrm" data-view="grm" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
+      GRM
+    </button>
     <button type="button" class="tab active" id="tabForm" data-view="form" aria-selected="true">
       <svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L11 16l-4 1 1-4Z"/></svg>
       Input
@@ -444,6 +514,10 @@
     <button type="button" class="tab" id="tabData" data-view="data" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
       Data
+    </button>
+    <button type="button" class="tab" id="tabClp" data-view="clp" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+      Celup
     </button>
   </nav>
 
@@ -779,7 +853,7 @@ var Code128 = (function () {
     saving: false, savingEdit: false, loadingKikc: false,
     pendingDelete: null
   };
-  var edit = { row: null, orig: null };
+  var edit = { row: null, orig: null, ref: null };
 
   /* ---------- Util ---------- */
   function esc(v) {
@@ -1044,11 +1118,12 @@ var Code128 = (function () {
     { combo: '#eCombo', input: '#eKikcInput', list: '#eKikcList', clear: '#eKikcClear', scan: '#eKikcScan' },
     function (item, pulse) {
       $('#eNewNote').hidden = !(item && item.isNew);
-      if (!item) { fillHud($('#eHud'), null, false); return; }
+      if (!item) { fillHud($('#eHud'), null, false); edit.ref = null; return; }
       // KIKC dikembalikan ke aslinya: pakai data tersimpan. KIKC diganti: ikut referensi WOD/GRM.
       var useOrig = edit.orig && item.kikc === edit.orig.kikc;
       var ref = useOrig ? edit.orig : item;
       fillHud($('#eHud'), ref, pulse);
+      edit.ref = ref;
       $('#eMesin').value = ref.mesin || '';
       $('#eKetKikc').value = ref.ketKikc || '';   // ikut KIKC; kolom Keterangan (teks bebas) tidak disentuh
       setErr('eFKikc', '');
@@ -1609,31 +1684,186 @@ var Code128 = (function () {
     });
   }
 
+  /* ---------- Tab daftar: WOD, GRM, Celup (hanya tampilan data spreadsheet) ----------
+     Cepat karena: (1) ketiga daftar diambil sekaligus di latar belakang setelah aplikasi terbuka,
+     (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
+     (4) hanya 200 baris pertama digambar, sisanya lewat tombol atau kolom cari. */
+  var LISTS = {
+    wod: { id: 'Wod', sub: 'WOD (status B, tanpa mesin BAK-)', sticky: 1, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
+    grm: { id: 'Grm', sub: 'GRM', sticky: 1, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
+    clp: { id: 'Clp', sub: 'Celup (terbaru di atas)', sticky: 2, wrap: /^KET$/, num: /^(KG|CONE)$/, newestFirst: true }
+  };
+  var LIST_STEP = 200;      // baris yang digambar per tahap
+  var LIST_FRESH = 60000;   // data lebih baru dari ini tidak diambil ulang saat tab dibuka lagi
+  var lst = {};
+  Object.keys(LISTS).forEach(function (k) {
+    lst[k] = { headers: [], rows: [], sig: '', at: 0, loading: false, query: '', error: '', limit: LIST_STEP, rk: '' };
+  });
+
+  function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
+  function listCacheKey(k) { return 'wipyd_list2_' + k; }
+  function restoreList(k) {
+    var m = lst[k];
+    if (m.rows.length) return;
+    try {
+      var c = JSON.parse(lsGet(listCacheKey(k)) || 'null');
+      if (c && c.headers && c.rows) { m.headers = c.headers; m.rows = c.rows; m.sig = c.sig || ''; }
+    } catch (e) { /* abaikan */ }
+  }
+  function listState(k, html) {
+    var el = $('#s' + LISTS[k].id);
+    el.style.display = html ? '' : 'none';
+    el.innerHTML = html || '';
+  }
+  function fixSticky(k) {   // kolom kedua menempel tepat di sebelah kolom pertama (Celup: TANGGAL lalu KIKC)
+    var d = LISTS[k];
+    if (d.sticky !== 2) return;
+    var th0 = $('#h' + d.id + ' th'), left = th0 ? th0.offsetWidth : 0;
+    if (!left) return;
+    $$('#w' + d.id + ' .l-s1').forEach(function (el) { el.style.left = left + 'px'; });
+  }
+  function renderList(k) {
+    var d = LISTS[k], m = lst[k], q = m.query.trim().toLowerCase();
+    var wrap = $('#w' + d.id), more = $('#m' + d.id), note = $('#n' + d.id);
+    if (!m.headers.length || !m.rows.length) {
+      m.rk = ''; wrap.classList.add('hidden'); more.hidden = true; note.textContent = '';
+      if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
+      else if (m.at) listState(k, '<div class="state">Belum ada data.</div>');
+      else listState(k, '');
+      return;
+    }
+    var rk = m.sig + '|' + q + '|' + m.limit;
+    if (rk === m.rk) { fixSticky(k); return; }   // tidak ada yang berubah: tabel tidak digambar ulang
+    var rows = q ? m.rows.filter(function (r) { return r.join(' ').toLowerCase().indexOf(q) >= 0; }) : m.rows;
+    if (!rows.length) {
+      m.rk = ''; wrap.classList.add('hidden'); more.hidden = true;
+      note.textContent = '0 dari ' + m.rows.length + ' baris';
+      listState(k, '<div class="state">Tidak ada baris yang cocok dengan pencarian.</div>');
+      return;
+    }
+    listState(k, '');
+    var shown = rows.slice(0, m.limit);
+    var cls = function (i, h, td) {
+      var c = [];
+      if (i < d.sticky) { c.push('l-s', 'l-s' + i); if (i === d.sticky - 1) c.push('l-last'); }
+      if (td) { if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
+      return c.length ? ' class="' + c.join(' ') + '"' : '';
+    };
+    var hd = m.headers;
+    $('#h' + d.id).innerHTML = hd.map(function (h, i) { return '<th' + cls(i, h, false) + '>' + esc(h) + '</th>'; }).join('');
+    var out = [];
+    for (var i = 0; i < shown.length; i++) {
+      var r = shown[i], tr = '<tr>';
+      for (var j = 0; j < r.length; j++) tr += '<td' + cls(j, hd[j], true) + '>' + (r[j] === '' ? '<span class="dim">-</span>' : esc(r[j])) + '</td>';
+      out.push(tr + '</tr>');
+    }
+    $('#b' + d.id).innerHTML = out.join('');
+    wrap.classList.remove('hidden');
+    note.textContent = (q ? rows.length + ' dari ' + m.rows.length : m.rows.length) + ' baris' + (rows.length > shown.length ? ' (tampil ' + shown.length + ')' : '');
+    var left = rows.length - shown.length;
+    more.hidden = left <= 0;
+    if (left > 0) more.textContent = 'Tampilkan ' + Math.min(left, LIST_STEP) + ' baris lagi (sisa ' + left + ')';
+    m.rk = rk;
+    fixSticky(k);
+  }
+  function applyList(k, r) {
+    var m = lst[k], rows = (r.rows || []).slice();
+    if (LISTS[k].newestFirst) rows.reverse();
+    var sig = hashStr(JSON.stringify(rows));
+    m.at = Date.now(); m.error = '';
+    if (sig === m.sig && m.rows.length) return;   // data sama dengan yang sudah ada
+    m.headers = r.headers || []; m.rows = rows; m.sig = sig;
+    lsSet(listCacheKey(k), JSON.stringify({ headers: m.headers, rows: m.rows, sig: sig }));
+  }
+  function stopSpin() { if (!Object.keys(lst).some(function (k) { return lst[k].loading; })) $('#btnRefresh').classList.remove('spin'); }
+
+  // Satu daftar (tab dibuka saat data kedaluwarsa, atau tombol muat ulang: force = lewati cache server)
+  function loadList(k, force) {
+    var m = lst[k];
+    if (m.loading) return Promise.resolve();
+    if (!force && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
+    restoreList(k);
+    m.loading = true; m.error = '';
+    if (state.view === k) $('#btnRefresh').classList.add('spin');
+    renderList(k);   // jika sudah ada data (memori atau salinan HP), tabel langsung tampil; hanya skeleton jika kosong
+    return gs('getList', k, !!force).then(function (r) {
+      if (!r) throw new Error('Server tidak mengembalikan data.');
+      if (r.error) throw new Error(r.error);
+      applyList(k, r);
+    }).catch(function (e) {
+      m.error = 'Gagal memuat data. ' + errMsg(e);
+      if (m.rows.length) toast('Gagal memperbarui, menampilkan data tersimpan. ' + errMsg(e), 'err', 6000);
+    }).then(function () {
+      m.loading = false; stopSpin(); renderList(k);
+    });
+  }
+
+  // Ketiga daftar sekaligus di latar belakang setelah daftar KIKC termuat, supaya tab langsung siap dibuka
+  function prefetchLists() {
+    var need = Object.keys(LISTS).filter(function (k) { return !lst[k].loading && !(lst[k].at && Date.now() - lst[k].at < LIST_FRESH); });
+    if (!need.length) return Promise.resolve();
+    need.forEach(function (k) { restoreList(k); lst[k].loading = true; lst[k].error = ''; renderList(k); });
+    return gs('getLists', false).then(function (r) {
+      if (!r || !r.lists) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      need.forEach(function (k) {
+        var x = r.lists[k];
+        if (x && !x.error) applyList(k, x); else lst[k].error = 'Gagal memuat data. ' + ((x && x.error) || 'Tidak ada balasan.');
+      });
+    }).catch(function (e) {
+      need.forEach(function (k) { lst[k].error = 'Gagal memuat data. ' + errMsg(e); });
+    }).then(function () {
+      need.forEach(function (k) { lst[k].loading = false; renderList(k); });
+      stopSpin();
+    });
+  }
+
+  Object.keys(LISTS).forEach(function (k) {
+    var d = LISTS[k], t = null;
+    $('#q' + d.id).addEventListener('input', function () {
+      var v = this.value;
+      clearTimeout(t);
+      t = setTimeout(function () { lst[k].query = v; lst[k].limit = LIST_STEP; renderList(k); }, 150);
+    });
+    $('#m' + d.id).addEventListener('click', function () { lst[k].limit += LIST_STEP; renderList(k); });
+    $('#s' + d.id).addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('[data-retry]')) loadList(k, true);
+    });
+  });
+
   /* ---------- Tab ---------- */
   function showView(name) {
     state.view = name;
+    var isList = !!LISTS[name];
     $('#viewForm').classList.toggle('active', name === 'form');
     $('#viewData').classList.toggle('active', name === 'data');
-    $('#main').classList.toggle('is-data', name === 'data');
-    $('#tabForm').classList.toggle('active', name === 'form');
-    $('#tabData').classList.toggle('active', name === 'data');
-    $('#tabForm').setAttribute('aria-selected', name === 'form');
-    $('#tabData').setAttribute('aria-selected', name === 'data');
-    $('#btnRefresh').setAttribute('aria-label', name === 'data' ? 'Muat ulang data' : 'Muat ulang daftar KIKC');
-    $('#subtitle').textContent = name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang';
+    Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
+    $('#main').classList.toggle('is-data', name === 'data' || isList);
+    $$('.tab').forEach(function (b) {
+      var on = b.getAttribute('data-view') === name;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on);
+    });
+    $('#btnRefresh').setAttribute('aria-label', name === 'form' ? 'Muat ulang daftar KIKC' : 'Muat ulang data');
+    $('#subtitle').textContent = isList ? LISTS[name].sub : (name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang');
     $('#main').scrollTop = 0;
     if (name === 'data') {
       // Jika aplikasi dibiarkan terbuka sampai ganti hari, "hari ini" ikut diperbarui
       if (state.followToday && state.date !== todayStr()) { state.date = todayStr(); state.rows = []; }
       syncDateUi();
       if (qLen()) flushQueue(); else loadData();   // kirim dulu yang tertunda agar tabel langsung lengkap
+    } else if (isList) {
+      restoreList(name);
+      renderList(name);          // langsung tampil dari memori, tanpa menunggu server
+      loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
     }
   }
   $$('.tab').forEach(function (b) {
     b.addEventListener('click', function () { showView(b.getAttribute('data-view')); });
   });
   $('#btnRefresh').addEventListener('click', function () {
-    if (state.view === 'data') loadData(); else loadKikc();
+    if (LISTS[state.view]) loadList(state.view, true);
+    else if (state.view === 'data') loadData(); else loadKikc();
   });
 
   /* ---------- Antrean simpan (tersimpan di HP, dikirim satu per satu, otomatis ulang jika sinyal putus) ---------- */
@@ -1794,19 +2024,36 @@ var Code128 = (function () {
   }
   // Kg dan Cone dihitung satu kali per KIKC (satu lot bisa diinput di beberapa posisi dalam sehari)
   function renderSummary(rows, dupInfo) {
-    var seen = {}, lots = 0, kg = 0, cone = 0;
+    // Lot: satu KIKC dihitung satu lot walau diinput di beberapa posisi. Kg dan Cone dijumlahkan per posisi
+    // (KIKC dan posisi sama = data ganda, dihitung sekali), dibatasi tidak melebihi total lot di sheet WOD/GRM.
+    var byKikc = {}, lots = 0, kg = 0, cone = 0;
     rows.forEach(function (r) {
-      if (!r.kikc || seen[r.kikc]) return;
-      seen[r.kikc] = true; lots++;
-      kg += parseNum(r.kg); cone += parseNum(r.cone);
+      if (!r.kikc) return;
+      var g = byKikc[r.kikc];
+      if (!g) { g = byKikc[r.kikc] = { pos: {}, kg: 0, cone: 0 }; lots++; }
+      var pk = r.posisi || '';
+      if (g.pos[pk]) return;
+      g.pos[pk] = 1; g.kg += parseNum(r.kg); g.cone += parseNum(r.cone);
     });
+    var refMap = {};
+    state.kikc.forEach(function (k) { refMap[k.kikc] = k; });
+    Object.keys(byKikc).forEach(function (k) {
+      var g = byKikc[k], ref = refMap[k];
+      if (ref) {
+        var tk = parseNum(ref.kg), tc = parseNum(ref.cone);
+        if (tk > 0 && g.kg > tk) g.kg = tk;
+        if (tc > 0 && g.cone > tc) g.cone = tc;
+      }
+      kg += g.kg; cone += g.cone;
+    });
+    kg = Math.round(kg * 100) / 100;
     setStat('#sLot', fmtNum(lots)); setStat('#sKg', fmtNum(kg)); setStat('#sCone', fmtNum(cone));
     var scope = dateLabel(state.date) + (state.filterPos ? ', posisi ' + state.filterPos : ', semua posisi') + (state.query.trim() ? ', sesuai pencarian' : '');
     var dupN = 0, dupKeys = {};
-    rows.forEach(function (r) { if (r.kikc && dupInfo.cnt[r.kikc] > 1 && !dupKeys[r.kikc]) { dupKeys[r.kikc] = 1; dupN++; } });
+    rows.forEach(function (r) { var dk = r.kikc + '|' + r.posisi; if (r.kikc && dupInfo.kp[dk] > 1 && !dupKeys[dk]) { dupKeys[dk] = 1; dupN++; } });
     $('#sumNote').textContent = rows.length
-      ? scope + ': ' + rows.length + ' input untuk ' + lots + ' lot KIKC.' + (rows.length > lots ? ' Kg dan Cone dihitung sekali per KIKC.' : '') +
-        (dupN ? ' ' + dupN + ' KIKC ganda disorot (kuning: posisi beda, merah: posisi sama).' : '')
+      ? scope + ': ' + rows.length + ' input, ' + lots + ' lot KIKC' + (rows.length > lots ? ' (KIKC sama beda posisi dihitung satu lot).' : '.') +
+        (dupN ? ' ' + dupN + ' data ganda (KIKC dan posisi sama) disorot merah.' : '')
       : scope + ': belum ada input.';
   }
 
@@ -1858,13 +2105,13 @@ var Code128 = (function () {
 
     $('#tbody').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
-      var n = dupInfo.cnt[r.kikc] || 0, cls = n > 1 ? (dupInfo.kp[r.kikc + '|' + r.posisi] > 1 ? 'dup dup2' : 'dup') : '';
+      var n = dupInfo.kp[r.kikc + '|' + r.posisi] || 0, cls = n > 1 ? 'dup dup2' : '';
       return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
         '<td class="sticky c-act"><div class="row-actions">' +
           '<button type="button" class="icon-btn sm" data-act="edit" data-row="' + r.rowIndex + '" aria-label="Ubah ' + esc(r.kikc) + '" title="Ubah">' + ICON_EDIT + '</button>' +
           '<button type="button" class="icon-btn sm danger" data-act="del" data-row="' + r.rowIndex + '" aria-label="Hapus ' + esc(r.kikc) + '" title="Hapus">' + ICON_TRASH + '</button>' +
         '</div></td>' +
-        '<td class="sticky c-kikc">' + esc(r.kikc) + (n > 1 ? '<span class="dupbadge" title="KIKC ini diinput ' + n + ' kali">\u00d7' + n + '</span>' : '') + '</td>' +
+        '<td class="sticky c-kikc">' + esc(r.kikc) + (n > 1 ? '<span class="dupbadge" title="KIKC dan posisi ini diinput ' + n + ' kali">GANDA \u00d7' + n + '</span>' : '') + '</td>' +
         '<td>' + esc(r.noBenang) + '</td>' +
         '<td>' + esc(r.warna) + '</td>' +
         '<td>' + esc(r.mesin) + '</td>' +
@@ -2090,7 +2337,7 @@ var Code128 = (function () {
   $('#tableState').style.display = 'none';
   syncDateUi();
   renderPill();
-  loadKikc();
+  loadKikc().then(function () { setTimeout(prefetchLists, 0); });
   if (qLen()) flushQueue();
 })();
 </script>
