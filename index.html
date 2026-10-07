@@ -74,6 +74,7 @@
   .icon-btn.spin svg{animation:spin 1s linear infinite}
   .top-actions{display:flex;gap:8px;flex:none}
   .icon-btn.install{border-color:rgba(93,255,160,.6);color:var(--lime);box-shadow:0 0 12px rgba(93,255,160,.25)}
+  .qpill{flex:none;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--amber);background:rgba(255,194,77,.12);color:var(--amber);font:600 13px var(--body);cursor:pointer;align-self:center}
   [hidden]{display:none!important}
 
   /* ---------- Area isi ---------- */
@@ -294,6 +295,7 @@
       </div>
     </div>
     <div class="top-actions">
+      <button type="button" class="qpill" id="qPill" hidden aria-live="polite" title="Ketuk untuk kirim ulang"></button>
       <button type="button" class="icon-btn install" id="btnInstall" hidden aria-label="Pasang aplikasi di HP" title="Pasang aplikasi">
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
       </button>
@@ -1624,7 +1626,7 @@ var Code128 = (function () {
       // Jika aplikasi dibiarkan terbuka sampai ganti hari, "hari ini" ikut diperbarui
       if (state.followToday && state.date !== todayStr()) { state.date = todayStr(); state.rows = []; }
       syncDateUi();
-      loadData();
+      if (qLen()) flushQueue(); else loadData();   // kirim dulu yang tertunda agar tabel langsung lengkap
     }
   }
   $$('.tab').forEach(function (b) {
@@ -1633,6 +1635,48 @@ var Code128 = (function () {
   $('#btnRefresh').addEventListener('click', function () {
     if (state.view === 'data') loadData(); else loadKikc();
   });
+
+  /* ---------- Antrean simpan (tersimpan di HP, dikirim satu per satu, otomatis ulang jika sinyal putus) ---------- */
+  var QKEY = 'wipyd_queue', flushP = null, retryT = null;
+  var TRANSIENT = /menghubungi server|terlalu lama|sedang sibuk|tidak membalas|URL web app|PIN/i;
+  function qRead() { try { var a = JSON.parse(lsGet(QKEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function qWrite(a) { lsSet(QKEY, JSON.stringify(a)); renderPill(); }
+  function qLen() { return qRead().length; }
+  function renderPill() {
+    var n = qLen(), el = $('#qPill');
+    el.hidden = !n;
+    el.textContent = n ? 'Mengirim ' + n + '...' : '';
+  }
+  function enqueue(p) { var a = qRead(); a.push(p); qWrite(a); flushQueue(); }
+  function flushQueue() {
+    if (flushP) return flushP;
+    clearTimeout(retryT);
+    var sent = 0;
+    function next() {
+      var a = qRead();
+      if (!a.length) return Promise.resolve(true);
+      var it = a[0];
+      return gs('saveData', it).then(function () {
+        var b = qRead(); b.shift(); qWrite(b); sent++;
+        return next();
+      }, function (err) {
+        var m = errMsg(err);
+        if (TRANSIENT.test(m)) return false;          // masalah jaringan/server sibuk: tetap di antrean, coba lagi nanti
+        var b = qRead(); b.shift(); qWrite(b);        // ditolak server (mis. KIKC tidak valid): jangan menyumbat antrean
+        toast('KIKC ' + it.kikc + ' gagal disimpan: ' + m, 'err', 12000);
+        return next();
+      });
+    }
+    flushP = next().then(function (done) {
+      flushP = null;
+      if (done === false) retryT = setTimeout(flushQueue, 8000);
+      else if (sent) toast(sent > 1 ? sent + ' data tersimpan di Sheet.' : 'Tersimpan di Sheet.', 'ok', 2200);
+      if (state.view === 'data') loadData();
+    });
+    return flushP;
+  }
+  $('#qPill').addEventListener('click', flushQueue);
+  window.addEventListener('online', flushQueue);
 
   /* ---------- Simpan data baru ---------- */
   function validateForm() {
@@ -1676,20 +1720,11 @@ var Code128 = (function () {
       posisi: getRadio('posisi'), qc: getRadio('qc'),
       noteQc: $('#noteQc').value.trim(), keterangan: $('#keterangan').value.trim()
     };
-    state.saving = true; renderSubmit();
-    var slow = setTimeout(function () {
-      toast('Server lambat. Cek dulu di tab Data sebelum menyimpan ulang.', 'warn', 8000);
-    }, 25000);
-
-    gs('saveData', payload).then(function (msg) {
-      toast(msg || 'Data tersimpan.', 'ok', 4000);
-      resetForm();
-    }).catch(function (err) {
-      toast('Gagal menyimpan. ' + errMsg(err), 'err', 8000);
-    }).then(function () {
-      clearTimeout(slow);
-      state.saving = false; renderSubmit();
-    });
+    // Simpan lewat antrean: form langsung siap untuk input berikutnya, pengiriman ke Sheet berjalan di latar belakang.
+    payload.cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    enqueue(payload);
+    resetForm();
+    toast('Data diterima, dikirim ke Sheet di latar belakang.', 'ok', 2500);
   });
 
   /* ---------- Tabel data ---------- */
@@ -2054,7 +2089,9 @@ var Code128 = (function () {
   setTableState('');
   $('#tableState').style.display = 'none';
   syncDateUi();
+  renderPill();
   loadKikc();
+  if (qLen()) flushQueue();
 })();
 </script>
 </body>
