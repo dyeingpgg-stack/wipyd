@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v13: semua tanggal DD-MM-YYYY, kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v12: tab WOD, GRM, Celup hanya baca + kolom TANGGAL + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -8,11 +8,10 @@
  *   Jika satu KIKC ada di WOD dan GRM, data WOD yang dipakai.
  *
  * Tab daftar (hanya baca, ditampilkan di tab bawah aplikasi):
- *   Urutan kolom tampil (TANGGAL selalu setelah KIKC, format DD-MM-YYYY):
- *   WOD : C KIKC | A TANGGAL | D NO BENANG | E WARNA | F KG | G CONE | I MESIN | K SUPPLIER | L KETERANGAN
+ *   WOD : A TANGGAL | C KIKC | D NO BENANG | E WARNA | F KG | G CONE | I MESIN | K SUPPLIER | L KETERANGAN
  *         hanya baris berstatus "B" di kolom O, dan MESIN tidak berisi "BAK-" (BAK-1, BAK-2, BAK-3, ...)
- *   GRM : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
- *   CLP : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
+ *   GRM : A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
+ *   CLP : A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
  * Ketiganya diurutkan dari TANGGAL (kolom A) terbaru; tanggal sama: baris paling bawah di sheet lebih dulu.
  *
  * Sheet "WIP YD (Jawaban)":
@@ -23,8 +22,7 @@
  * Data lama yang masih "1. CELUP" dll: jalankan fungsi hapusNomorUrutLama() sekali dari editor Apps Script.
  *
  * Deploy: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
- * Setiap mengubah kode ini: Deploy > Manage deployments > ikon pensil > Version: New version > Deploy.
- * Dengan cara itu URL /exec TIDAK berubah. Jangan pilih "New deployment" karena URL-nya ikut baru.
+ * Setiap mengubah kode ini, deploy ulang dengan "New version".
  */
 const SPREADSHEET_ID = '13M-SaO4YYpnSke--WFHYSrA5X7NlKjj0IFDxHKHOpIY';
 const SHEET_WOD = 'WOD';
@@ -137,7 +135,7 @@ function getJawabanSheet_(createIfMissing) {
 // (ditandai di Script Properties), jadi simpan data tidak perlu membaca header setiap kali.
 function ensureColumns_(sheet) {
   const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('colsOk3') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
+  if (props.getProperty('colsOk2') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
   if (sheet.getMaxColumns() < TOTAL_COLS) sheet.insertColumnsAfter(sheet.getMaxColumns(), TOTAL_COLS - sheet.getMaxColumns());
   const h = sheet.getRange(1, COL_KET_KIKC).getDisplayValue();
   if (!String(h).trim()) {
@@ -146,9 +144,9 @@ function ensureColumns_(sheet) {
   // Format kolom diatur SEKALI untuk seluruh kolom, jadi setiap simpan tidak perlu mengatur format sel lagi.
   try {
     sheet.getRangeList(['C:F', 'I:O']).setNumberFormat('@');
-    sheet.getRange('A:A').setNumberFormat('dd-MM-yyyy HH:mm:ss');
+    sheet.getRange('A:A').setNumberFormat('dd/MM/yyyy HH:mm:ss');
   } catch (e) { /* abaikan jika dikunci */ }
-  props.setProperty('colsOk3', '1');
+  props.setProperty('colsOk2', '1');
 }
 
 function str_(v) { return (v === undefined || v === null) ? '' : String(v); }
@@ -365,39 +363,24 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst4_';
+const LIST_PREFIX = 'lst3_';
 
-// Membaca teks tanggal (dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd, dst.) menjadi {y, m, d}; null jika bukan tanggal.
-function parseDmy_(t) {
-  t = str_(t).trim();
-  if (!t) return null;
+// Nilai urut dari sel tanggal: tanggal asli Sheet dipakai langsung; teks dibaca sebagai dd/mm/yyyy, yyyy-mm-dd, dst.
+function sortKey_(v, disp) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) return v.getTime();
+  const t = str_(disp || v).trim();
+  if (!t) return 0;
   let m = t.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
-  if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
   m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
   if (m) {
     let d = +m[1], mo = +m[2], y = +m[3];
     if (y < 100) y += 2000;
     if (mo > 12 && d <= 12) { const x = d; d = mo; mo = x; }
-    return { y: y, m: mo, d: d };
+    return new Date(y, mo - 1, d).getTime();
   }
   const p = Date.parse(t);
-  if (!isNaN(p)) { const dt = new Date(p); return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() }; }
-  return null;
-}
-
-// Nilai urut dari sel tanggal: tanggal asli Sheet dipakai langsung; teks dibaca lewat parseDmy_.
-function sortKey_(v, disp) {
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) return v.getTime();
-  const x = parseDmy_(disp || v);
-  return x ? new Date(x.y, x.m - 1, x.d).getTime() : 0;
-}
-
-// Format tampil seragam DD-MM-YYYY (tanpa jam). Jika tidak terbaca sebagai tanggal, teks asli dipakai apa adanya.
-function fmtDmy_(v, disp, tz) {
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) return Utilities.formatDate(v, tz, 'dd-MM-yyyy');
-  const x = parseDmy_(disp || v);
-  if (!x) return str_(disp || v).trim();
-  return ('0' + x.d).slice(-2) + '-' + ('0' + x.m).slice(-2) + '-' + x.y;
+  return isNaN(p) ? 0 : p;
 }
 
 // Membaca satu blok kolom, mengambil kolom yang diminta (pick = indeks di dalam blok, urutan = urutan tampil).
@@ -409,15 +392,12 @@ function readList_(sheet, firstCol, width, pick, keepFn, dateIdx) {
   const nCols = Math.min(width, sheet.getMaxColumns() - firstCol + 1);
   const values = sheet.getRange(2, firstCol, last - 1, nCols).getDisplayValues();
   const raw = sheet.getRange(2, firstCol + dateIdx, last - 1, 1).getValues();   // nilai asli kolom tanggal untuk pengurutan
-  const tz = sheet.getParent().getSpreadsheetTimeZone();
-  const datePos = pick.indexOf(dateIdx);
   const items = [];
   for (let i = 0; i < values.length; i++) {
     const r = padRow_(values[i], width);
     if (keepFn && !keepFn(r)) continue;
     const row = pick.map(function (k) { return str_(r[k]).trim(); });
     if (!row.some(function (x) { return x; })) continue;
-    if (datePos >= 0) row[datePos] = fmtDmy_(raw[i][0], r[dateIdx], tz);   // semua tanggal jadi DD-MM-YYYY
     items.push({ row: row, key: sortKey_(raw[i][0], r[dateIdx]), i: i });
   }
   items.sort(function (x, y) { return (y.key - x.key) || (y.i - x.i); });
@@ -431,28 +411,28 @@ function listResult_(headers, rows) {
 function buildList_(key) {
   if (key === 'wod') {
     // A, C, D, E, F, G, I, K, L. Hanya status "B" (kolom O) dan mesin yang tidak berisi "BAK-"
-    const rows = readList_(getWodSheet_(), WOD_LIST_FIRST_COL, WOD_LIST_WIDTH, [2, 0, 3, 4, 5, 6, 8, 10, 11], function (r) {
+    const rows = readList_(getWodSheet_(), WOD_LIST_FIRST_COL, WOD_LIST_WIDTH, [0, 2, 3, 4, 5, 6, 8, 10, 11], function (r) {
       if (str_(r[WOD_STATUS_IDX]).trim().toUpperCase() !== WOD_STATUS_SHOW) return false;
       if (str_(r[WOD_KIKC_IDX]).trim().toUpperCase() === 'KIKC') return false;
       const mesin = str_(r[WOD_MESIN_IDX]).replace(/\s+/g, '').toUpperCase();
       return mesin.indexOf(WOD_HIDE_MESIN) < 0;
     }, 0);
-    return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
+    return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
   }
   if (key === 'grm') {
     const sh = getGrmSheet_();
     if (!sh) throw new Error('Tab "' + SHEET_GRM + '" tidak ditemukan di spreadsheet.');
-    const rows = readList_(sh, GRM_LIST_FIRST_COL, GRM_LIST_WIDTH, [1, 0, 2, 3, 4, 5, 6, 7], function (r) {
+    const rows = readList_(sh, GRM_LIST_FIRST_COL, GRM_LIST_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7], function (r) {
       return str_(r[1]).trim().toUpperCase() !== 'KIKC';
     }, 0);
-    return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
+    return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
   }
   const sh = findSheet_(ss_(), SHEET_CLP);
   if (!sh) throw new Error('Tab "' + SHEET_CLP + '" tidak ditemukan di spreadsheet.');
-  const rows = readList_(sh, CLP_FIRST_COL, CLP_WIDTH, [1, 0, 2, 3, 4, 5, 6, 7, 8, 9], function (r) {
+  const rows = readList_(sh, CLP_FIRST_COL, CLP_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], function (r) {
     return str_(r[1]).trim().toUpperCase() !== 'KIKC';
   }, 0);
-  return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'KET'], rows);
+  return listResult_(['TANGGAL', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'KET'], rows);
 }
 
 function listCacheGet_(key) {
@@ -581,7 +561,6 @@ function getData(dateStr) {
     }
 
     const values = sheet.getRange(start, 1, end - start + 1, nCols).getDisplayValues();
-    const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const rowNo = start + i;
@@ -590,7 +569,7 @@ function getData(dateStr) {
       const id = str_(r[1]).trim();
       if (!id) continue;
       out.push({
-        rowIndex: rowNo, tk: rowToken_(id), timestamp: fmtTs_(tsRaw[i][0], r[0], tz),
+        rowIndex: rowNo, tk: rowToken_(id), timestamp: r[0],
         kikc: r[2], noBenang: r[3], warna: r[4], mesin: r[5], kg: r[6], cone: r[7],
         shift: r[8], grup: r[9],
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
@@ -602,16 +581,6 @@ function getData(dateStr) {
   } catch (e) {
     return { error: e.message };
   }
-}
-
-// Timestamp riwayat: DD-MM-YYYY HH:mm:ss (data lama berformat dd/MM/yyyy ikut diseragamkan)
-function fmtTs_(v, disp, tz) {
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) return Utilities.formatDate(v, tz, 'dd-MM-yyyy HH:mm:ss');
-  const t = str_(disp || v).trim();
-  const x = parseDmy_(t);
-  if (!x) return t;
-  const tm = t.match(/\d{1,2}:\d{2}(:\d{2})?\s*$/);
-  return ('0' + x.d).slice(-2) + '-' + ('0' + x.m).slice(-2) + '-' + x.y + (tm ? ' ' + tm[0].trim() : '');
 }
 
 function padRow_(arr, n) {
@@ -627,7 +596,7 @@ function dateKey_(v, tz) {
   const s = str_(v).trim();
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return m[1] + '-' + m[2] + '-' + m[3];
-  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
   return '';
 }
