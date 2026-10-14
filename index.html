@@ -251,7 +251,7 @@
   .skeleton{height:48px;border-radius:12px;margin-bottom:10px;background:linear-gradient(90deg,rgba(var(--w-rgb),.04),rgba(var(--c-rgb),.09),rgba(var(--w-rgb),.04));background-size:200% 100%;animation:shimmer 1.4s linear infinite}
   @keyframes shimmer{to{background-position:-200% 0}}
 
-  /* ---------- Tab daftar (WOD, GRM, Celup) ---------- */
+  /* ---------- Tab daftar (WOD, GRM, Plan, Celup) ---------- */
   .lcount{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
   .lstate{flex:1}
   .pager{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
@@ -273,7 +273,7 @@
   td.num{font-variant-numeric:tabular-nums}
 
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
   .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.7)}
@@ -593,6 +593,29 @@
       </div>
     </section>
 
+    <!-- ============ PLAN ============ -->
+    <section id="viewPlan" class="view list" aria-label="Daftar Plan">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qPlan" type="search" placeholder="Cari di daftar Plan" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Plan">
+      </div>
+      <p class="lcount" id="nPlan" aria-live="polite"></p>
+      <div class="lstate" id="sPlan"></div>
+      <div class="table-wrap hidden" id="wPlan">
+        <table>
+          <thead><tr id="hPlan"></tr></thead>
+          <tbody id="bPlan"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pPlan" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piPlan" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
+
     <!-- ============ CELUP ============ -->
     <section id="viewClp" class="view list" aria-label="Daftar Celup">
       <div class="search">
@@ -626,6 +649,10 @@
     <button type="button" class="tab" id="tabGrm" data-view="grm" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
       GRM
+    </button>
+    <button type="button" class="tab" id="tabPlan" data-view="plan" aria-selected="false">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      Plan
     </button>
     <button type="button" class="tab active" id="tabForm" data-view="form" aria-selected="true">
       <svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L11 16l-4 1 1-4Z"/></svg>
@@ -996,8 +1023,8 @@ var Code128 = (function () {
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* abaikan */ } }
   function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) { /* abaikan */ } }
 
-  function askApiUrl() {
-    var u = window.prompt('Tempel URL web app Apps Script (berakhiran /exec). Cukup sekali di HP ini.');
+  function askApiUrl(cur) {
+    var u = window.prompt('Tempel URL web app Apps Script (berakhiran /exec). Cukup sekali di HP ini.', cur || '');
     if (u === null) return false;
     u = String(u).trim();
     if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(u)) {
@@ -1804,14 +1831,15 @@ var Code128 = (function () {
     });
   }
 
-  /* ---------- Tab daftar: WOD, GRM, Celup (hanya tampilan data spreadsheet) ----------
+  /* ---------- Tab daftar: WOD, GRM, Plan, Celup (hanya tampilan data spreadsheet) ----------
      Data sudah diurutkan dari tanggal terbaru oleh server dan ditampilkan per halaman.
-     Cepat karena: (1) ketiga daftar diambil sekaligus di latar belakang setelah aplikasi terbuka,
+     Cepat karena: (1) semua daftar diambil sekaligus di latar belakang setelah aplikasi terbuka,
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
     wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 1, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
     grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 1, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
+    plan: { id: 'Plan', sub: 'Plan · baris terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^CELUP$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 1, wrap: /^KET$/, num: /^(KG|CONE)$/ }
   };
   var mqWide = window.matchMedia ? window.matchMedia('(min-width:900px)') : null;
@@ -1823,7 +1851,7 @@ var Code128 = (function () {
   });
 
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
-  function listCacheKey(k) { return 'wipyd_list3_' + k; }
+  function listCacheKey(k) { return 'wipyd_list4_' + k; }
   function restoreList(k) {
     var m = lst[k];
     if (m.rows.length) return;
@@ -1867,7 +1895,7 @@ var Code128 = (function () {
     var cls = function (i, h, td) {
       var c = [];
       if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
-      if (td) { if (/^TANGGAL$/.test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
+      if (td) { if ((d.date || /^TANGGAL$/).test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
       return c.length ? ' class="' + c.join(' ') + '"' : '';
     };
     $('#h' + d.id).innerHTML = hd.map(function (h, i) { return '<th' + cls(i, h, false) + '>' + esc(h) + '</th>'; }).join('');
@@ -1922,7 +1950,7 @@ var Code128 = (function () {
     });
   }
 
-  // Ketiga daftar sekaligus di latar belakang setelah daftar KIKC termuat, supaya tab langsung siap dibuka
+  // Semua daftar sekaligus di latar belakang setelah daftar KIKC termuat, supaya tab langsung siap dibuka
   function prefetchLists() {
     var need = Object.keys(LISTS).filter(function (k) { return !lst[k].loading && !(lst[k].at && Date.now() - lst[k].at < LIST_FRESH); });
     if (!need.length) return Promise.resolve();
@@ -1998,6 +2026,16 @@ var Code128 = (function () {
       loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
     }
   }
+  // Ketuk 2x logo di pojok kiri atas: kolom untuk melihat / menempel URL web app (berakhiran /exec)
+  $('.brand').addEventListener('dblclick', function () {
+    if (IN_GAS) { toast('Aplikasi ini dibuka langsung dari Apps Script, jadi tidak memakai URL server.', 'warn', 5000); return; }
+    if (String(window.WIPYD_API_URL || '').trim()) {
+      window.prompt('URL server ini diatur di file config.js (WIPYD_API_URL). Ubah di file itu. URL sekarang:', API_URL);
+      return;
+    }
+    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); loadKikc(); }
+  });
+
   $$('.tab').forEach(function (b) {
     b.addEventListener('click', function () { showView(b.getAttribute('data-view')); });
   });
@@ -2130,7 +2168,7 @@ var Code128 = (function () {
   function dateLabel(s) {
     if (s === todayStr()) return 'Hari ini';
     var p = s.split('-');
-    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return p[2] + '/' + p[1] + '/' + p[0];   // DD/MM/YYYY
   }
 
   // Membaca angka dari teks Sheet: "25", "12,5", "1.250,5", "1,250.5"
