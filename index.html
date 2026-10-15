@@ -667,6 +667,11 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPlan" type="search" placeholder="Cari di daftar Plan" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Plan">
       </div>
+      <div class="stats" aria-live="polite">
+        <div class="stat"><small>Total Lot</small><b id="pLot">-</b></div>
+        <div class="stat"><small>Total Kg</small><b id="pKg">-</b></div>
+        <div class="stat"><small>Total Cone</small><b id="pCone">-</b></div>
+      </div>
       <p class="lcount" id="nPlan" aria-live="polite"></p>
       <div class="lstate" id="sPlan"></div>
       <div class="table-wrap hidden" id="wPlan">
@@ -1960,6 +1965,7 @@ var Code128 = (function () {
     var d = LISTS[k], m = lst[k], q = m.query.trim().toLowerCase();
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
+      if (k === 'plan') planStats(null, m.headers);
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
       if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
@@ -1972,6 +1978,7 @@ var Code128 = (function () {
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     m.rows.forEach(function (r, i) { if (!q || r.join(' ').toLowerCase().indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
+    if (k === 'plan') planStats(rows, m.headers);
     if (!rows.length) {
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true;
       note.textContent = '0 dari ' + m.rows.length + ' baris';
@@ -1990,14 +1997,21 @@ var Code128 = (function () {
       if (td) { if ((d.date || /^TANGGAL$/).test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
       return c.length ? ' class="' + c.join(' ') + '"' : '';
     };
-    $('#h' + d.id).innerHTML = hd.map(function (h, i) { return '<th' + cls(i, h, false) + '>' + esc(h) + '</th>'; }).join('');
+    // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
+    var order = hd.map(function (_, i) { return i; });
+    if (k === 'plan') {
+      var ia = hd.indexOf('ALOKASI'), im = hd.indexOf('MESIN');
+      if (ia >= 0 && im >= 0 && ia !== im + 1) { order.splice(order.indexOf(ia), 1); order.splice(order.indexOf(im) + 1, 0, ia); }
+    }
+    $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('');
     var out = [];
     var alokJ = (k === 'plan' && m.rowNos) ? hd.indexOf('ALOKASI') : -1;
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], tr = '<tr>';
-      for (var j = 0; j < r.length; j++) {
-        if (j === alokJ) tr += '<td>' + alokSelect(r[j], idx[start + i]) + '</td>';
-        else tr += '<td' + cls(j, hd[j], true) + '>' + (r[j] === '' ? '<span class="dim">-</span>' : esc(r[j])) + '</td>';
+      for (var p = 0; p < order.length; p++) {
+        var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
+        if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
+        else tr += '<td' + cls(p, hd[j], true) + '>' + (cell === '' ? '<span class="dim">-</span>' : esc(cell)) + '</td>';
       }
       out.push(tr + '</tr>');
     }
@@ -2014,6 +2028,20 @@ var Code128 = (function () {
       b.disabled = (g === 'first' || g === 'prev') ? m.page <= 1 : m.page >= pages;
     });
     m.rk = rk;
+  }
+  // Scorecard tab Plan: Total Lot (KIKC berbeda), Total Kg, Total Cone dari baris yang sedang tampil (ikut pencarian)
+  function planStats(rows, hd) {
+    var ids = ['#pLot', '#pKg', '#pCone'];
+    if (!rows) { ids.forEach(function (id) { $(id).textContent = '-'; }); return; }
+    var ik = hd.indexOf('KIKC'), ig = hd.indexOf('KG'), ic = hd.indexOf('CONE');
+    var seen = {}, lot = 0, kg = 0, cone = 0;
+    rows.forEach(function (r) {
+      var k = String(ik >= 0 ? r[ik] : '').replace(/\s+/g, ' ').trim().toUpperCase();
+      if (k && !seen[k]) { seen[k] = 1; lot++; }
+      if (ig >= 0) kg += parseNum(r[ig]);
+      if (ic >= 0) cone += parseNum(r[ic]);
+    });
+    setStat('#pLot', fmtNum(lot)); setStat('#pKg', fmtNum(kg)); setStat('#pCone', fmtNum(cone));
   }
   // Tab Plan diurutkan menurut kolom MESIN mengikuti MESIN_URUT (mesin tak dikenal di akhir); di dalam satu mesin urutan sheet dipertahankan.
   function sortPlan(headers, rows, rowNos) {

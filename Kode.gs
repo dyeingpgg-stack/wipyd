@@ -13,7 +13,7 @@
  *         hanya baris berstatus "B" di kolom O, dan MESIN tidak berisi "BAK-" (BAK-1, BAK-2, BAK-3, ...)
  *   GRM : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
  *   CLP : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
- *   Plan: kolom dicari menurut judul baris 1 (termasuk ALOKASI): A KIKC | B NO BENANG | C WARNA | D MESIN | E KG | F CONE | G KETERANGAN | H CELUP  (urutan kolom sheet "Plan" = urutan tampil)
+ *   Plan: kolom dicari menurut judul baris 1 (ALOKASI memakai sheet "Alokasi" per KIKC, bukan kolom Plan): A KIKC | B NO BENANG | C WARNA | D MESIN | E KG | F CONE | G KETERANGAN | H CELUP  (urutan kolom sheet "Plan" = urutan tampil)
  *
  * Format tanggal: semua tanggal yang tampil di aplikasi (kolom TANGGAL/CELUP dan Waktu di tab Data) selalu DD/MM/YYYY.
  *   - Sel tanggal asli di Sheet (Date) diformat langsung, tidak bergantung format tampilan sheet.
@@ -38,6 +38,7 @@ const SHEET_WOD = 'WOD';
 const SHEET_GRM = 'GRM';
 const SHEET_CLP = 'CLP';
 const SHEET_PLAN = 'Plan';
+const SHEET_ALOKASI = 'Alokasi';   // penyimpanan alokasi mesin per KIKC (tidak terpengaruh perubahan sheet Plan)
 const SHEET_JAWABAN = 'WIP YD (Jawaban)';
 const WOD_FIRST_COL = 3;         // kolom C = KIKC
 const WOD_WIDTH = 10;            // C..L
@@ -494,7 +495,23 @@ function buildList_(key) {
     const rows = readList_(sp, PLAN_FIRST_COL, pc.width, pc.pick, function (r) {
       return str_(r[pc.pick[0]]).trim().toUpperCase() !== 'KIKC';
     }, pc.pick[7], { mdy: !!DATE_TEXT_MDY.plan, noSort: true, rowNos: rowNos });
-    const res = listResult_(pc.headers, rows);
+    // Alokasi mesin diambil dari sheet "Alokasi" menurut KIKC, BUKAN dari posisi baris di sheet Plan.
+    // Jadi baris Plan boleh bertambah, dihapus, diurutkan ulang atau ditimpa: alokasi tetap mengikuti KIKC-nya.
+    const headers = pc.headers.slice();
+    let ai = headers.indexOf('ALOKASI');
+    if (ai < 0) { headers.push('ALOKASI'); ai = headers.length - 1; }
+    const saved = readAlokasi_().vals;
+    const migrasi = [];
+    rows.forEach(function (r) {
+      const k = normKikc_(r[0]);
+      const old = ai < r.length ? str_(r[ai]).trim() : '';   // isi kolom Alokasi lama di sheet Plan (jika ada)
+      let v;
+      if (Object.prototype.hasOwnProperty.call(saved, k)) v = saved[k];
+      else { v = old; if (old && k) migrasi.push([k, old]); }   // alokasi lama disalin sekali ke sheet Alokasi
+      if (ai < r.length) r[ai] = v; else r.push(v);
+    });
+    if (migrasi.length) { try { saveAlokasiBatch_(migrasi); } catch (e) { /* dicoba lagi saat daftar dimuat berikutnya */ } }
+    const res = listResult_(headers, rows);
     res.rowNos = rowNos;   // dipakai tab Plan untuk mengubah kolom Alokasi
     return res;
   }
@@ -579,38 +596,91 @@ function setMesinStop(mesin, stop) {
   }
 }
 
-// Mengisi kolom "Alokasi" di sheet Plan untuk satu baris (dipanggil dari tab Plan).
-// Baris dicek ulang lewat KIKC: jika nomor baris sudah bergeser, dicari ulang dan hanya diterima bila KIKC-nya tepat satu.
+// ---------- Alokasi mesin per KIKC ----------
+// Disimpan di sheet "Alokasi" (A KIKC | B ALOKASI | C DIUBAH), dikunci dengan KIKC, bukan nomor baris.
+// Sheet Plan tidak pernah diubah oleh aplikasi, jadi pembaruan Plan (tambah, hapus, urut ulang, tempel data baru) tidak menggeser alokasi.
+function alokasiSheet_() {
+  const ss = ss_();
+  let sh = findSheet_(ss, SHEET_ALOKASI);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_ALOKASI);
+    sh.getRange('A:C').setNumberFormat('@');
+    sh.getRange(1, 1, 1, 3).setValues([['KIKC', 'ALOKASI', 'DIUBAH']]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+// Membaca semua alokasi: { vals: {KIKC: 'A9'}, rows: {KIKC: nomorBaris} }. Alokasi kosong ('') tetap tercatat sebagai "sengaja dikosongkan".
+function readAlokasi_() {
+  const out = { vals: {}, rows: {} };
+  const sh = findSheet_(ss_(), SHEET_ALOKASI);
+  if (!sh) return out;
+  const last = sh.getLastRow();
+  if (last < 2) return out;
+  sh.getRange(2, 1, last - 1, 2).getDisplayValues().forEach(function (c, i) {
+    const k = normKikc_(c[0]);
+    if (!k || k === 'KIKC') return;
+    out.vals[k] = str_(c[1]).replace(/\s+/g, '').toUpperCase();
+    out.rows[k] = i + 2;
+  });
+  return out;
+}
+
+// Simpan banyak alokasi sekaligus (pasangan [KIKC, nilai]); KIKC yang sudah ada diperbarui, yang baru ditambahkan di bawah.
+function saveAlokasiBatch_(pairs) {
+  const lock = lock_();
+  try {
+    const sh = alokasiSheet_();
+    const cur = readAlokasi_();
+    const stamp = Utilities.formatDate(new Date(), ss_().getSpreadsheetTimeZone(), 'dd/MM/yyyy HH:mm');
+    const add = [];
+    pairs.forEach(function (p) {
+      const k = normKikc_(p[0]), v = str_(p[1]).replace(/\s+/g, '').toUpperCase();
+      if (!k) return;
+      if (cur.rows[k]) { sh.getRange(cur.rows[k], 2, 1, 2).setValues([[v, stamp]]); }
+      else if (!Object.prototype.hasOwnProperty.call(cur.vals, k)) { add.push([k, v, stamp]); cur.vals[k] = v; }
+    });
+    if (add.length) {
+      const r0 = Math.max(sh.getLastRow(), 1) + 1;
+      sh.getRange(r0, 1, add.length, 3).setNumberFormat('@').setValues(add);
+    }
+    SpreadsheetApp.flush();
+    try { CacheService.getScriptCache().remove(LIST_PREFIX + 'plan_n'); } catch (e) { /* abaikan */ }
+  } finally {
+    unlock_(lock);
+  }
+}
+
+// Mengisi alokasi mesin satu KIKC (dipanggil dari tab Plan). rowNo tidak dipakai lagi; hanya KIKC yang menentukan.
 function setAlokasi(rowNo, kikc, value) {
   const want = normKikc_(kikc);
   if (!want) throw new Error('KIKC kosong.');
   let v = str_(value).replace(/\s+/g, '').toUpperCase();
   if (/^\d+$/.test(v)) v = 'A' + v;   // ketik 9 = A9
   if (v.length > 12) throw new Error('Isi alokasi terlalu panjang.');
-  const lock = lock_();
-  try {
-    const sp = findSheet_(ss_(), SHEET_PLAN);
-    if (!sp) throw new Error('Tab "' + SHEET_PLAN + '" tidak ditemukan di spreadsheet.');
-    const pc = planCols_(sp);
-    if (pc.alokasi < 0) throw new Error('Kolom "Alokasi" tidak ditemukan di baris judul sheet Plan.');
-    const kc = pc.pick[0] + PLAN_FIRST_COL;
-    const last = sp.getLastRow();
-    let row = parseInt(rowNo, 10);
-    if (!(row >= 2 && row <= last && normKikc_(sp.getRange(row, kc).getDisplayValue()) === want)) {
-      const hits = [];
-      if (last >= 2) sp.getRange(2, kc, last - 1, 1).getDisplayValues().forEach(function (c, i) { if (normKikc_(c[0]) === want) hits.push(i + 2); });
-      if (hits.length !== 1) throw new Error('Baris Plan sudah berubah. Muat ulang lalu coba lagi.');
-      row = hits[0];
-    }
-    const cell = sp.getRange(row, pc.alokasi + PLAN_FIRST_COL);
-    cell.setNumberFormat('@');
-    cell.setValue(v);
-    SpreadsheetApp.flush();
-    try { CacheService.getScriptCache().remove(LIST_PREFIX + 'plan_n'); } catch (e) { /* abaikan */ }
-    return { value: v };
-  } finally {
-    unlock_(lock);
+  saveAlokasiBatch_([[want, v]]);
+  return { value: v };
+}
+
+// Jalankan SEKALI dari editor Apps Script (opsional): menyalin isi kolom Alokasi lama di sheet Plan ke sheet Alokasi.
+// Tanpa menjalankan ini pun, penyalinan terjadi otomatis saat tab Plan pertama kali dimuat setelah kode ini dipasang.
+function migrasiAlokasiLama() {
+  const sp = findSheet_(ss_(), SHEET_PLAN);
+  if (!sp) throw new Error('Sheet Plan tidak ditemukan.');
+  const pc = planCols_(sp);
+  if (pc.alokasi < 0) return 'Kolom Alokasi lama tidak ada di sheet Plan.';
+  const last = sp.getLastRow();
+  if (last < 2) return 'Sheet Plan kosong.';
+  const kc = pc.pick[0] + PLAN_FIRST_COL, ac = pc.alokasi + PLAN_FIRST_COL;
+  const kk = sp.getRange(2, kc, last - 1, 1).getDisplayValues(), aa = sp.getRange(2, ac, last - 1, 1).getDisplayValues();
+  const saved = readAlokasi_().vals, pairs = [];
+  for (let i = 0; i < kk.length; i++) {
+    const k = normKikc_(kk[i][0]), v = str_(aa[i][0]).trim();
+    if (k && v && !Object.prototype.hasOwnProperty.call(saved, k)) pairs.push([k, v]);
   }
+  if (pairs.length) saveAlokasiBatch_(pairs);
+  return pairs.length + ' alokasi disalin ke sheet Alokasi.';
 }
 
 // ================= 3. Simpan data baru =================
