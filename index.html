@@ -272,8 +272,38 @@
   th.l-last,td.l-last{box-shadow:8px 0 14px -8px rgba(var(--c-rgb),.45)}
   td.num{font-variant-numeric:tabular-nums}
 
+  /* ---------- Alokasi mesin ---------- */
+  .cards-wrap{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(var(--c-rgb),.35) transparent}
+  .cards-wrap.hidden{display:none}
+  .mgrp{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:16px 2px 10px;padding-bottom:6px;border-bottom:1px solid var(--edge-strong)}
+  .mgrp:first-child{margin-top:2px}
+  .mgrp b{font:700 22px var(--display);color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.5)}
+  .mgrp span{font:500 14px var(--body);color:var(--dim)}
+  .mgrp.stop b{color:var(--rose);text-shadow:none}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+  /* Kartu KIKC: mode hide = hanya KIKC; ketuk = mode view (identitas lengkap seperti kartu KIKC) */
+  .mcard{position:relative;min-width:0;padding:0;border:0;background:none;text-align:center;font-family:inherit;color:var(--text);cursor:pointer;-webkit-user-select:none;user-select:none}
+  .mcard .mc-box{display:block;border:3px double var(--soft);border-radius:4px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+  .mcard:hover .mc-box,.mcard:focus-visible .mc-box{border-color:var(--cyan);box-shadow:0 0 14px rgba(var(--c-rgb),.35)}
+  .mcard:focus-visible{outline:none}
+  .mc-kikc{display:block;padding:9px 6px;font:700 17px var(--display);letter-spacing:.3px;color:var(--text);overflow-wrap:anywhere}
+  .mc-body{display:none}
+  .mcard.open{grid-column:1/-1;max-width:380px;justify-self:start;width:100%}
+  .mcard.open .mc-kikc{font-size:20px;padding:10px 6px}
+  .mcard.open .mc-body{display:block;margin-top:0;border-top:1px solid var(--soft)}
+  .mc-id{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;padding:10px 12px;font:600 15px var(--body);border-bottom:1px solid var(--soft);overflow-wrap:anywhere}
+  .mc-ket{padding:7px 10px;font:500 14px var(--body);color:var(--soft);border-bottom:1px solid var(--soft);overflow-wrap:anywhere}
+  .mc-info{padding:7px 10px;font:500 13px var(--body);color:var(--dim);text-align:left;overflow-wrap:anywhere}
+  .mc-info b{color:var(--text)}
+  .mc-info.warn b{color:var(--amber)}
+  .mcard.moved .mc-box{border-color:rgba(var(--a-rgb),.9)}
+  .mcard.fin .mc-box{border-color:rgba(var(--g-rgb),.85);background:linear-gradient(180deg,rgba(var(--g-rgb),.10),rgba(var(--g-rgb),.03)),var(--surface)}
+  .mc-fin{display:none;position:absolute;top:-8px;right:-4px;z-index:1;padding:1px 7px;border-radius:999px;font:700 11px var(--body);letter-spacing:.4px;color:var(--ink-g);background:var(--lime)}
+  .mcard.fin .mc-fin{display:block}
+  .mnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
+
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
   .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.7)}
@@ -616,6 +646,18 @@
       </div>
     </section>
 
+    <!-- ============ ALOKASI MESIN ============ -->
+    <section id="viewMesin" class="view list" aria-label="Alokasi mesin">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qMesin" type="search" placeholder="Cari KIKC, warna, atau mesin" autocomplete="off" enterkeyhint="search" aria-label="Cari di alokasi mesin">
+      </div>
+      <p class="lcount" id="nMesin" aria-live="polite"></p>
+      <p class="mnote" id="mNote"></p>
+      <div class="lstate" id="sMesin"></div>
+      <div class="cards-wrap hidden" id="wMesin"><div id="bMesin"></div></div>
+    </section>
+
     <!-- ============ CELUP ============ -->
     <section id="viewClp" class="view list" aria-label="Daftar Celup">
       <div class="search">
@@ -661,6 +703,10 @@
     <button type="button" class="tab" id="tabData" data-view="data" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
       Data
+    </button>
+    <button type="button" class="tab" id="tabMesin" data-view="mesin" aria-selected="false">
+      <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12" r="1.5"/></svg>
+      Mesin
     </button>
     <button type="button" class="tab" id="tabClp" data-view="clp" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
@@ -1866,6 +1912,10 @@ var Code128 = (function () {
     el.innerHTML = html || '';
   }
   function renderList(k) {
+    renderList0(k);
+    if (k === 'plan') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan berubah
+  }
+  function renderList0(k) {
     var d = LISTS[k], m = lst[k], q = m.query.trim().toLowerCase();
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
@@ -1936,7 +1986,7 @@ var Code128 = (function () {
     if (!force && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
     restoreList(k);
     m.loading = true; m.error = '';
-    if (state.view === k) $('#btnRefresh').classList.add('spin');
+    if (state.view === k || (k === 'plan' && state.view === 'mesin')) $('#btnRefresh').classList.add('spin');
     renderList(k);   // jika sudah ada data (memori atau salinan HP), tabel langsung tampil; hanya skeleton jika kosong
     return gs('getList', k, !!force).then(function (r) {
       if (!r) throw new Error('Server tidak mengembalikan data.');
@@ -1991,6 +2041,162 @@ var Code128 = (function () {
     });
   });
 
+  /* ---------- Alokasi mesin (dihitung dari tab Plan, hanya tampilan: sheet Plan tidak diubah) ----------
+     Lot yang belum celup (kolom CELUP kosong atau "SISA ORDER") dibagi ke mesin. Lot dengan tanggal di kolom CELUP tetap tampil dengan tanda FINISH (tidak dibagi ulang).
+     Mesin dalam satu GRUP berkapasitas cone sama: lot yang direncanakan di salah satu mesin grup
+     dibagi rata ke semua mesin grup yang aktif (menurut jumlah Cone). Mesin STOP tidak menerima lot.
+     Ubah tiga daftar di bawah jika urutan, kelompok, atau mesin yang berhenti berubah. */
+  var MESIN_URUT = ['A18', 'A20', 'A21', 'A0', 'A25', 'A100', 'A8', 'A9', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17'];
+  var MESIN_GRUP = [['A8', 'A9', 'A10'], ['A11', 'A12', 'A13', 'A14', 'A15']];
+  var MESIN_STOP = ['A12'];
+  var mesinQ = { query: '', key: '', open: {} };
+
+  function normMesin(v) { return String(v === null || v === undefined ? '' : v).toUpperCase().replace(/\s+/g, ''); }
+
+  function buildAlokasi(headers, rows) {
+    var ix = {};
+    headers.forEach(function (h, i) { ix[String(h).toUpperCase()] = i; });
+    var items = [];
+    rows.forEach(function (r, i) {
+      var celup = String(r[ix['CELUP']] || '').trim();
+      var cu = celup.toUpperCase();
+      var fin = celup !== '' && cu !== 'SISA ORDER';   // kolom CELUP berisi tanggal celup = Finish
+      var kikc = String(r[ix['KIKC']] || '').trim();
+      if (!kikc) return;
+      var m0 = normMesin(r[ix['MESIN']]);
+      items.push({
+        i: i, kikc: kikc, noBenang: r[ix['NO BENANG']] || '', warna: r[ix['WARNA']] || '',
+        kgTxt: r[ix['KG']] || '', coneTxt: r[ix['CONE']] || '', ket: r[ix['KETERANGAN']] || '',
+        kg: parseNum(r[ix['KG']]), cone: parseNum(r[ix['CONE']]), from: m0, mesin: m0,
+        fin: fin, celup: celup, sisa: cu === 'SISA ORDER'
+      });
+    });
+    var moved = 0;
+    MESIN_GRUP.forEach(function (g) {
+      var active = g.filter(function (m) { return MESIN_STOP.indexOf(m) < 0; });
+      if (!active.length) return;
+      // Lot Finish tidak ikut dibagi: sudah selesai di mesin asalnya dan tidak menambah beban mesin
+      var pool = items.filter(function (it) { return !it.fin && g.indexOf(it.from) >= 0; });
+      pool.sort(function (a, b) { return ((b.cone || b.kg || 0) - (a.cone || a.kg || 0)) || (a.i - b.i); });   // lot besar dulu
+      var load = {}; active.forEach(function (m) { load[m] = 0; });
+      pool.forEach(function (it) {
+        var best = null;
+        active.forEach(function (m) {
+          if (best === null || load[m] < load[best] || (load[m] === load[best] && m === it.from)) best = m;
+        });
+        it.mesin = best; load[best] += (it.cone || it.kg || 1);
+        if (it.mesin !== it.from) moved++;
+      });
+    });
+    var order = MESIN_URUT.slice();
+    items.forEach(function (it) {
+      var m = it.mesin || '';
+      if (order.indexOf(m) < 0) order.push(m);
+    });
+    var tail = order.slice(MESIN_URUT.length).sort();
+    order = MESIN_URUT.concat(tail);
+    var blocks = order.map(function (m) {
+      var all = items.filter(function (it) { return it.mesin === m; });   // urutan Plan dipertahankan
+      var lots = all.filter(function (it) { return !it.fin; }).concat(all.filter(function (it) { return it.fin; }));   // yang belum celup dulu, Finish di belakang
+      var kg = 0, cone = 0, open = 0;
+      all.forEach(function (it) { if (!it.fin) { kg += it.kg; cone += it.cone; open++; } });
+      return { mesin: m, lots: lots, kg: kg, cone: cone, open: open, fin: all.length - open, stop: MESIN_STOP.indexOf(m) >= 0 };
+    });
+    var nFin = items.filter(function (it) { return it.fin; }).length;
+    return { blocks: blocks, total: items.length, open: items.length - nFin, fin: nFin, moved: moved };
+  }
+
+  function mesinState(html) {
+    var el = $('#sMesin');
+    el.style.display = html ? '' : 'none';
+    el.innerHTML = html || '';
+  }
+  function renderMesin() {
+    var m = lst.plan, q = mesinQ.query.trim().toLowerCase();
+    var wrap = $('#wMesin'), note = $('#nMesin');
+    if (!m.headers.length || !m.rows.length) {
+      mesinQ.key = ''; wrap.classList.add('hidden'); note.textContent = ''; $('#mNote').textContent = '';
+      if (m.loading) mesinState('<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      else if (m.error) mesinState('<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
+      else if (m.at) mesinState('<div class="state">Belum ada data di sheet Plan.</div>');
+      else mesinState('');
+      return;
+    }
+    var key = m.sig + '|' + q;
+    if (key === mesinQ.key) return;   // tidak ada yang berubah
+    var res = buildAlokasi(m.headers, m.rows);
+    mesinState('');
+    var out = [], shown = 0;
+    res.blocks.forEach(function (b) {
+      var lots = q ? b.lots.filter(function (it) {
+        return [it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : ''].join(' ').toLowerCase().indexOf(q) >= 0;
+      }) : b.lots;
+      if (q && !lots.length) return;
+      var label = b.mesin || 'TANPA MESIN';
+      var info;
+      if (b.stop) info = 'STOP, tidak menerima lot';
+      else if (!b.lots.length) info = 'kosong';
+      else info = b.open + ' lot · ' + fmtNum(b.kg) + ' Kg · ' + fmtNum(b.cone) + ' Cone' + (b.fin ? ' · ' + b.fin + ' finish' : '');
+      out.push('<div class="mgrp' + (b.stop ? ' stop' : '') + '"><b>' + esc(label) + '</b><span>' + esc(info) + '</span></div>');
+      if (!lots.length) return;
+      out.push('<div class="mgrid">');
+      lots.forEach(function (it) {
+        shown++;
+        var moved = it.mesin !== it.from;
+        var isOpen = !!mesinQ.open[it.kikc];
+        var id = '<div class="mc-id"><span>' + (it.noBenang ? esc(it.noBenang) : '-') + '</span><span>' + (it.warna ? esc(it.warna) : '-') + '</span>' +
+          '<span>' + (it.kgTxt === '' ? '-' : esc(it.kgTxt)) + ' KG</span><span>' + (it.coneTxt === '' ? '-' : esc(it.coneTxt)) + ' CONE</span></div>';
+        var ket = it.ket === '' ? '' : '<div class="mc-ket">' + esc(it.ket) + '</div>';
+        var st = [];
+        if (it.fin) st.push('<div class="mc-info">Finish · tanggal celup <b>' + esc(it.celup) + '</b></div>');
+        else if (it.sisa) st.push('<div class="mc-info warn"><b>SISA ORDER</b></div>');
+        st.push('<div class="mc-info' + (moved ? ' warn' : '') + '">Mesin di Plan: <b>' + (it.from === '' ? 'kosong' : esc(it.from)) + '</b>' + (moved ? ' · dipindah ke <b>' + esc(it.mesin) + '</b>' : '') + '</div>');
+        out.push('<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + (isOpen ? ' open' : '') + '" role="button" tabindex="0" aria-expanded="' + isOpen + '" data-k="' + esc(it.kikc) + '">' +
+          '<span class="mc-fin">FINISH</span>' +
+          '<span class="mc-box"><span class="mc-kikc">' + esc(it.kikc) + '</span>' +
+          '<span class="mc-body">' + id + ket + st.join('') + '</span></span></div>');
+      });
+      out.push('</div>');
+    });
+    if (!out.length) {
+      wrap.classList.add('hidden');
+      mesinState('<div class="state">Tidak ada lot yang cocok dengan pencarian.</div>');
+    } else {
+      $('#bMesin').innerHTML = out.join('');
+      wrap.classList.remove('hidden');
+    }
+    note.textContent = (q ? shown + ' dari ' + (res.total) : res.total) + ' lot: ' + res.open + ' belum celup · ' + res.fin + ' finish · ' + res.moved + ' dipindah mesin';
+    $('#mNote').textContent = 'Lot di ' + MESIN_GRUP.map(function (g) { return g[0] + '–' + g[g.length - 1]; }).join(' dan ') +
+      ' dibagi rata menurut Cone' + (MESIN_STOP.length ? ' (' + MESIN_STOP.join(', ') + ' stop)' : '') +
+      '. Ketuk kartu untuk melihat identitas lot. Garis kuning = dipindah, hijau FINISH = sudah ada tanggal celup di sheet Plan. Hanya tampilan: sheet Plan tidak diubah.';
+    mesinQ.key = key;
+  }
+  var tMesin = null;
+  $('#qMesin').addEventListener('input', function () {
+    var v = this.value;
+    clearTimeout(tMesin);
+    tMesin = setTimeout(function () { mesinQ.query = v; renderMesin(); }, 150);
+  });
+  function toggleCard(card) {
+    var k = card.getAttribute('data-k'), on = !card.classList.contains('open');
+    card.classList.toggle('open', on);
+    card.setAttribute('aria-expanded', on);
+    if (on) mesinQ.open[k] = 1; else delete mesinQ.open[k];
+    if (on && card.scrollIntoView) { try { card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* abaikan */ } }
+  }
+  $('#bMesin').addEventListener('click', function (e) {
+    var c = e.target.closest ? e.target.closest('.mcard') : null;
+    if (c) toggleCard(c);
+  });
+  $('#bMesin').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var c = e.target.closest ? e.target.closest('.mcard') : null;
+    if (c) { e.preventDefault(); toggleCard(c); }
+  });
+  $('#sMesin').addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-retry]')) loadList('plan', true);
+  });
+
   if (mqWide) {   // jendela diperbesar/diperkecil melewati batas laptop: jumlah baris per halaman ikut berubah
     var onWide = function () {
       Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; });
@@ -2002,18 +2208,19 @@ var Code128 = (function () {
   /* ---------- Tab ---------- */
   function showView(name) {
     state.view = name;
-    var isList = !!LISTS[name];
+    var isList = !!LISTS[name], isMesin = name === 'mesin';
+    $('#viewMesin').classList.toggle('active', isMesin);
     $('#viewForm').classList.toggle('active', name === 'form');
     $('#viewData').classList.toggle('active', name === 'data');
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
-    $('#main').classList.toggle('is-data', name === 'data' || isList);
+    $('#main').classList.toggle('is-data', name === 'data' || isList || isMesin);
     $$('.tab').forEach(function (b) {
       var on = b.getAttribute('data-view') === name;
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', on);
     });
     $('#btnRefresh').setAttribute('aria-label', name === 'form' ? 'Muat ulang daftar KIKC' : 'Muat ulang data');
-    $('#subtitle').textContent = isList ? LISTS[name].sub : (name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang');
+    $('#subtitle').textContent = isList ? LISTS[name].sub : (isMesin ? 'Alokasi mesin · kartu lot' : name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang');
     $('#main').scrollTop = 0;
     if (name === 'data') {
       // Jika aplikasi dibiarkan terbuka sampai ganti hari, "hari ini" ikut diperbarui
@@ -2024,6 +2231,10 @@ var Code128 = (function () {
       restoreList(name);
       renderList(name);          // langsung tampil dari memori, tanpa menunggu server
       loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
+    } else if (isMesin) {
+      restoreList('plan');
+      mesinQ.key = ''; renderMesin();   // dari data Plan di memori
+      loadList('plan', false);
     }
   }
   // Ketuk 2x logo di pojok kiri atas: kolom untuk melihat / menempel URL web app (berakhiran /exec)
@@ -2040,7 +2251,8 @@ var Code128 = (function () {
     b.addEventListener('click', function () { showView(b.getAttribute('data-view')); });
   });
   $('#btnRefresh').addEventListener('click', function () {
-    if (LISTS[state.view]) loadList(state.view, true);
+    if (state.view === 'mesin') loadList('plan', true);
+    else if (LISTS[state.view]) loadList(state.view, true);
     else if (state.view === 'data') loadData(); else loadKikc();
   });
 

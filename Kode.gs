@@ -448,6 +448,7 @@ function listResult_(headers, rows) {
 }
 
 function buildList_(key) {
+  key = String(key || '').toLowerCase();   // kunci daftar selalu huruf kecil: wod, grm, plan, clp
   if (key === 'wod') {
     // A, C, D, E, F, G, I, K, L. Hanya status "B" (kolom O) dan mesin yang tidak berisi "BAK-"
     const rows = readList_(getWodSheet_(), WOD_LIST_FIRST_COL, WOD_LIST_WIDTH, [2, 0, 3, 4, 5, 6, 8, 10, 11], function (r) {
@@ -514,7 +515,7 @@ function listCachePut_(key, obj) {
 function getList(key, force) {
   try {
     key = String(key || '').toLowerCase();
-    if (LIST_KEYS.indexOf(key) < 0) throw new Error('Daftar tidak dikenal: ' + key);
+    if (LIST_KEYS.map(function (x) { return x.toLowerCase(); }).indexOf(key) < 0) throw new Error('Daftar tidak dikenal: ' + key);
     if (!force) {
       const hit = listCacheGet_(key);
       if (hit) return hit;
@@ -529,7 +530,7 @@ function getList(key, force) {
 
 function getLists(force) {
   const lists = {};
-  LIST_KEYS.forEach(function (k) { lists[k] = getList(k, force); });
+  LIST_KEYS.forEach(function (k) { lists[k.toLowerCase()] = getList(k, force); });
   return { success: true, lists: lists };
 }
 
