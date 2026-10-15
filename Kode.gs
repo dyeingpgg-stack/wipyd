@@ -13,7 +13,7 @@
  *         hanya baris berstatus "B" di kolom O, dan MESIN tidak berisi "BAK-" (BAK-1, BAK-2, BAK-3, ...)
  *   GRM : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN
  *   CLP : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
- *   Plan: A KIKC | B NO BENANG | C WARNA | D MESIN | E KG | F CONE | G KETERANGAN | H CELUP  (urutan kolom sheet "Plan" = urutan tampil)
+ *   Plan: kolom dicari menurut judul baris 1 (termasuk ALOKASI): A KIKC | B NO BENANG | C WARNA | D MESIN | E KG | F CONE | G KETERANGAN | H CELUP  (urutan kolom sheet "Plan" = urutan tampil)
  *
  * Format tanggal: semua tanggal yang tampil di aplikasi (kolom TANGGAL/CELUP dan Waktu di tab Data) selalu DD/MM/YYYY.
  *   - Sel tanggal asli di Sheet (Date) diformat langsung, tidak bergantung format tampilan sheet.
@@ -82,7 +82,10 @@ const API_FUNCS = {
   updateRowData: function (a) { return updateRowData(a[0]); },
   deleteData: function (a) { return deleteData(a[0], a[1]); },
   getList: function (a) { return getList(a[0], a[1]); },
-  getLists: function (a) { return getLists(a[0]); }
+  getLists: function (a) { return getLists(a[0]); },
+  setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2]); },
+  getMesinStop: function () { return { success: true, stop: readMesinStop_() }; },
+  setMesinStop: function (a) { return setMesinStop(a[0], a[1]); }
 };
 
 function doPost(e) {
@@ -376,7 +379,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst5_';
+const LIST_PREFIX = 'lst6_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -440,11 +443,26 @@ function readList_(sheet, firstCol, width, pick, keepFn, dateIdx, opts) {
     items.push({ row: row, key: opts.noSort ? 0 : sortKey_(raw[i][0], r[dateIdx], opts.mdy), i: i });
   }
   items.sort(function (x, y) { return (y.key - x.key) || (y.i - x.i); });
+  if (opts.rowNos) items.forEach(function (x) { opts.rowNos.push(x.i + 2); });   // nomor baris sheet untuk tiap baris hasil
   return items.map(function (x) { return x.row; });
 }
 
 function listResult_(headers, rows) {
   return { success: true, headers: headers, rows: rows, total: rows.length };
+}
+
+// Kolom sheet "Plan" dicari menurut JUDUL di baris 1, jadi tetap benar walau kolom baru disisipkan.
+// Judul yang tidak ditemukan memakai posisi lama (A..H). Kolom "ALOKASI" (judul diawali ALOKASI) ikut dibaca dan ditaruh paling akhir.
+function planCols_(sp) {
+  const names = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN', 'CELUP'];
+  const n = Math.max(1, Math.min(sp.getMaxColumns() - PLAN_FIRST_COL + 1, 30));
+  const head = sp.getRange(1, PLAN_FIRST_COL, 1, n).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); });
+  const pick = names.map(function (nm, i) { const k = head.indexOf(nm); return k >= 0 ? k : i; });
+  const headers = names.slice();
+  let al = -1;
+  for (let i = 0; i < head.length; i++) { if (head[i].indexOf('ALOKASI') === 0) { al = i; break; } }
+  if (al >= 0) { pick.push(al); headers.push('ALOKASI'); }
+  return { pick: pick, headers: headers, width: Math.max.apply(null, pick) + 1, alokasi: al };
 }
 
 function buildList_(key) {
@@ -471,10 +489,14 @@ function buildList_(key) {
     // A..H sesuai urutan sheet "Plan": KIKC, No Benang, Warna, Mesin, Kg, Cone, Keterangan, Celup (kolom Celup diformat DD/MM/YYYY jika berisi tanggal)
     const sp = findSheet_(ss_(), SHEET_PLAN);
     if (!sp) throw new Error('Tab "' + SHEET_PLAN + '" tidak ditemukan di spreadsheet. Buat sheet bernama "' + SHEET_PLAN + '" (atau jalankan siapkanSheetPlan dari editor Apps Script).');
-    const rows = readList_(sp, PLAN_FIRST_COL, PLAN_WIDTH, [0, 1, 2, 3, 4, 5, 6, 7], function (r) {
-      return str_(r[0]).trim().toUpperCase() !== 'KIKC';
-    }, 7, { mdy: !!DATE_TEXT_MDY.plan, noSort: true });
-    return listResult_(['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN', 'CELUP'], rows);
+    const pc = planCols_(sp);
+    const rowNos = [];
+    const rows = readList_(sp, PLAN_FIRST_COL, pc.width, pc.pick, function (r) {
+      return str_(r[pc.pick[0]]).trim().toUpperCase() !== 'KIKC';
+    }, pc.pick[7], { mdy: !!DATE_TEXT_MDY.plan, noSort: true, rowNos: rowNos });
+    const res = listResult_(pc.headers, rows);
+    res.rowNos = rowNos;   // dipakai tab Plan untuk mengubah kolom Alokasi
+    return res;
   }
   const sh = findSheet_(ss_(), SHEET_CLP);
   if (!sh) throw new Error('Tab "' + SHEET_CLP + '" tidak ditemukan di spreadsheet.');
@@ -532,6 +554,63 @@ function getLists(force) {
   const lists = {};
   LIST_KEYS.forEach(function (k) { lists[k.toLowerCase()] = getList(k, force); });
   return { success: true, lists: lists };
+}
+
+// Status mesin STOP / Ready (tombol di tab Mesin). Disimpan di Script Properties, jadi sama untuk semua pengguna.
+// Nilai awal (sebelum pernah diubah) ada di MESIN_STOP_AWAL.
+const MESIN_STOP_AWAL = ['A50', 'A12'];
+function readMesinStop_() {
+  const v = PropertiesService.getScriptProperties().getProperty('mesinStop');
+  if (v === null || v === undefined) return MESIN_STOP_AWAL.slice();
+  try { const a = JSON.parse(v); if (Array.isArray(a)) return a.map(String); } catch (e) { /* jatuh ke nilai awal */ }
+  return MESIN_STOP_AWAL.slice();
+}
+function setMesinStop(mesin, stop) {
+  const m = str_(mesin).replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z0-9]{1,10}$/.test(m)) throw new Error('Nama mesin tidak valid.');
+  const lock = lock_();
+  try {
+    const list = readMesinStop_().filter(function (x) { return x !== m; });
+    if (stop === true || stop === 'true') list.push(m);
+    PropertiesService.getScriptProperties().setProperty('mesinStop', JSON.stringify(list));
+    return { stop: list };
+  } finally {
+    unlock_(lock);
+  }
+}
+
+// Mengisi kolom "Alokasi" di sheet Plan untuk satu baris (dipanggil dari tab Plan).
+// Baris dicek ulang lewat KIKC: jika nomor baris sudah bergeser, dicari ulang dan hanya diterima bila KIKC-nya tepat satu.
+function setAlokasi(rowNo, kikc, value) {
+  const want = normKikc_(kikc);
+  if (!want) throw new Error('KIKC kosong.');
+  let v = str_(value).replace(/\s+/g, '').toUpperCase();
+  if (/^\d+$/.test(v)) v = 'A' + v;   // ketik 9 = A9
+  if (v.length > 12) throw new Error('Isi alokasi terlalu panjang.');
+  const lock = lock_();
+  try {
+    const sp = findSheet_(ss_(), SHEET_PLAN);
+    if (!sp) throw new Error('Tab "' + SHEET_PLAN + '" tidak ditemukan di spreadsheet.');
+    const pc = planCols_(sp);
+    if (pc.alokasi < 0) throw new Error('Kolom "Alokasi" tidak ditemukan di baris judul sheet Plan.');
+    const kc = pc.pick[0] + PLAN_FIRST_COL;
+    const last = sp.getLastRow();
+    let row = parseInt(rowNo, 10);
+    if (!(row >= 2 && row <= last && normKikc_(sp.getRange(row, kc).getDisplayValue()) === want)) {
+      const hits = [];
+      if (last >= 2) sp.getRange(2, kc, last - 1, 1).getDisplayValues().forEach(function (c, i) { if (normKikc_(c[0]) === want) hits.push(i + 2); });
+      if (hits.length !== 1) throw new Error('Baris Plan sudah berubah. Muat ulang lalu coba lagi.');
+      row = hits[0];
+    }
+    const cell = sp.getRange(row, pc.alokasi + PLAN_FIRST_COL);
+    cell.setNumberFormat('@');
+    cell.setValue(v);
+    SpreadsheetApp.flush();
+    try { CacheService.getScriptCache().remove(LIST_PREFIX + 'plan_n'); } catch (e) { /* abaikan */ }
+    return { value: v };
+  } finally {
+    unlock_(lock);
+  }
 }
 
 // ================= 3. Simpan data baru =================
