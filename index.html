@@ -275,31 +275,54 @@
   /* ---------- Alokasi mesin ---------- */
   .cards-wrap{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(var(--c-rgb),.35) transparent}
   .cards-wrap.hidden{display:none}
-  .mgrp{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:16px 2px 10px;padding-bottom:6px;border-bottom:1px solid var(--edge-strong)}
-  .mgrp:first-child{margin-top:2px}
-  .mgrp b{font:700 22px var(--display);color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.5)}
-  .mgrp span{font:500 14px var(--body);color:var(--dim)}
-  .mgrp.stop b{color:var(--rose);text-shadow:none}
-  .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
-  /* Kartu KIKC: mode hide = hanya KIKC; ketuk = mode view (identitas lengkap seperti kartu KIKC) */
-  .mcard{position:relative;min-width:0;padding:0;border:0;background:none;text-align:center;font-family:inherit;color:var(--text);cursor:pointer;-webkit-user-select:none;user-select:none}
-  .mcard .mc-box{display:block;border:3px double var(--soft);border-radius:4px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
-  .mcard:hover .mc-box,.mcard:focus-visible .mc-box{border-color:var(--cyan);box-shadow:0 0 14px rgba(var(--c-rgb),.35)}
-  .mcard:focus-visible{outline:none}
-  .mc-kikc{display:block;padding:9px 6px;font:700 17px var(--display);letter-spacing:.3px;color:var(--text);overflow-wrap:anywhere}
-  .mc-body{display:none}
-  .mcard.open{grid-column:1/-1;max-width:380px;justify-self:start;width:100%}
-  .mcard.open .mc-kikc{font-size:20px;padding:10px 6px}
-  .mcard.open .mc-body{display:block;margin-top:0;border-top:1px solid var(--soft)}
-  .mc-id{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;padding:10px 12px;font:600 15px var(--body);border-bottom:1px solid var(--soft);overflow-wrap:anywhere}
-  .mc-ket{padding:7px 10px;font:500 14px var(--body);color:var(--soft);border-bottom:1px solid var(--soft);overflow-wrap:anywhere}
-  .mc-info{padding:7px 10px;font:500 13px var(--body);color:var(--dim);text-align:left;overflow-wrap:anywhere}
-  .mc-info b{color:var(--text)}
-  .mc-info.warn b{color:var(--amber)}
-  .mcard.moved .mc-box{border-color:rgba(var(--a-rgb),.9)}
-  .mcard.fin .mc-box{border-color:rgba(var(--g-rgb),.85);background:linear-gradient(180deg,rgba(var(--g-rgb),.10),rgba(var(--g-rgb),.03)),var(--surface)}
-  .mc-fin{display:none;position:absolute;top:-8px;right:-4px;z-index:1;padding:1px 7px;border-radius:999px;font:700 11px var(--body);letter-spacing:.4px;color:var(--ink-g);background:var(--lime)}
-  .mcard.fin .mc-fin{display:block}
+  /* Panel per mesin (header: kode, jumlah order aktif, kapasitas, total cone/kg, tombol View/Hide) + kartu lot */
+  .mpanel{margin:0 0 14px;padding:10px;border-radius:18px;border:1px solid var(--edge-strong);background:linear-gradient(180deg,rgba(var(--e-rgb),.06),rgba(var(--e-rgb),.015)),var(--surface-3)}
+  .mpanel:first-child{margin-top:2px}
+  .mhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 10px;border-radius:13px;border:1px solid rgba(var(--g-rgb),.3);background:rgba(var(--g-rgb),.08)}
+  .mid{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}
+  .mbadge{flex:none;padding:5px 11px;border-radius:9px;font:700 15px var(--display);color:var(--ink-g);background:var(--lime)}
+  .mname{font:700 16px var(--display);color:var(--text)}
+  .mpill{padding:3px 10px;border-radius:999px;font:600 12px var(--body);color:var(--lime);background:rgba(var(--g-rgb),.14);border:1px solid rgba(var(--g-rgb),.32);white-space:nowrap}
+  .mcap{font:500 12px ui-monospace,Menlo,Consolas,monospace;color:var(--dim);white-space:nowrap}
+  .mtot{display:flex;align-items:center;gap:8px;margin-left:auto;font:500 12.5px var(--body);color:var(--dim)}
+  .mtot b{padding:4px 10px;border-radius:9px;font:700 15px var(--display);color:var(--lime);background:rgba(var(--g-rgb),.16);white-space:nowrap}
+  .mview{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 11px;border-radius:10px;border:1px solid var(--edge-strong);background:rgba(var(--w-rgb),.05);color:var(--text);font:600 13px var(--body);cursor:pointer}
+  .mview svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .mview:hover,.mview:focus-visible{border-color:var(--cyan);outline:none}
+  .mview[aria-expanded="true"]{color:var(--cyan);border-color:var(--cyan)}
+  .mpanel.stop .mhead{border-color:rgba(var(--r-rgb),.4);background:rgba(var(--r-rgb),.08)}
+  .mpanel.stop .mbadge{background:var(--rose);color:#fff}
+  .mpanel.stop .mpill{color:var(--rose);background:rgba(var(--r-rgb),.12);border-color:rgba(var(--r-rgb),.4)}
+  .mpanel.stop .mtot b{color:var(--rose);background:rgba(var(--r-rgb),.14)}
+  .mnone{margin:10px 2px 2px;font-size:13px;color:var(--dim)}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+  .mpanel.detail .mgrid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+  .mcard{position:relative;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--edge-strong);background:var(--surface);text-align:left;color:var(--text)}
+  .mcard.moved{border-color:rgba(var(--a-rgb),.85)}
+  .mcard.fin{border-color:rgba(var(--g-rgb),.8);background:linear-gradient(180deg,rgba(var(--g-rgb),.10),rgba(var(--g-rgb),.03)),var(--surface)}
+  .mc-det{display:none}
+  .mpanel.detail .mc-cmp{display:none}
+  .mpanel.detail .mc-det{display:block}
+  .mc-k{font:700 14px var(--display);letter-spacing:.2px;color:var(--lime);overflow-wrap:anywhere}
+  .mc-y{margin-top:3px;font:500 12px var(--body);color:var(--soft);overflow-wrap:anywhere}
+  .mc-y em{font-style:normal;font-weight:700;color:var(--amber)}
+  .mc-n{display:flex;justify-content:space-between;gap:6px;margin-top:7px;padding-top:6px;border-top:1px solid rgba(var(--e-rgb),.22);font:600 12px ui-monospace,Menlo,Consolas,monospace;color:var(--soft)}
+  .mc-n b{color:var(--lime)}
+  .mc-flag{margin-top:5px;font:600 11.5px var(--body);color:var(--amber);overflow-wrap:anywhere}
+  .mc-flag.ok{color:var(--lime)}
+  .mc-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .mc-cy{flex:none;padding:2px 7px;border-radius:6px;font:700 10px var(--body);letter-spacing:.5px;color:var(--dim);background:rgba(var(--w-rgb),.06);border:1px solid var(--edge)}
+  .mc-wb{min-width:0;padding:2px 7px;border-radius:6px;font:700 11px var(--display);color:var(--amber);border:1px solid rgba(var(--a-rgb),.45);background:rgba(var(--a-rgb),.1);text-align:right;overflow-wrap:anywhere}
+  .mc-l{display:block;margin-top:9px;font:600 10px var(--body);letter-spacing:.6px;text-transform:uppercase;color:var(--dim)}
+  .mc-v{display:block;font:700 15px var(--display);color:var(--lime);overflow-wrap:anywhere}
+  .mc-yt{display:block;font:600 12.5px var(--body);color:var(--text);overflow-wrap:anywhere}
+  .mc-yt b{color:var(--lime)}
+  .mc-nums{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
+  .mc-nums div{padding:5px 8px;border-radius:8px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04)}
+  .mc-nums small{display:block;font:600 9.5px var(--body);letter-spacing:.5px;color:var(--dim)}
+  .mc-nums b{font:700 14px var(--display);color:var(--text)}
+  .mc-nums div:last-child b{color:var(--lime)}
+  .mc-kt{display:block;font:500 12px var(--body);color:var(--soft);overflow-wrap:anywhere}
   .mnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
 
   /* ---------- Tab bawah ---------- */
@@ -1913,7 +1936,7 @@ var Code128 = (function () {
   }
   function renderList(k) {
     renderList0(k);
-    if (k === 'plan') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan berubah
+    if (k === 'plan' || k === 'wod') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan (atau supplier dari WOD) berubah
   }
   function renderList0(k) {
     var d = LISTS[k], m = lst[k], q = m.query.trim().toLowerCase();
@@ -2049,7 +2072,8 @@ var Code128 = (function () {
   var MESIN_URUT = ['A18', 'A20', 'A21', 'A0', 'A25', 'A100', 'A8', 'A9', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17'];
   var MESIN_GRUP = [['A8', 'A9', 'A10'], ['A11', 'A12', 'A13', 'A14', 'A15']];
   var MESIN_STOP = ['A12'];
-  var mesinQ = { query: '', key: '', open: {} };
+  var MESIN_KAP = {};   // opsional: kapasitas per mesin (Kg), mis. { A18: 918, A20: 432 }. Jika diisi, judul mesin menampilkan "(Cap: 918 Kg)".
+  var mesinQ = { query: '', key: '', view: {} };   // view[mesin] = true: kartu mesin itu tampil lengkap (tombol View)
 
   function normMesin(v) { return String(v === null || v === undefined ? '' : v).toUpperCase().replace(/\s+/g, ''); }
 
@@ -2111,6 +2135,52 @@ var Code128 = (function () {
     el.style.display = html ? '' : 'none';
     el.innerHTML = html || '';
   }
+  var EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 19c-6.5 0-10-7-10-7a18 18 0 0 1 5.1-5.9M9.9 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-2.2 3.2M1 1l22 22"/><path d="M14.1 14.1a3 3 0 1 1-4.2-4.2"/></svg>';
+  function mviewInner(on) { return on ? EYE_OFF + 'Hide' : EYE + 'View'; }
+
+  // Supplier diambil dari tab WOD (kolom SUPPLIER) menurut KIKC; kosong jika KIKC tidak ada di daftar WOD
+  var supCache = { sig: null, map: null };
+  function supplierOf(kikc) {
+    var w = lst.wod;
+    if (supCache.sig !== w.sig || !supCache.map) {
+      supCache.sig = w.sig; supCache.map = Object.create(null);
+      var ik = w.headers.indexOf('KIKC'), is = w.headers.indexOf('SUPPLIER');
+      if (ik >= 0 && is >= 0) w.rows.forEach(function (r) {
+        var k = String(r[ik]).trim();
+        if (k && r[is] && !supCache.map[k]) supCache.map[k] = String(r[is]).trim();
+      });
+    }
+    return supCache.map[kikc] || '';
+  }
+
+  function mcardHtml(it, cyc) {
+    var moved = it.mesin !== it.from;
+    var sup = supplierOf(it.kikc);
+    var yarn = it.noBenang ? esc(it.noBenang) : '-';
+    var kg = it.kgTxt === '' ? '-' : esc(it.kgTxt), cone = it.coneTxt === '' ? '-' : esc(it.coneTxt);
+    var flags = '';
+    if (it.fin) flags += '<div class="mc-flag ok">Finish · celup ' + esc(it.celup) + '</div>';
+    else if (it.sisa) flags += '<div class="mc-flag">SISA ORDER</div>';
+    if (moved) flags += '<div class="mc-flag">Dipindah dari ' + (it.from === '' ? 'kosong' : esc(it.from)) + '</div>';
+    return '<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + '" data-k="' + esc(it.kikc) + '">' +
+      '<div class="mc-cmp">' +
+        '<div class="mc-k">' + esc(it.kikc) + '</div>' +
+        '<div class="mc-y">' + yarn + (it.warna ? ' / <em>' + esc(it.warna) + '</em>' : '') + '</div>' +
+        flags +
+        '<div class="mc-n"><b>' + kg + ' Kg</b><span>' + cone + ' Cone</span></div>' +
+      '</div>' +
+      '<div class="mc-det">' +
+        '<div class="mc-top"><span class="mc-cy">CYCLE #' + cyc + '</span>' + (it.warna ? '<span class="mc-wb">' + esc(it.warna) + '</span>' : '') + '</div>' +
+        '<span class="mc-l">KIKC Ref</span><span class="mc-v">' + esc(it.kikc) + '</span>' +
+        '<span class="mc-l">' + (sup ? 'Yarn type &amp; supplier' : 'Yarn type') + '</span><span class="mc-yt">' + yarn + (sup ? ' // <b>' + esc(sup) + '</b>' : '') + '</span>' +
+        '<div class="mc-nums"><div><small>CONES</small><b>' + cone + '</b></div><div><small>BERAT (KG)</small><b>' + kg + '</b></div></div>' +
+        '<span class="mc-l">Keterangan</span><span class="mc-kt">' + (it.ket === '' ? '-' : esc(it.ket)) + '</span>' +
+        flags +
+      '</div>' +
+    '</div>';
+  }
+
   function renderMesin() {
     var m = lst.plan, q = mesinQ.query.trim().toLowerCase();
     var wrap = $('#wMesin'), note = $('#nMesin');
@@ -2122,41 +2192,39 @@ var Code128 = (function () {
       else mesinState('');
       return;
     }
-    var key = m.sig + '|' + q;
+    var key = m.sig + '|' + lst.wod.sig + '|' + q;
     if (key === mesinQ.key) return;   // tidak ada yang berubah
     var res = buildAlokasi(m.headers, m.rows);
     mesinState('');
     var out = [], shown = 0;
     res.blocks.forEach(function (b) {
-      var lots = q ? b.lots.filter(function (it) {
+      var all = b.lots.map(function (it, i) { return { it: it, c: i + 1 }; });   // nomor cycle = urutan lot di mesin itu
+      var lots = q ? all.filter(function (x) {
+        var it = x.it;
         return [it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : ''].join(' ').toLowerCase().indexOf(q) >= 0;
-      }) : b.lots;
+      }) : all;
       if (q && !lots.length) return;
       var label = b.mesin || 'TANPA MESIN';
-      var info;
-      if (b.stop) info = 'STOP, tidak menerima lot';
-      else if (!b.lots.length) info = 'kosong';
-      else info = b.open + ' lot · ' + fmtNum(b.kg) + ' Kg · ' + fmtNum(b.cone) + ' Cone' + (b.fin ? ' · ' + b.fin + ' finish' : '');
-      out.push('<div class="mgrp' + (b.stop ? ' stop' : '') + '"><b>' + esc(label) + '</b><span>' + esc(info) + '</span></div>');
-      if (!lots.length) return;
+      var on = !!mesinQ.view[label];
+      var kap = MESIN_KAP[b.mesin];
+      var pill = b.stop ? 'STOP' : (b.open + ' Order Aktif');
+      out.push('<div class="mpanel' + (b.stop ? ' stop' : '') + (on ? ' detail' : '') + '" data-m="' + esc(label) + '">' +
+        '<div class="mhead"><div class="mid">' +
+          '<span class="mbadge">' + esc(label) + '</span>' +
+          '<span class="mname">MC. ' + esc(label) + '</span>' +
+          '<span class="mpill">' + (b.stop ? '' : '• ') + esc(pill) + '</span>' +
+          (kap ? '<span class="mcap">(Cap: ' + fmtNum(+kap) + ' Kg)</span>' : '') +
+        '</div><div class="mtot">' +
+          (b.stop ? '' : '<span>' + fmtNum(b.cone) + ' Cones •</span><b>' + fmtNum(b.kg) + ' Kg</b>') +
+          (lots.length ? '<button type="button" class="mview" data-m="' + esc(label) + '" aria-expanded="' + on + '">' + mviewInner(on) + '</button>' : '') +
+        '</div></div>');
+      if (!lots.length) {
+        out.push('<p class="mnone">' + (b.stop ? 'STOP, tidak menerima lot.' : 'Belum ada lot.') + '</p></div>');
+        return;
+      }
       out.push('<div class="mgrid">');
-      lots.forEach(function (it) {
-        shown++;
-        var moved = it.mesin !== it.from;
-        var isOpen = !!mesinQ.open[it.kikc];
-        var id = '<div class="mc-id"><span>' + (it.noBenang ? esc(it.noBenang) : '-') + '</span><span>' + (it.warna ? esc(it.warna) : '-') + '</span>' +
-          '<span>' + (it.kgTxt === '' ? '-' : esc(it.kgTxt)) + ' KG</span><span>' + (it.coneTxt === '' ? '-' : esc(it.coneTxt)) + ' CONE</span></div>';
-        var ket = it.ket === '' ? '' : '<div class="mc-ket">' + esc(it.ket) + '</div>';
-        var st = [];
-        if (it.fin) st.push('<div class="mc-info">Finish · tanggal celup <b>' + esc(it.celup) + '</b></div>');
-        else if (it.sisa) st.push('<div class="mc-info warn"><b>SISA ORDER</b></div>');
-        st.push('<div class="mc-info' + (moved ? ' warn' : '') + '">Mesin di Plan: <b>' + (it.from === '' ? 'kosong' : esc(it.from)) + '</b>' + (moved ? ' · dipindah ke <b>' + esc(it.mesin) + '</b>' : '') + '</div>');
-        out.push('<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + (isOpen ? ' open' : '') + '" role="button" tabindex="0" aria-expanded="' + isOpen + '" data-k="' + esc(it.kikc) + '">' +
-          '<span class="mc-fin">FINISH</span>' +
-          '<span class="mc-box"><span class="mc-kikc">' + esc(it.kikc) + '</span>' +
-          '<span class="mc-body">' + id + ket + st.join('') + '</span></span></div>');
-      });
-      out.push('</div>');
+      lots.forEach(function (x) { shown++; out.push(mcardHtml(x.it, x.c)); });
+      out.push('</div></div>');
     });
     if (!out.length) {
       wrap.classList.add('hidden');
@@ -2165,10 +2233,7 @@ var Code128 = (function () {
       $('#bMesin').innerHTML = out.join('');
       wrap.classList.remove('hidden');
     }
-    note.textContent = (q ? shown + ' dari ' + (res.total) : res.total) + ' lot: ' + res.open + ' belum celup · ' + res.fin + ' finish · ' + res.moved + ' dipindah mesin';
-    $('#mNote').textContent = 'Lot di ' + MESIN_GRUP.map(function (g) { return g[0] + '–' + g[g.length - 1]; }).join(' dan ') +
-      ' dibagi rata menurut Cone' + (MESIN_STOP.length ? ' (' + MESIN_STOP.join(', ') + ' stop)' : '') +
-      '. Ketuk kartu untuk melihat identitas lot. Garis kuning = dipindah, hijau FINISH = sudah ada tanggal celup di sheet Plan. Hanya tampilan: sheet Plan tidak diubah.';
+    note.textContent = ''; $('#mNote').textContent = '';   // keterangan ringkasan sengaja dikosongkan
     mesinQ.key = key;
   }
   var tMesin = null;
@@ -2177,21 +2242,16 @@ var Code128 = (function () {
     clearTimeout(tMesin);
     tMesin = setTimeout(function () { mesinQ.query = v; renderMesin(); }, 150);
   });
-  function toggleCard(card) {
-    var k = card.getAttribute('data-k'), on = !card.classList.contains('open');
-    card.classList.toggle('open', on);
-    card.setAttribute('aria-expanded', on);
-    if (on) mesinQ.open[k] = 1; else delete mesinQ.open[k];
-    if (on && card.scrollIntoView) { try { card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* abaikan */ } }
-  }
+  // View / Hide: ganti tampilan kartu satu mesin tanpa menggambar ulang (posisi gulir tetap)
   $('#bMesin').addEventListener('click', function (e) {
-    var c = e.target.closest ? e.target.closest('.mcard') : null;
-    if (c) toggleCard(c);
-  });
-  $('#bMesin').addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    var c = e.target.closest ? e.target.closest('.mcard') : null;
-    if (c) { e.preventDefault(); toggleCard(c); }
+    var b = e.target.closest ? e.target.closest('.mview') : null;
+    if (!b) return;
+    var label = b.getAttribute('data-m'), panel = b.closest('.mpanel');
+    var on = !(panel && panel.classList.contains('detail'));
+    if (on) mesinQ.view[label] = 1; else delete mesinQ.view[label];
+    if (panel) panel.classList.toggle('detail', on);
+    b.setAttribute('aria-expanded', on);
+    b.innerHTML = mviewInner(on);
   });
   $('#sMesin').addEventListener('click', function (e) {
     if (e.target.closest && e.target.closest('[data-retry]')) loadList('plan', true);
@@ -2232,7 +2292,7 @@ var Code128 = (function () {
       renderList(name);          // langsung tampil dari memori, tanpa menunggu server
       loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
     } else if (isMesin) {
-      restoreList('plan');
+      restoreList('plan'); restoreList('wod');
       mesinQ.key = ''; renderMesin();   // dari data Plan di memori
       loadList('plan', false);
     }
@@ -2599,11 +2659,12 @@ var Code128 = (function () {
     $('#eStatus').textContent = ok ? '' : 'Daftar KIKC belum termuat, jadi KIKC belum bisa diganti. Bagian lain tetap bisa diubah.';
     edCombo.select(edit.orig, false);
 
-    syncExtraChips('#eCShift', 'eshift', OPT.shift, row.shift);
-    syncExtraChips('#eCGrup', 'egrup', OPT.grup, row.grup);
+    var inShift = row.shiftIn !== undefined ? row.shiftIn : row.shift, inGrup = row.grupIn !== undefined ? row.grupIn : row.grup;   // nilai asli input (tabel menampilkan nilai dari tab Celup)
+    syncExtraChips('#eCShift', 'eshift', OPT.shift, inShift);
+    syncExtraChips('#eCGrup', 'egrup', OPT.grup, inGrup);
     syncExtraChips('#eCPosisi', 'eposisi', OPT.posisi, row.posisi);
     syncExtraChips('#eCQc', 'eqc', OPT.qc, row.qc);
-    setRadio('eshift', row.shift); setRadio('egrup', row.grup);
+    setRadio('eshift', inShift); setRadio('egrup', inGrup);
     setRadio('eposisi', row.posisi); setRadio('eqc', row.qc);
     $('#eNoteQc').value = row.noteQc || '';
     $('#eKeterangan').value = row.keterangan || '';

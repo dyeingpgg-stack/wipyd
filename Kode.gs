@@ -581,6 +581,28 @@ function saveData(p) {
 }
 
 // ================= 4. Data untuk tabel =================
+function normKikc_(s) { return str_(s).replace(/\s+/g, ' ').trim().toUpperCase(); }
+
+// Peta KIKC -> { shift, grup } dari tab Celup (sheet CLP). Daftar Celup sudah urut tanggal terbaru dulu,
+// jadi bila satu KIKC muncul beberapa kali, baris terbaru yang dipakai. Memakai cache daftar (LIST_TTL),
+// dan jika gagal dibaca, tab Data tetap tampil memakai isian dari tab Input.
+function clpShiftGrup_() {
+  const map = Object.create(null);
+  try {
+    const res = getList('clp', false);
+    if (!res || res.error || !res.rows) return map;
+    const h = res.headers.map(function (x) { return String(x).toUpperCase(); });
+    const iK = h.indexOf('KIKC'), iS = h.indexOf('SHIFT'), iG = h.indexOf('GRUP');
+    if (iK < 0) return map;
+    res.rows.forEach(function (r) {
+      const k = normKikc_(r[iK]);
+      if (!k || map[k]) return;
+      map[k] = { shift: iS >= 0 ? str_(r[iS]).trim() : '', grup: iG >= 0 ? str_(r[iG]).trim() : '' };
+    });
+  } catch (e) { /* abaikan: pakai isian Input */ }
+  return map;
+}
+
 function getData(dateStr) {
   try {
     const sheet = getJawabanSheet_(false);
@@ -611,6 +633,7 @@ function getData(dateStr) {
 
     const values = sheet.getRange(start, 1, end - start + 1, nCols).getDisplayValues();
     const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
+    const clp = clpShiftGrup_();   // SHIFT dan GRUP dari tab Celup (sheet CLP), per KIKC
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const rowNo = start + i;
@@ -618,10 +641,15 @@ function getData(dateStr) {
       const r = padRow_(values[i], TOTAL_COLS);
       const id = str_(r[1]).trim();
       if (!id) continue;
+      // Tampilan tab Data: Shift dan Grup mengikuti tab Celup. Jika KIKC belum ada di Celup (atau selnya kosong), pakai isian dari tab Input.
+      const cl = clp[normKikc_(r[2])];
+      const shift = (cl && cl.shift) ? cl.shift : r[8];
+      const grup = (cl && cl.grup) ? cl.grup : r[9];
       out.push({
         rowIndex: rowNo, tk: rowToken_(id), timestamp: fmtTs_(tsRaw[i][0], r[0], tz),
         kikc: r[2], noBenang: r[3], warna: r[4], mesin: r[5], kg: r[6], cone: r[7],
-        shift: r[8], grup: r[9],
+        shift: shift, grup: grup,
+        shiftIn: r[8], grupIn: r[9],   // isian asli dari tab Input (dipakai form Ubah agar sheet tidak tertimpa nilai Celup)
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
         qc: stripNum_(r[11]),
         noteQc: r[12], keterangan: r[13], ketKikc: r[14]
