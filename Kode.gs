@@ -88,6 +88,7 @@ const API_FUNCS = {
   getList: function (a) { return getList(a[0], a[1]); },
   getLists: function (a) { return getLists(a[0]); },
   setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2]); },
+  resetAlokasi: function () { return resetAlokasi(); },
   getMesinStop: function () { return { success: true, stop: readMesinStop_() }; },
   setMesinStop: function (a) { return setMesinStop(a[0], a[1]); }
 };
@@ -495,19 +496,28 @@ function buildList_(key) {
     if (!sp) throw new Error('Tab "' + SHEET_PLAN + '" tidak ditemukan di spreadsheet. Buat sheet bernama "' + SHEET_PLAN + '" (atau jalankan siapkanSheetPlan dari editor Apps Script).');
     const pc = planCols_(sp);
     const rowNos = [];
-    const rows = readList_(sp, PLAN_FIRST_COL, pc.width, pc.pick, function (r) {
+    let rows = readList_(sp, PLAN_FIRST_COL, pc.width, pc.pick, function (r) {
       return str_(r[pc.pick[0]]).trim().toUpperCase() !== 'KIKC';
     }, pc.pick[7], { mdy: !!DATE_TEXT_MDY.plan, noSort: true, rowNos: rowNos });
+    // Baris tanpa KIKC dibuang (mis. sisa isi kolom Alokasi lama di bawah data Plan), supaya tidak jadi baris kosong di tab Plan, hitungan, dan CSV
+    const keep = [];
+    rows.forEach(function (r, i) { if (str_(r[0]).trim()) keep.push(i); });
+    if (keep.length !== rows.length) {
+      const rn = keep.map(function (i) { return rowNos[i]; });
+      rows = keep.map(function (i) { return rows[i]; });
+      rowNos.length = 0; rn.forEach(function (n) { rowNos.push(n); });
+    }
     // Alokasi mesin diambil dari sheet "Alokasi" menurut KIKC, BUKAN dari posisi baris di sheet Plan.
     // Jadi baris Plan boleh bertambah, dihapus, diurutkan ulang atau ditimpa: alokasi tetap mengikuti KIKC-nya.
     const headers = pc.headers.slice();
     let ai = headers.indexOf('ALOKASI');
     if (ai < 0) { headers.push('ALOKASI'); ai = headers.length - 1; }
-    const saved = readAlokasi_().vals;
+    const al = readAlokasi_(), saved = al.vals;
     const migrasi = [];
     rows.forEach(function (r) {
       const k = normKikc_(r[0]);
-      const old = ai < r.length ? str_(r[ai]).trim() : '';   // isi kolom Alokasi lama di sheet Plan (jika ada)
+      // Isi kolom Alokasi lama di sheet Plan hanya dipakai SEKALI (saat sheet "Alokasi" belum ada); sesudah itu diabaikan karena posisinya bisa tidak cocok lagi dengan KIKC
+      const old = (!al.exists && ai < r.length) ? str_(r[ai]).trim() : '';
       let v;
       if (Object.prototype.hasOwnProperty.call(saved, k)) v = saved[k];
       else { v = old; if (old && k) migrasi.push([k, old]); }   // alokasi lama disalin sekali ke sheet Alokasi
@@ -616,9 +626,10 @@ function alokasiSheet_() {
 
 // Membaca semua alokasi: { vals: {KIKC: 'A9'}, rows: {KIKC: nomorBaris} }. Alokasi kosong ('') tetap tercatat sebagai "sengaja dikosongkan".
 function readAlokasi_() {
-  const out = { vals: {}, rows: {} };
+  const out = { vals: {}, rows: {}, exists: false };
   const sh = findSheet_(ss_(), SHEET_ALOKASI);
   if (!sh) return out;
+  out.exists = true;
   const last = sh.getLastRow();
   if (last < 2) return out;
   sh.getRange(2, 1, last - 1, 2).getDisplayValues().forEach(function (c, i) {
@@ -664,6 +675,22 @@ function setAlokasi(rowNo, kikc, value) {
   if (v.length > 12) throw new Error('Isi alokasi terlalu panjang.');
   saveAlokasiBatch_([[want, v]]);
   return { value: v };
+}
+
+// Reset: mengosongkan SEMUA alokasi mesin (menghapus isi sheet "Alokasi" selain judul). Sheet Plan tidak disentuh.
+function resetAlokasi() {
+  const lock = lock_();
+  try {
+    const sh = alokasiSheet_();
+    const last = sh.getLastRow();
+    const n = last >= 2 ? last - 1 : 0;
+    if (n) sh.getRange(2, 1, n, Math.max(sh.getLastColumn(), 3)).clearContent();
+    SpreadsheetApp.flush();
+    try { CacheService.getScriptCache().remove(LIST_PREFIX + 'plan_n'); } catch (e) { /* abaikan */ }
+    return { cleared: n };
+  } finally {
+    unlock_(lock);
+  }
 }
 
 // Jalankan SEKALI dari editor Apps Script (opsional): menyalin isi kolom Alokasi lama di sheet Plan ke sheet Alokasi.

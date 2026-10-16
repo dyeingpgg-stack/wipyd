@@ -255,6 +255,8 @@
   .lcount{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
   .lhead{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px}
   .lhead .lcount{margin:0}
+  .lbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .lhead .btn-sm.arm{border-color:var(--rose);color:var(--rose);background:rgba(var(--r-rgb),.12)}
   .lhead .btn-sm{display:inline-flex;align-items:center;gap:6px;margin:0;min-height:36px;padding:0 14px;font-size:14px}
   .lhead .btn-sm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .lstate{flex:1}
@@ -678,7 +680,10 @@
       </div>
       <div class="lhead">
         <p class="lcount" id="nPlan" aria-live="polite"></p>
-        <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh CSV</button>
+        <div class="lbtns">
+          <button type="button" class="btn-sm" id="rsPlan" aria-label="Reset semua alokasi mesin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span>Reset Alokasi</span></button>
+          <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh CSV</button>
+        </div>
       </div>
       <div class="lstate" id="sPlan"></div>
       <div class="table-wrap hidden" id="wPlan">
@@ -2051,7 +2056,7 @@ var Code128 = (function () {
     function cell(v) {
       v = v === undefined || v === null ? '' : String(v);
       if (/^[=+@\t\r]/.test(v)) v = "'" + v;   // cegah teks terbaca sebagai rumus di Excel
-      return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      return '"' + v.replace(/"/g, '""') + '"';   // semua sel diberi kutip, jadi angka desimal seperti 67,5 tidak pecah kolom di aplikasi mana pun
     }
     var lines = [order.map(function (c) { return cell(hd[c]); }).join(';')];
     rows.forEach(function (r) { lines.push(order.map(function (c) { return cell(r[c]); }).join(';')); });
@@ -2151,6 +2156,32 @@ var Code128 = (function () {
   $('#bPlan').addEventListener('change', function (e) {
     var sel = e.target.closest ? e.target.closest('select.alok') : null;
     if (sel) saveAlokasi(sel);
+  });
+
+  /* ---------- Reset semua alokasi (ketuk dua kali agar tidak terhapus tidak sengaja) ---------- */
+  var rsTimer = null;
+  function rsDisarm() { clearTimeout(rsTimer); rsTimer = null; var b = $('#rsPlan'); b.classList.remove('arm'); b.querySelector('span').textContent = 'Reset Alokasi'; }
+  $('#rsPlan').addEventListener('click', function () {
+    var b = this, m = lst.plan;
+    if (!rsTimer) {
+      var n = m.rows.filter(function (r) { return String(r[m.headers.indexOf('ALOKASI')] || '').trim(); }).length;
+      if (!n) { toast('Belum ada alokasi yang perlu direset.', 'warn'); return; }
+      b.classList.add('arm'); b.querySelector('span').textContent = 'Yakin? Ketuk lagi (' + n + ')';
+      rsTimer = setTimeout(rsDisarm, 5000);
+      return;
+    }
+    rsDisarm(); b.disabled = true;
+    gs('resetAlokasi').then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      var col = m.headers.indexOf('ALOKASI');
+      if (col >= 0) m.rows.forEach(function (row) { row[col] = ''; });
+      m.sig = hashStr(JSON.stringify(m.rows) + JSON.stringify(m.rowNos));
+      lsSet(listCacheKey('plan'), JSON.stringify({ headers: m.headers, rows: m.rows, sig: m.sig, rowNos: m.rowNos }));
+      toast('Semua alokasi mesin dikosongkan.', 'ok');
+      m.rk = ''; renderList('plan');
+    }).catch(function (e) {
+      toast('Reset alokasi gagal. ' + errMsg(e), 'err', 7000);
+    }).then(function () { b.disabled = false; });
   });
 
   // Semua daftar sekaligus di latar belakang setelah daftar KIKC termuat, supaya tab langsung siap dibuka
