@@ -15,6 +15,9 @@
  *   CLP : B KIKC | A TANGGAL | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H SHIFT | I GRUP | J KET
  *   Plan: kolom dicari menurut judul baris 1 (ALOKASI memakai sheet "Alokasi" per KIKC, bukan kolom Plan): A KIKC | B NO BENANG | C WARNA | D MESIN | E KG | F CONE | G KETERANGAN | H CELUP  (urutan kolom sheet "Plan" = urutan tampil)
  *
+ * Tab Data (identitas lot): No Benang, Warna, Mesin, Kg, Cone, Keterangan KIKC, Shift, Grup diambil per kolom dengan prioritas
+ *   1. tab Celup (CLP)  2. tab Plan (Mesin: Alokasi dulu, jika kosong kolom Mesin)  3. nilai tersimpan di sheet Jawaban (asal WOD/GRM).  Sheet Jawaban tidak diubah.
+ *
  * Format tanggal: semua tanggal yang tampil di aplikasi (kolom TANGGAL/CELUP dan Waktu di tab Data) selalu DD/MM/YYYY.
  *   - Sel tanggal asli di Sheet (Date) diformat langsung, tidak bergantung format tampilan sheet.
  *   - Sel berisi TEKS: sheet CLP dibaca sebagai MM/DD/YYYY (sesuai isi sheet CLP), sheet lain sebagai DD/MM/YYYY.
@@ -732,24 +735,36 @@ function saveData(p) {
 // ================= 4. Data untuk tabel =================
 function normKikc_(s) { return str_(s).replace(/\s+/g, ' ').trim().toUpperCase(); }
 
-// Peta KIKC -> { shift, grup } dari tab Celup (sheet CLP). Daftar Celup sudah urut tanggal terbaru dulu,
-// jadi bila satu KIKC muncul beberapa kali, baris terbaru yang dipakai. Memakai cache daftar (LIST_TTL),
-// dan jika gagal dibaca, tab Data tetap tampil memakai isian dari tab Input.
-function clpShiftGrup_() {
-  const map = Object.create(null);
-  try {
-    const res = getList('clp', false);
-    if (!res || res.error || !res.rows) return map;
-    const h = res.headers.map(function (x) { return String(x).toUpperCase(); });
-    const iK = h.indexOf('KIKC'), iS = h.indexOf('SHIFT'), iG = h.indexOf('GRUP');
-    if (iK < 0) return map;
-    res.rows.forEach(function (r) {
-      const k = normKikc_(r[iK]);
-      if (!k || map[k]) return;
-      map[k] = { shift: iS >= 0 ? str_(r[iS]).trim() : '', grup: iG >= 0 ? str_(r[iG]).trim() : '' };
-    });
-  } catch (e) { /* abaikan: pakai isian Input */ }
-  return map;
+// Peta referensi per KIKC untuk tampilan tab Data. Prioritas (per kolom, kolom kosong jatuh ke sumber berikutnya):
+//   1. tab Celup (sheet CLP)  2. tab Plan (Mesin: kolom Alokasi dulu, jika kosong baru kolom Mesin)  3. data tersimpan di sheet Jawaban (berasal dari WOD/GRM saat input).
+// Daftar Celup sudah urut tanggal terbaru dulu, jadi bila satu KIKC muncul beberapa kali, baris terbaru yang dipakai.
+// Memakai cache daftar (LIST_TTL); jika salah satu daftar gagal dibaca, tab Data tetap tampil memakai sumber berikutnya.
+function refMaps_() {
+  const out = { clp: Object.create(null), plan: Object.create(null) };
+  function fill(key, map, build) {
+    try {
+      const res = getList(key, false);
+      if (!res || res.error || !res.rows) return;
+      const h = res.headers.map(function (x) { return String(x).toUpperCase(); });
+      const iK = h.indexOf('KIKC');
+      if (iK < 0) return;
+      const cell = function (r, name) { const i = h.indexOf(name); return i >= 0 ? str_(r[i]).trim() : ''; };
+      res.rows.forEach(function (r) {
+        const k = normKikc_(r[iK]);
+        if (!k || map[k]) return;
+        map[k] = build(r, cell);
+      });
+    } catch (e) { /* abaikan: pakai sumber berikutnya */ }
+  }
+  fill('clp', out.clp, function (r, c) {
+    return { noBenang: c(r, 'NO BENANG'), warna: c(r, 'WARNA'), mesin: c(r, 'MESIN'), kg: c(r, 'KG'), cone: c(r, 'CONE'),
+             shift: c(r, 'SHIFT'), grup: c(r, 'GRUP'), ketKikc: c(r, 'KET') };
+  });
+  fill('plan', out.plan, function (r, c) {
+    return { noBenang: c(r, 'NO BENANG'), warna: c(r, 'WARNA'), mesin: c(r, 'ALOKASI') || c(r, 'MESIN'), kg: c(r, 'KG'), cone: c(r, 'CONE'),
+             ketKikc: c(r, 'KETERANGAN') };
+  });
+  return out;
 }
 
 function getData(dateStr) {
@@ -782,7 +797,7 @@ function getData(dateStr) {
 
     const values = sheet.getRange(start, 1, end - start + 1, nCols).getDisplayValues();
     const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
-    const clp = clpShiftGrup_();   // SHIFT dan GRUP dari tab Celup (sheet CLP), per KIKC
+    const refs = refMaps_();   // referensi per KIKC: Celup, lalu Plan (Mesin: Alokasi dulu)
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const rowNo = start + i;
@@ -790,18 +805,19 @@ function getData(dateStr) {
       const r = padRow_(values[i], TOTAL_COLS);
       const id = str_(r[1]).trim();
       if (!id) continue;
-      // Tampilan tab Data: Shift dan Grup mengikuti tab Celup. Jika KIKC belum ada di Celup (atau selnya kosong), pakai isian dari tab Input.
-      const cl = clp[normKikc_(r[2])];
-      const shift = (cl && cl.shift) ? cl.shift : r[8];
-      const grup = (cl && cl.grup) ? cl.grup : r[9];
+      // Tampilan tab Data: tiap kolom identitas diambil dari tab Celup; jika kosong/tidak ada, dari tab Plan (Mesin: Alokasi dulu, lalu kolom Mesin);
+      // jika masih kosong, dipakai nilai yang tersimpan di sheet (hasil WOD/GRM saat input; Shift dan Grup dari isian tab Input).
+      const k = normKikc_(r[2]), cl = refs.clp[k] || {}, pl = refs.plan[k] || {};
+      const pick = function (f, own) { return cl[f] || pl[f] || own; };
       out.push({
         rowIndex: rowNo, tk: rowToken_(id), timestamp: fmtTs_(tsRaw[i][0], r[0], tz),
-        kikc: r[2], noBenang: r[3], warna: r[4], mesin: r[5], kg: r[6], cone: r[7],
-        shift: shift, grup: grup,
-        shiftIn: r[8], grupIn: r[9],   // isian asli dari tab Input (dipakai form Ubah agar sheet tidak tertimpa nilai Celup)
+        kikc: r[2], noBenang: pick('noBenang', r[3]), warna: pick('warna', r[4]), mesin: pick('mesin', r[5]),
+        kg: pick('kg', r[6]), cone: pick('cone', r[7]),
+        shift: pick('shift', r[8]), grup: pick('grup', r[9]),
+        shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah agar sheet tidak tertimpa nilai dari Celup/Plan)
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
         qc: stripNum_(r[11]),
-        noteQc: r[12], keterangan: r[13], ketKikc: r[14]
+        noteQc: r[12], keterangan: r[13], ketKikc: pick('ketKikc', r[14])
       });
     }
     return { success: true, data: out, total: lastRow - 1 };

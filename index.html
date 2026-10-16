@@ -253,6 +253,10 @@
 
   /* ---------- Tab daftar (WOD, GRM, Plan, Celup) ---------- */
   .lcount{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
+  .lhead{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px}
+  .lhead .lcount{margin:0}
+  .lhead .btn-sm{display:inline-flex;align-items:center;gap:6px;margin:0;min-height:36px;padding:0 14px;font-size:14px}
+  .lhead .btn-sm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .lstate{flex:1}
   .pager{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
   .pager[hidden]{display:none}
@@ -672,7 +676,10 @@
         <div class="stat"><small>Total Kg</small><b id="pKg">-</b></div>
         <div class="stat"><small>Total Cone</small><b id="pCone">-</b></div>
       </div>
-      <p class="lcount" id="nPlan" aria-live="polite"></p>
+      <div class="lhead">
+        <p class="lcount" id="nPlan" aria-live="polite"></p>
+        <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh CSV</button>
+      </div>
       <div class="lstate" id="sPlan"></div>
       <div class="table-wrap hidden" id="wPlan">
         <table>
@@ -1998,11 +2005,7 @@ var Code128 = (function () {
       return c.length ? ' class="' + c.join(' ') + '"' : '';
     };
     // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
-    var order = hd.map(function (_, i) { return i; });
-    if (k === 'plan') {
-      var ia = hd.indexOf('ALOKASI'), im = hd.indexOf('MESIN');
-      if (ia >= 0 && im >= 0 && ia !== im + 1) { order.splice(order.indexOf(ia), 1); order.splice(order.indexOf(im) + 1, 0, ia); }
-    }
+    var order = colOrder(k, hd);
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('');
     var out = [];
     var alokJ = (k === 'plan' && m.rowNos) ? hd.indexOf('ALOKASI') : -1;
@@ -2029,6 +2032,39 @@ var Code128 = (function () {
     });
     m.rk = rk;
   }
+  function colOrder(k, hd) {
+    var order = hd.map(function (_, i) { return i; });
+    if (k === 'plan') {
+      var ia = hd.indexOf('ALOKASI'), im = hd.indexOf('MESIN');
+      if (ia >= 0 && im >= 0 && ia !== im + 1) { order.splice(order.indexOf(ia), 1); order.splice(order.indexOf(im) + 1, 0, ia); }
+    }
+    return order;
+  }
+  // Unduh CSV tab Plan: baris yang sedang tampil (ikut pencarian), urutan kolom sama dengan layar, pemisah titik koma agar rapi di Excel Indonesia
+  function exportPlanCsv() {
+    var m = lst.plan, hd = m.headers;
+    if (!hd.length || !m.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
+    var q = m.query.trim().toLowerCase();
+    var rows = m.rows.filter(function (r) { return !q || r.join(' ').toLowerCase().indexOf(q) >= 0; });
+    if (!rows.length) { toast('Tidak ada baris yang cocok dengan pencarian.', 'warn'); return; }
+    var order = colOrder('plan', hd);
+    function cell(v) {
+      v = v === undefined || v === null ? '' : String(v);
+      if (/^[=+@\t\r]/.test(v)) v = "'" + v;   // cegah teks terbaca sebagai rumus di Excel
+      return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }
+    var lines = [order.map(function (c) { return cell(hd[c]); }).join(';')];
+    rows.forEach(function (r) { lines.push(order.map(function (c) { return cell(r[c]); }).join(';')); });
+    var d = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var name = 'Plan_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes()) + '.csv';
+    var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast(rows.length + ' baris diunduh: ' + name, 'ok');
+  }
+  $('#dlPlan').addEventListener('click', exportPlanCsv);
   // Scorecard tab Plan: Total Lot (KIKC berbeda), Total Kg, Total Cone dari baris yang sedang tampil (ikut pencarian)
   function planStats(rows, hd) {
     var ids = ['#pLot', '#pKg', '#pCone'];
@@ -2759,7 +2795,7 @@ var Code128 = (function () {
 
   function openEdit(row) {
     edit.row = row;
-    edit.orig = { kikc: row.kikc, noBenang: row.noBenang, warna: row.warna, mesin: row.mesin, kg: row.kg, cone: row.cone, ketKikc: row.ketKikc };
+    edit.orig = { kikc: row.kikc, noBenang: row.noBenang, warna: row.warna, mesin: row.mesinIn !== undefined ? row.mesinIn : row.mesin, kg: row.kg, cone: row.cone, ketKikc: row.ketKikc };
     if (!edit.orig.ketKikc) {   // baris lama tanpa Ket KIKC: ambil dari daftar KIKC bila ada
       for (var q = 0; q < state.kikc.length; q++) { if (state.kikc[q].kikc === row.kikc) { edit.orig.ketKikc = state.kikc[q].ketKikc || ''; break; } }
     }
