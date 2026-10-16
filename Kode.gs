@@ -785,11 +785,11 @@ function refMaps_() {
   }
   fill('clp', out.clp, function (r, c) {
     return { noBenang: c(r, 'NO BENANG'), warna: c(r, 'WARNA'), mesin: c(r, 'MESIN'), kg: c(r, 'KG'), cone: c(r, 'CONE'),
-             shift: c(r, 'SHIFT'), grup: c(r, 'GRUP'), ketKikc: c(r, 'KET') };
+             shift: c(r, 'SHIFT'), grup: c(r, 'GRUP'), ketKikc: c(r, 'KET'), tanggal: c(r, 'TANGGAL') };
   });
   fill('plan', out.plan, function (r, c) {
     return { noBenang: c(r, 'NO BENANG'), warna: c(r, 'WARNA'), mesin: c(r, 'ALOKASI') || c(r, 'MESIN'), kg: c(r, 'KG'), cone: c(r, 'CONE'),
-             ketKikc: c(r, 'KETERANGAN') };
+             ketKikc: c(r, 'KETERANGAN'), celup: c(r, 'CELUP') };
   });
   return out;
 }
@@ -841,6 +841,7 @@ function getData(dateStr) {
         kikc: r[2], noBenang: pick('noBenang', r[3]), warna: pick('warna', r[4]), mesin: pick('mesin', r[5]),
         kg: pick('kg', r[6]), cone: pick('cone', r[7]),
         shift: pick('shift', r[8]), grup: pick('grup', r[9]),
+        tglCelup: cl.tanggal || (/sisa\s*order/i.test(pl.celup || '') ? '' : (pl.celup || '')),   // kolom virtual (tidak ada di sheet): tanggal dari tab Celup; jika tidak ada, dari kolom Celup tab Plan ("SISA ORDER" dikosongkan)
         shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah agar sheet tidak tertimpa nilai dari Celup/Plan)
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
         qc: stripNum_(r[11]),

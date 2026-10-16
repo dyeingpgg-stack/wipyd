@@ -609,6 +609,7 @@
               <th>Cone</th>
               <th>Shift</th>
               <th>Grup</th>
+              <th>Tgl Celup</th>
               <th>Posisi</th>
               <th>QC</th>
               <th>Keterangan</th>
@@ -1081,6 +1082,8 @@ var Code128 = (function () {
 
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  // Pencarian: huruf besar/kecil dan titik diabaikan, jadi "CC" cocok dengan "C.C.14.A", "AH" dengan "A.H.10.A"
+  var nq = function (s) { return String(s === undefined || s === null ? '' : s).toLowerCase().replace(/\./g, ''); };
 
   var POSISI = ['CELUP', 'HDX', 'RF', 'WIP', 'KELOS', 'PACK'];
   // Data lama di Sheet masih bisa berawalan nomor ("1. CELUP"): nomor dibuang saat ditampilkan
@@ -1941,7 +1944,7 @@ var Code128 = (function () {
     wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 1, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
     grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 1, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
     plan: { id: 'Plan', sub: 'Plan · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^CELUP$/ },
-    clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 1, wrap: /^KET$/, num: /^(KG|CONE)$/ }
+    clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
   };
   var mqWide = window.matchMedia ? window.matchMedia('(min-width:900px)') : null;
   function pageSize() { return mqWide && mqWide.matches ? 100 : 50; }   // baris per halaman: layar lebar memuat lebih banyak
@@ -1974,7 +1977,7 @@ var Code128 = (function () {
     if (k === 'plan' || k === 'wod') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan (atau supplier dari WOD) berubah
   }
   function renderList0(k) {
-    var d = LISTS[k], m = lst[k], q = m.query.trim().toLowerCase();
+    var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
       if (k === 'plan') planStats(null, m.headers);
@@ -1989,7 +1992,7 @@ var Code128 = (function () {
     var rk = m.sig + '|' + q + '|' + m.page + '|' + ps;
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
-    m.rows.forEach(function (r, i) { if (!q || r.join(' ').toLowerCase().indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
+    m.rows.forEach(function (r, i) { if (!q || nq(r.join(' ')).indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
     if (k === 'plan') planStats(rows, m.headers);
     if (!rows.length) {
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true;
@@ -2011,6 +2014,7 @@ var Code128 = (function () {
     };
     // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
     var order = colOrder(k, hd);
+    var hasCelup = k === 'plan' ? planHasCelup(m) : false;
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('');
     var out = [];
     var alokJ = (k === 'plan' && m.rowNos) ? hd.indexOf('ALOKASI') : -1;
@@ -2018,6 +2022,7 @@ var Code128 = (function () {
       var r = shown[i], tr = '<tr>';
       for (var p = 0; p < order.length; p++) {
         var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
+        if (k === 'plan' && hd[j] === 'CELUP') cell = celupView(cell, hasCelup);
         if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
         else tr += '<td' + cls(p, hd[j], true) + '>' + (cell === '' ? '<span class="dim">-</span>' : esc(cell)) + '</td>';
       }
@@ -2037,6 +2042,17 @@ var Code128 = (function () {
     });
     m.rk = rk;
   }
+  // Kolom CELUP tab Plan: "Sisa Order" hanya muncul bila minimal satu baris berisi tanggal. Jika semua baris kosong (atau hanya "SISA ORDER"), kolom dibiarkan kosong.
+  function planHasCelup(m) {
+    var c = m.headers.indexOf('CELUP');
+    if (c < 0) return false;
+    return m.rows.some(function (r) { var v = String(r[c] === undefined || r[c] === null ? '' : r[c]).trim(); return v && !/^sisa\s*order$/i.test(v); });
+  }
+  function celupView(v, has) {
+    v = String(v === undefined || v === null ? '' : v).trim();
+    if (v && !/^sisa\s*order$/i.test(v)) return v;
+    return has ? 'Sisa Order' : '';
+  }
   function colOrder(k, hd) {
     var order = hd.map(function (_, i) { return i; });
     if (k === 'plan') {
@@ -2049,8 +2065,8 @@ var Code128 = (function () {
   function exportPlanCsv() {
     var m = lst.plan, hd = m.headers;
     if (!hd.length || !m.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
-    var q = m.query.trim().toLowerCase();
-    var rows = m.rows.filter(function (r) { return !q || r.join(' ').toLowerCase().indexOf(q) >= 0; });
+    var q = nq(m.query.trim());
+    var rows = m.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     if (!rows.length) { toast('Tidak ada baris yang cocok dengan pencarian.', 'warn'); return; }
     var order = colOrder('plan', hd);
     function cell(v) {
@@ -2058,8 +2074,13 @@ var Code128 = (function () {
       if (/^[=+@\t\r]/.test(v)) v = "'" + v;   // cegah teks terbaca sebagai rumus di Excel
       return '"' + v.replace(/"/g, '""') + '"';   // semua sel diberi kutip, jadi angka desimal seperti 67,5 tidak pecah kolom di aplikasi mana pun
     }
+    // Kolom CELUP di CSV mengikuti tampilan: "Sisa Order" hanya bila minimal satu baris Plan berisi tanggal (dihitung dari seluruh Plan, bukan hasil pencarian)
+    var hasCelup = planHasCelup(m);
+    var val = function (r, c) {
+      return hd[c] === 'CELUP' ? celupView(r[c], hasCelup) : (r[c] === undefined || r[c] === null ? '' : String(r[c]).trim());
+    };
     var lines = [order.map(function (c) { return cell(hd[c]); }).join(';')];
-    rows.forEach(function (r) { lines.push(order.map(function (c) { return cell(r[c]); }).join(';')); });
+    rows.forEach(function (r) { lines.push(order.map(function (c) { return cell(val(r, c)); }).join(';')); });
     var d = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
     var name = 'Plan_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes()) + '.csv';
     var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -2330,7 +2351,7 @@ var Code128 = (function () {
   }
 
   function renderMesin() {
-    var m = lst.plan, q = mesinQ.query.trim().toLowerCase();
+    var m = lst.plan, q = nq(mesinQ.query.trim());
     var wrap = $('#wMesin'), note = $('#nMesin');
     if (!m.headers.length || !m.rows.length) {
       mesinQ.key = ''; wrap.classList.add('hidden'); note.textContent = ''; $('#mNote').textContent = '';
@@ -2349,7 +2370,7 @@ var Code128 = (function () {
       var all = b.lots.map(function (it, i) { return { it: it, c: i + 1 }; });   // nomor cycle = urutan lot di mesin itu
       var lots = q ? all.filter(function (x) {
         var it = x.it;
-        return [it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : ''].join(' ').toLowerCase().indexOf(q) >= 0;
+        return nq([it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : ''].join(' ')).indexOf(q) >= 0;
       }) : all;
       if (q && !lots.length) return;
       var label = b.mesin || 'TANPA MESIN';
@@ -2710,11 +2731,11 @@ var Code128 = (function () {
 
   /* ---------- Isi tabel ---------- */
   function renderRows() {
-    var q = state.query.trim().toLowerCase();
+    var q = nq(state.query.trim());
     var rows = state.rows.filter(function (r) {
       if (state.filterPos && r.posisi !== state.filterPos) return false;
       if (!q) return true;
-      return [r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.noteQc, r.keterangan].join(' ').toLowerCase().indexOf(q) >= 0;
+      return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, r.noteQc, r.keterangan].join(' ')).indexOf(q) >= 0;
     });
     var dupInfo = { cnt: {}, kp: {} };   // dihitung dari semua data hari itu, bukan hanya yang lolos filter
     state.rows.forEach(function (r) {
@@ -2749,6 +2770,7 @@ var Code128 = (function () {
         '<td>' + esc(r.cone) + '</td>' +
         '<td>' + esc(r.shift) + '</td>' +
         '<td>' + esc(r.grup) + '</td>' +
+        '<td class="date">' + esc(r.tglCelup) + '</td>' +
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
