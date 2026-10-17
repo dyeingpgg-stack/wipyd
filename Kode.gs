@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -31,6 +31,14 @@
  *
  * Posisi dan QC disimpan TANPA nomor urut: CELUP, HDX, RF, WIP, KELOS, PACK / LAYAK, UJI QC, TIDAK LAYAK.
  * Data lama yang masih "1. CELUP" dll: jalankan fungsi hapusNomorUrutLama() sekali dari editor Apps Script.
+ *
+ * Mode Admin / Viewer (tanpa login):
+ *   Aplikasi punya dua mode. Admin (link utama) boleh Input, Ubah, Hapus, Alokasi mesin, dan Ready/Stop mesin; Viewer hanya melihat data.
+ *   Link Viewer terpisah: <alamat aplikasi>/viewer.html atau <alamat aplikasi>/index.html?mode=viewer (URL web app Apps Script: tambahkan ?mode=viewer).
+ *   Fungsi yang mengubah data (saveData, updateRowData, deleteData, setAlokasi, resetAlokasi, setMesinStop) menolak permintaan
+ *   yang tidak membawa tanda mode "admin", jadi halaman Viewer (atau halaman lama yang belum dimuat ulang) tidak bisa mengubah data walau tombolnya tertekan.
+ *   Ini pengaman agar tidak salah ketuk, BUKAN pengamanan terhadap orang yang sengaja: siapa pun yang tahu cara kerjanya bisa memilih mode Admin.
+ *   Untuk pengamanan sungguhan, isi APP_PIN di bawah (PIN diminta untuk semua pengguna aplikasi).
  *
  * Deploy: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
  * Setiap mengubah kode ini: Deploy > Manage deployments > ikon pensil > Version: New version > Deploy.
@@ -64,6 +72,7 @@ const DATE_TEXT_MDY = { clp: true };   // sheet yang menyimpan tanggal sebagai T
 const MAX_ROWS = 300;
 const TOKEN_SALT = 'wipyd-v1';
 const APP_PIN = '';              // OPSIONAL: isi mis. '2468'. Kosong = tanpa PIN.
+const MODE_ADMIN = 'admin';       // tanda yang dikirim aplikasi saat berada di mode Admin
 const HEADERS = ['Timestamp', 'ID UNIK', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'POSISI', 'QC', 'NOTE QC', 'KETERANGAN', 'KET KIKC'];
 const TOTAL_COLS = 15;
 const COL_KET = 14;
@@ -73,7 +82,14 @@ const COL_KET_KIKC = 15;
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.fn === 'ping') return json_({ ok: true, result: 'pong' });
-  return HtmlService.createHtmlOutputFromFile('Index')
+  let page = HtmlService.createHtmlOutputFromFile('Index');
+  // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
+  // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
+  const want = str_(p.mode).toLowerCase();
+  if (want === 'viewer' || want === 'admin') {
+    page = HtmlService.createHtmlOutput(page.getContent().replace('<head>', '<head><script>window.WIPYD_FORCE_MODE="' + want + '";</script>'));
+  }
+  return page
     .setTitle('Sistem WIP YD')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -81,17 +97,24 @@ function doGet(e) {
 
 const API_FUNCS = {
   getKikcData: function () { return getKikcData(); },
+  getViewerUrl: function () { return getViewerUrl(); },
   getData: function (a) { return getData(a[0]); },
   saveData: function (a) { return saveData(a[0]); },
   updateRowData: function (a) { return updateRowData(a[0]); },
-  deleteData: function (a) { return deleteData(a[0], a[1]); },
+  deleteData: function (a) { return deleteData(a[0], a[1], a[2]); },
   getList: function (a) { return getList(a[0], a[1]); },
   getLists: function (a) { return getLists(a[0]); },
-  setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2]); },
-  resetAlokasi: function () { return resetAlokasi(); },
+  setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3]); },
+  resetAlokasi: function (a) { return resetAlokasi(a[0]); },
   getMesinStop: function () { return { success: true, stop: readMesinStop_() }; },
-  setMesinStop: function (a) { return setMesinStop(a[0], a[1]); }
+  setMesinStop: function (a) { return setMesinStop(a[0], a[1], a[2]); }
 };
+
+// Alamat link Viewer (URL web app + ?mode=viewer). Dipakai tombol Bagikan di aplikasi Admin.
+function getViewerUrl() {
+  const u = ScriptApp.getService().getUrl();
+  return u ? u + '?mode=viewer' : '';
+}
 
 function doPost(e) {
   try {
@@ -171,6 +194,13 @@ function ensureColumns_(sheet) {
 }
 
 function str_(v) { return (v === undefined || v === null) ? '' : String(v); }
+
+// Fungsi yang mengubah data hanya jalan jika aplikasi berada di mode Admin (lihat catatan "Mode Admin / Viewer" di atas).
+function needAdmin_(mode) {
+  if (str_(mode) !== MODE_ADMIN) {
+    throw new Error('Mode Viewer: data hanya bisa dilihat. Ganti ke mode Admin untuk menyimpan, mengubah, atau menghapus data.');
+  }
+}
 
 function need_(v, label) {
   if (!str_(v).trim()) throw new Error(label + ' wajib diisi.');
@@ -595,7 +625,8 @@ function readMesinStop_() {
   try { const a = JSON.parse(v); if (Array.isArray(a)) return a.map(String); } catch (e) { /* jatuh ke nilai awal */ }
   return MESIN_STOP_AWAL.slice();
 }
-function setMesinStop(mesin, stop) {
+function setMesinStop(mesin, stop, mode) {
+  needAdmin_(mode);
   const m = str_(mesin).replace(/\s+/g, '').toUpperCase();
   if (!/^[A-Z0-9]{1,10}$/.test(m)) throw new Error('Nama mesin tidak valid.');
   const lock = lock_();
@@ -667,7 +698,8 @@ function saveAlokasiBatch_(pairs) {
 }
 
 // Mengisi alokasi mesin satu KIKC (dipanggil dari tab Plan). rowNo tidak dipakai lagi; hanya KIKC yang menentukan.
-function setAlokasi(rowNo, kikc, value) {
+function setAlokasi(rowNo, kikc, value, mode) {
+  needAdmin_(mode);
   const want = normKikc_(kikc);
   if (!want) throw new Error('KIKC kosong.');
   let v = str_(value).replace(/\s+/g, '').toUpperCase();
@@ -678,7 +710,8 @@ function setAlokasi(rowNo, kikc, value) {
 }
 
 // Reset: mengosongkan SEMUA alokasi mesin (menghapus isi sheet "Alokasi" selain judul). Sheet Plan tidak disentuh.
-function resetAlokasi() {
+function resetAlokasi(mode) {
+  needAdmin_(mode);
   const lock = lock_();
   try {
     const sh = alokasiSheet_();
@@ -718,6 +751,7 @@ function migrasiAlokasiLama() {
 // Kunci hanya dipegang saat menulis ke sheet (pencarian KIKC dilakukan SEBELUM kunci), jadi antrean pengguna lain lebih pendek.
 function saveData(p) {
   p = p || {};
+  needAdmin_(p.mode);
   need_(p.kikc, 'KIKC');
   need_(p.posisi, 'Posisi');
   p.kikc = str_(p.kikc).replace(/\s+/g, ' ').trim();
@@ -886,6 +920,7 @@ function dateKey_(v, tz) {
 // ================= 5. Ubah data =================
 function updateRowData(p) {
   p = p || {};
+  needAdmin_(p.mode);
   need_(p.kikc, 'KIKC');
   need_(p.posisi, 'Posisi');
   const newKikc = str_(p.kikc).replace(/\s+/g, ' ').trim();
@@ -953,7 +988,8 @@ function updateRowData(p) {
 }
 
 // ================= 6. Hapus data =================
-function deleteData(rowIndex, tk) {
+function deleteData(rowIndex, tk, mode) {
+  needAdmin_(mode);
   const lock = lock_();
   try {
     const sheet = getJawabanSheet_(false);
