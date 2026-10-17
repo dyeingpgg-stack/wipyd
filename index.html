@@ -690,7 +690,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
               <th>Posisi</th>
               <th>QC</th>
               <th>Keterangan</th>
-              <th>Catatan QC</th>
+              <th class="admin-only">Catatan QC</th>
               <th>Waktu</th>
             </tr>
           </thead>
@@ -2911,7 +2911,7 @@ var Code128 = (function () {
     var rows = state.rows.filter(function (r) {
       if (state.filterPos && r.posisi !== state.filterPos) return false;
       if (!q) return true;
-      return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, r.noteQc, r.keterangan].join(' ')).indexOf(q) >= 0;
+      return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, (isAdmin() ? r.noteQc : ''), r.keterangan].join(' ')).indexOf(q) >= 0;
     });
     var dupInfo = { cnt: {}, kp: {} };   // dihitung dari semua data hari itu, bukan hanya yang lolos filter
     state.rows.forEach(function (r) {
@@ -2950,7 +2950,7 @@ var Code128 = (function () {
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
-        '<td class="wrap dim">' + esc(r.noteQc) + '</td>' +
+        '<td class="wrap dim admin-only">' + esc(r.noteQc) + '</td>' +
         '<td class="dim">' + esc(r.timestamp) + '</td>' +
       '</tr>';
     }).join('');
@@ -3184,7 +3184,7 @@ var Code128 = (function () {
         tgl: m ? m[3] + '-' + m[2] + '-' + m[1] : String(r.tglCelup || ''), kikc: r.kikc, nb: r.noBenang, warna: r.warna,
         kg: fmt2(parseNum(r.kg)), cone: String(r.cone || ''), ket: r.ketKikc, shift: shiftLabel(r.shift), grup: String(r.grup || '').trim(),
         pos: pi >= 0 ? (pi + 1) + '. ' + r.posisi : String(r.posisi || ''), posKey: r.posisi, qc: r.qc,
-        cat: [r.noteQc, r.keterangan].filter(function (x) { return x && String(x).trim(); }).join(' · ')
+        cat: [(isAdmin() ? r.noteQc : ''), r.keterangan].filter(function (x) { return x && String(x).trim(); }).join(' · ')
       };
     });
     var res = rsCalc(rows);
