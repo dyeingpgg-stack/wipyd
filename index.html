@@ -2883,7 +2883,7 @@ var Code128 = (function () {
 
   /* ---------- Resume tab Plan dan Mesin (per No Benang) ---------- */
   var RSX = { plan: { open: null, key: '' }, mesin: { open: null, key: '' } };
-  function rsIsOpen(k) { var o = RSX[k].open; return o === null ? window.innerWidth >= 900 : o; }
+  function rsIsOpen(k) { return RSX[k].open === true; }   // default tersembunyi; tampil hanya setelah tombol Resume diketuk
   function rsMarkup(head, body, cards) {
     return '<div class="rs-scroll"><table class="rs-table"><thead><tr>' + head.map(function (t, i) { return '<th' + (i === head.length - 1 ? ' class="tot"' : '') + '>' + esc(t) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       body.map(function (r) { return '<tr>' + r.map(function (c, i) { return '<td' + (i === r.length - 1 ? ' class="tot"' : '') + '>' + (i === 0 ? esc(c) : c) + '</td>'; }).join('') + '</tr>'; }).join('') +
@@ -2997,7 +2997,7 @@ var Code128 = (function () {
 
   function renderResume() {
     var box = $('#resume'), btn = $('#btnResume');
-    var open = RS.open === null ? window.innerWidth >= 900 : RS.open;
+    var open = RS.open === true;
     box.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
     btn.classList.toggle('active', open);
@@ -3022,7 +3022,7 @@ var Code128 = (function () {
     }
   }
   $('#btnResume').addEventListener('click', function () {
-    var cur = RS.open === null ? window.innerWidth >= 900 : RS.open;
+    var cur = RS.open === true;
     RS.open = !cur; RS.key = '';
     renderResume();
   });
