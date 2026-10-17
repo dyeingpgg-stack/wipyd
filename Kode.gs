@@ -825,6 +825,7 @@ function getData(dateStr) {
     const values = sheet.getRange(start, 1, end - start + 1, nCols).getDisplayValues();
     const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
     const refs = refMaps_();   // referensi per KIKC: Celup, lalu Plan (Mesin: Alokasi dulu)
+    const kemarin = Utilities.formatDate(new Date(Date.now() - 86400000), tz, 'dd/MM/yyyy');   // TODAY()-1, dipakai untuk tanggal dari kolom Celup tab Plan
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const rowNo = start + i;
@@ -841,7 +842,7 @@ function getData(dateStr) {
         kikc: r[2], noBenang: pick('noBenang', r[3]), warna: pick('warna', r[4]), mesin: pick('mesin', r[5]),
         kg: pick('kg', r[6]), cone: pick('cone', r[7]),
         shift: pick('shift', r[8]), grup: pick('grup', r[9]),
-        tglCelup: cl.tanggal || (/sisa\s*order/i.test(pl.celup || '') ? '' : (pl.celup || '')),   // kolom virtual (tidak ada di sheet): tanggal dari tab Celup; jika tidak ada, dari kolom Celup tab Plan ("SISA ORDER" dikosongkan)
+        tglCelup: cl.tanggal || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : ''),   // kolom virtual (tidak ada di sheet): tanggal dari tab Celup; jika tidak ada dan Plan berisi tanggal Celup, memakai TODAY()-1 seperti kolom Celup tab Plan ("SISA ORDER" dikosongkan)
         shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah agar sheet tidak tertimpa nilai dari Celup/Plan)
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
         qc: stripNum_(r[11]),

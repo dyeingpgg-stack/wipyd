@@ -213,6 +213,11 @@
   .stat small{display:block;font-size:12.5px;color:var(--dim)}
   .stat b{display:block;font:700 24px/1.15 var(--display);color:var(--cyan);text-shadow:0 0 12px rgba(var(--c-rgb),.55);overflow-wrap:anywhere}
   .stat b.flash{animation:readout .7s ease-out}
+  .stats.s4{grid-template-columns:repeat(2,1fr)}
+  @media(min-width:600px){.stats.s4{grid-template-columns:repeat(4,1fr)}}
+  .stat.g{border-color:rgba(var(--g-rgb),.4)}.stat.g b{color:var(--lime);text-shadow:0 0 12px rgba(var(--g-rgb),.5)}
+  .stat.a{border-color:rgba(var(--a-rgb),.4)}.stat.a b{color:var(--amber);text-shadow:0 0 12px rgba(var(--a-rgb),.5)}
+  .stat.r{border-color:rgba(var(--r-rgb),.45)}.stat.r b{color:var(--rose);text-shadow:0 0 12px rgba(var(--r-rgb),.5)}
   .sumnote{flex:none;margin:0 2px 10px;font-size:12.5px;color:var(--dim)}
 
   .table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);-webkit-overflow-scrolling:touch;box-shadow:0 0 24px rgba(var(--c-rgb),.08);scrollbar-width:thin;scrollbar-color:rgba(var(--c-rgb),.35) transparent}
@@ -314,6 +319,8 @@
   .mpanel.detail .mgrid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
   .mcard{position:relative;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--edge-strong);background:var(--surface);text-align:left;color:var(--text)}
   .mcard.moved{border-color:rgba(var(--a-rgb),.85)}
+  .mcard.sisa{border-color:rgba(var(--r-rgb),.85);background:linear-gradient(180deg,rgba(var(--r-rgb),.14),rgba(var(--r-rgb),.04)),var(--surface);box-shadow:inset 3px 0 0 var(--rose),0 0 12px rgba(var(--r-rgb),.28)}
+  .mc-flag.sisa{color:var(--rose)}
   .mcard.fin{border-color:rgba(var(--g-rgb),.8);background:linear-gradient(180deg,rgba(var(--g-rgb),.10),rgba(var(--g-rgb),.03)),var(--surface)}
   .mc-det{display:none}
   .mpanel.detail .mc-cmp{display:none}
@@ -708,6 +715,12 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qMesin" type="search" placeholder="Cari KIKC, warna, atau mesin" autocomplete="off" enterkeyhint="search" aria-label="Cari di alokasi mesin">
       </div>
+      <div class="stats s4" aria-live="polite">
+        <div class="stat"><small>Jumlah Mesin</small><b id="mTot">-</b></div>
+        <div class="stat g"><small>Mesin Running</small><b id="mRun">-</b></div>
+        <div class="stat a"><small>Mesin Idle</small><b id="mIdl">-</b></div>
+        <div class="stat r"><small>Mesin Stop</small><b id="mStp">-</b></div>
+      </div>
       <p class="lcount" id="nMesin" aria-live="polite"></p>
       <p class="mnote" id="mNote"></p>
       <div class="lstate" id="sMesin"></div>
@@ -1083,6 +1096,12 @@ var Code128 = (function () {
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   // Pencarian: huruf besar/kecil dan titik diabaikan, jadi "CC" cocok dengan "C.C.14.A", "AH" dengan "A.H.10.A"
+  // Shift dari tab Celup: P = Shift 1, S = Shift 2, M = Shift 3, N = kosong; nilai lain ditampilkan apa adanya
+  var SHIFT_MAP = { P: 'Shift 1', S: 'Shift 2', M: 'Shift 3', N: '' };
+  var shiftLabel = function (v) {
+    var t = String(v === undefined || v === null ? '' : v).trim(), k = t.toUpperCase();
+    return Object.prototype.hasOwnProperty.call(SHIFT_MAP, k) ? SHIFT_MAP[k] : t;
+  };
   var nq = function (s) { return String(s === undefined || s === null ? '' : s).toLowerCase().replace(/\./g, ''); };
 
   var POSISI = ['CELUP', 'HDX', 'RF', 'WIP', 'KELOS', 'PACK'];
@@ -1941,8 +1960,8 @@ var Code128 = (function () {
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
-    wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 1, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
-    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 1, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
+    wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
+    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
     plan: { id: 'Plan', sub: 'Plan · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^CELUP$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
   };
@@ -2048,9 +2067,15 @@ var Code128 = (function () {
     if (c < 0) return false;
     return m.rows.some(function (r) { var v = String(r[c] === undefined || r[c] === null ? '' : r[c]).trim(); return v && !/^sisa\s*order$/i.test(v); });
   }
+  // Baris yang berisi tanggal Celup ditampilkan sebagai TODAY()-1 (kemarin), format DD/MM/YYYY
+  function kemarin() {
+    var d = new Date(); d.setDate(d.getDate() - 1);
+    var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
   function celupView(v, has) {
     v = String(v === undefined || v === null ? '' : v).trim();
-    if (v && !/^sisa\s*order$/i.test(v)) return v;
+    if (v && !/^sisa\s*order$/i.test(v)) return kemarin();
     return has ? 'Sisa Order' : '';
   }
   function colOrder(k, hd) {
@@ -2264,6 +2289,7 @@ var Code128 = (function () {
     var ix = {};
     headers.forEach(function (h, i) { ix[String(h).toUpperCase()] = i; });
     var items = [];
+    var hasCelup = planHasCelup(lst.plan);   // "Sisa Order" hanya bila minimal satu baris Plan berisi tanggal Celup (sama dengan tab Plan)
     rows.forEach(function (r, i) {
       var celup = String(r[ix['CELUP']] || '').trim();
       var cu = celup.toUpperCase();
@@ -2277,7 +2303,7 @@ var Code128 = (function () {
         i: i, kikc: kikc, noBenang: r[ix['NO BENANG']] || '', warna: r[ix['WARNA']] || '',
         kgTxt: r[ix['KG']] || '', coneTxt: r[ix['CONE']] || '', ket: r[ix['KETERANGAN']] || '',
         kg: parseNum(r[ix['KG']]), cone: parseNum(r[ix['CONE']]), from: m0, mesin: al || m0, alok: al,
-        fin: fin, celup: celup, sisa: cu === 'SISA ORDER'
+        fin: fin, celup: fin ? kemarin() : celup, sisa: !fin && hasCelup
       });
     });
     var moved = items.filter(function (it) { return it.mesin !== it.from; }).length;   // lot yang dialokasikan ke mesin lain
@@ -2330,9 +2356,9 @@ var Code128 = (function () {
     var kg = it.kgTxt === '' ? '-' : esc(it.kgTxt), cone = it.coneTxt === '' ? '-' : esc(it.coneTxt);
     var flags = '';
     if (it.fin) flags += '<div class="mc-flag ok">Finish · celup ' + esc(it.celup) + '</div>';
-    else if (it.sisa) flags += '<div class="mc-flag">SISA ORDER</div>';
+    else if (it.sisa) flags += '<div class="mc-flag sisa">SISA ORDER</div>';
     if (moved) flags += '<div class="mc-flag">Dialokasi (Plan: ' + (it.from === '' ? 'kosong' : esc(it.from)) + ')</div>';
-    return '<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + '" data-k="' + esc(it.kikc) + '">' +
+    return '<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + (it.sisa ? ' sisa' : '') + '" data-k="' + esc(it.kikc) + '">' +
       '<div class="mc-cmp">' +
         '<div class="mc-k">' + esc(it.kikc) + '</div>' +
         '<div class="mc-y">' + yarn + (it.warna ? ' / <em>' + esc(it.warna) + '</em>' : '') + '</div>' +
@@ -2355,6 +2381,7 @@ var Code128 = (function () {
     var wrap = $('#wMesin'), note = $('#nMesin');
     if (!m.headers.length || !m.rows.length) {
       mesinQ.key = ''; wrap.classList.add('hidden'); note.textContent = ''; $('#mNote').textContent = '';
+      ['#mTot', '#mRun', '#mIdl', '#mStp'].forEach(function (id) { $(id).textContent = '-'; });
       if (m.loading) mesinState('<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) mesinState('<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
       else if (m.at) mesinState('<div class="state">Belum ada data di sheet Plan.</div>');
@@ -2364,13 +2391,21 @@ var Code128 = (function () {
     var key = m.sig + '|' + lst.wod.sig + '|' + q + '|' + mesinStop.join(',');
     if (key === mesinQ.key) return;   // tidak ada yang berubah
     var res = buildAlokasi(m.headers, m.rows);
+    // Ringkasan mesin: Stop = tombol Stop; Running = Ready dan punya lot belum Finish ("Order Aktif"); Idle = Ready tanpa lot aktif
+    var nMc = 0, nRun = 0, nIdl = 0, nStp = 0;
+    res.blocks.forEach(function (b) {
+      if (!b.mesin) return;
+      nMc++;
+      if (b.stop) nStp++; else if (b.open) nRun++; else nIdl++;
+    });
+    setStat('#mTot', fmtNum(nMc)); setStat('#mRun', fmtNum(nRun)); setStat('#mIdl', fmtNum(nIdl)); setStat('#mStp', fmtNum(nStp));
     mesinState('');
     var out = [], shown = 0;
     res.blocks.forEach(function (b) {
       var all = b.lots.map(function (it, i) { return { it: it, c: i + 1 }; });   // nomor cycle = urutan lot di mesin itu
       var lots = q ? all.filter(function (x) {
         var it = x.it;
-        return nq([it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : ''].join(' ')).indexOf(q) >= 0;
+        return nq([it.kikc, it.noBenang, it.warna, it.mesin, it.from, it.ket, it.fin ? 'finish' : '', it.sisa ? 'sisa order' : ''].join(' ')).indexOf(q) >= 0;
       }) : all;
       if (q && !lots.length) return;
       var label = b.mesin || 'TANPA MESIN';
@@ -2768,7 +2803,7 @@ var Code128 = (function () {
         '<td class="wrap">' + esc(r.ketKikc) + '</td>' +
         '<td>' + esc(r.kg) + '</td>' +
         '<td>' + esc(r.cone) + '</td>' +
-        '<td>' + esc(r.shift) + '</td>' +
+        '<td>' + esc(shiftLabel(r.shift)) + '</td>' +
         '<td>' + esc(r.grup) + '</td>' +
         '<td class="date">' + esc(r.tglCelup) + '</td>' +
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
