@@ -67,3 +67,7 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
   (atau biarkan: pemicu lama menghapus dirinya sendiri saat jalan berikutnya).
 - Sheet **Alokasi** kini hanya menjadi isian awal kolom ALOKASI saat Get Plan (alokasi terakhir per KIKC).
 - Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v34); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
+
+## Scorecard Plan dan tema PDF/PNG
+- Tab Plan punya dua kartu tambahan: **Realisasi (Kg)** (Kg celup dari tab Celup menurut KIKC, dengan persen dari Plan) dan **Sisa Order (Kg)** (jumlah Kg baris berstatus Sisa Order, plus jumlah lot). Keduanya ikut pencarian dan tanggal Plan yang dipilih.
+- Unduh PDF dan PNG Order Celup Harian (tab Mesin) memakai tema Green Lime Neon (palet ada di `dailyBuild`). Unggah `index.html` dan `sw.js` (cache v35).

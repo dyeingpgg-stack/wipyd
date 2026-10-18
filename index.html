@@ -248,6 +248,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .btn-today.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
   .stats{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
   .stat{min-width:0;padding:8px 10px 9px;border-radius:14px;border:1px solid rgba(var(--c-rgb),.28);background:linear-gradient(180deg,rgba(var(--c-rgb),.08),rgba(var(--c-rgb),.02))}
+  .stats2{grid-template-columns:repeat(2,1fr)}
   .stat small{display:block;font-size:12.5px;color:var(--dim)}
   .stat b{display:block;font:700 24px/1.15 var(--display);color:var(--cyan);text-shadow:0 0 12px rgba(var(--c-rgb),.55);overflow-wrap:anywhere}
   .stat b.flash{animation:readout .7s ease-out}
@@ -796,6 +797,10 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <div class="stat"><small>Total Lot</small><b id="pLot">-</b></div>
         <div class="stat"><small>Total Kg</small><b id="pKg">-</b></div>
         <div class="stat"><small>Total Cone</small><b id="pCone">-</b></div>
+      </div>
+      <div class="stats stats2" aria-live="polite">
+        <div class="stat"><small id="pRealL">Realisasi (Kg)</small><b id="pReal">-</b></div>
+        <div class="stat"><small id="pSisaL">Sisa Order (Kg)</small><b id="pSisa">-</b></div>
       </div>
       <div class="lhead">
         <p class="lcount" id="nPlan" aria-live="polite"></p>
@@ -2152,7 +2157,7 @@ var Code128 = (function () {
       return;
     }
     var ps = pageSize();
-    var rk = m.sig + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() : '');
+    var rk = m.sig + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     m.rows.forEach(function (r, i) { if (!q || nq(r.join(' ')).indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
@@ -2290,17 +2295,23 @@ var Code128 = (function () {
   $('#dlPlan').addEventListener('click', exportPlanCsv);
   // Scorecard tab Plan: Total Lot (KIKC berbeda), Total Kg, Total Cone dari baris yang sedang tampil (ikut pencarian)
   function planStats(rows, hd) {
-    var ids = ['#pLot', '#pKg', '#pCone'];
-    if (!rows) { ids.forEach(function (id) { $(id).textContent = '-'; }); return; }
-    var ik = hd.indexOf('KIKC'), ig = hd.indexOf('KG'), ic = hd.indexOf('CONE');
-    var seen = {}, lot = 0, kg = 0, cone = 0;
+    var ids = ['#pLot', '#pKg', '#pCone', '#pReal', '#pSisa'];
+    if (!rows) { ids.forEach(function (id) { $(id).textContent = '-'; }); $('#pRealL').textContent = 'Realisasi (Kg)'; $('#pSisaL').textContent = 'Sisa Order (Kg)'; return; }
+    var ik = hd.indexOf('KIKC'), ig = hd.indexOf('KG'), ic = hd.indexOf('CONE'), iz = hd.indexOf('CELUP');
+    var seen = {}, lot = 0, kg = 0, cone = 0, real = 0, sisa = 0, sisaLot = 0;
     rows.forEach(function (r) {
       var k = String(ik >= 0 ? r[ik] : '').replace(/\s+/g, ' ').trim().toUpperCase();
-      if (k && !seen[k]) { seen[k] = 1; lot++; }
+      var first = k && !seen[k];
+      if (first) { seen[k] = 1; lot++; }
       if (ig >= 0) kg += parseNum(r[ig]);
       if (ic >= 0) cone += parseNum(r[ic]);
+      if (first) { var ci = clpInfo(k); if (ci) real += ci.kg; }   // Realisasi = Kg celup di tab Celup menurut KIKC (sama dengan PDF Order Celup Harian)
+      if (iz >= 0 && String(r[iz] || '').trim() === 'Sisa Order') { sisa += ig >= 0 ? parseNum(r[ig]) : 0; sisaLot++; }
     });
     setStat('#pLot', fmtNum(lot)); setStat('#pKg', fmtNum(kg)); setStat('#pCone', fmtNum(cone));
+    setStat('#pReal', fmtNum(real)); setStat('#pSisa', fmtNum(sisa));
+    $('#pRealL').textContent = 'Realisasi (Kg)' + (kg > 0 ? ' · ' + fmtNum(Math.round(Math.min(real / kg * 100, 999) * 100) / 100) + '% dari Plan' : '');
+    $('#pSisaL').textContent = 'Sisa Order (Kg)' + (sisaLot ? ' · ' + fmtNum(sisaLot) + ' lot' : '');
   }
   // Tab Plan diurutkan menurut kolom MESIN mengikuti MESIN_URUT (mesin tak dikenal di akhir); di dalam satu mesin urutan sheet dipertahankan.
   function sortPlan(headers, rows, rowNos) {
@@ -3725,58 +3736,60 @@ var Code128 = (function () {
       for (i = 0; i < s.length; i++) { doc.text(s.charAt(i), cx, yy); cx += doc.getTextWidth(s.charAt(i)) + k; }
     };
     var f2 = function (n) { return fmt2(round2(n)); };
-    var C = { ink: '#0a1230', navy2: '#13296b', cyan: '#00b8d9', neon: '#38e8ff', violet: '#6c47ff', green: '#0c7d44', rose: '#c0275c', amber: '#b86e00', orange: '#f26a00', dim: '#5a6690', grid: '#e1e8f5', band: '#f3f7fd', page: '#f4f7fd' };
+    var C = { ink: '#07140c', navy2: '#0f3a1c', cyan: '#6fd400', neon: '#b8ff2c', violet: '#00c46a', green: '#0a7a2e', rose: '#c0275c', amber: '#b86e00', orange: '#f26a00', dim: '#5b6f5d', grid: '#e0ecd8', band: '#f3f9ec', page: '#f2f8ea' };
 
     // latar halaman
     hex(C.page, 'f'); doc.rect(0, 0, W, H, 'F');
 
     // ---- banner
-    grad(0, 0, W * 0.55, HEAD_H, '#050a1c', '#0f2260');
-    grad(W * 0.55 - 0.5, 0, W * 0.45 + 0.5, HEAD_H, '#0f2260', '#2b1a6b');
-    grad(0, HEAD_H, W, 3, '#00e5ff', '#7c4dff');
-    for (var ti = 0; ti < 44; ti++) { line(560 + ti * 8.5, 70 - (ti % 4 === 0 ? 9 : 4), 560 + ti * 8.5, 70, '#2f55b0', 0.6); }
+    grad(0, 0, W * 0.55, HEAD_H, '#020a05', '#0b2c14');
+    grad(W * 0.55 - 0.5, 0, W * 0.45 + 0.5, HEAD_H, '#0b2c14', '#1a4a0e');
+    grad(0, HEAD_H, W, 3, '#c6ff00', '#00e589');
+    grad(0, HEAD_H + 3, W, 3, '#35640f', '#0d4a2c');   // cahaya neon di bawah garis banner
+    for (var ti = 0; ti < 44; ti++) { line(560 + ti * 8.5, 70 - (ti % 4 === 0 ? 9 : 4), 560 + ti * 8.5, 70, '#3d8f2a', 0.6); }
     hex(C.neon, 'd'); doc.setLineWidth(2.4); doc.circle(M + 20, 50, 15, 'S');
     doc.setLineWidth(1.6); doc.circle(M + 20, 50, 8, 'S');
     hex(C.neon, 'f'); doc.circle(M + 20, 50, 2.6, 'F');
     font(true, 8, C.neon); spaced('WIP YARN DYEING  ·  DAILY DYEING ORDER', M + 52, 34, 2.4);
     font(true, 30, '#ffffff'); T('ORDER CELUP HARIAN', M + 52, 70);
     var pw = 210;
-    box(W - M - pw, 24, pw, 28, 14, '#0c1a47', C.neon, 1.2);
+    box(W - M - pw, 24, pw, 28, 14, '#0a2410', C.neon, 1.2);
     font(true, 11, '#ffffff'); T(dateTxt, W - M - pw / 2, 42, 'center');
-    font(false, 8, '#9fb4ee'); T('Dibuat ' + stamp + ' · ' + rep.T.nMc + ' mesin · ' + rep.T.lots + ' lot', W - M, 68, 'right');
+    font(false, 8, '#9fd69a'); T('Dibuat ' + stamp + ' · ' + rep.T.nMc + ' mesin · ' + rep.T.lots + ' lot', W - M, 68, 'right');
 
     // ---- KPI
     var kw = (IW - 40) / 5, TT = rep.T, pct = TT.kg > 0 ? Math.min(100, TT.real / TT.kg * 100) : 0;
     var kpis = [
       ['TOTAL ORDER (KG)', f2(TT.kg), rep.T.lots + ' lot', C.cyan], ['TOTAL CONE', fmtNum(round2(TT.cone)), 'STD rata-rata ' + (TT.cone > 0 ? fmt2(TT.kg / TT.cone) : '-'), C.violet],
-      ['TOTAL LOT', fmtNum(TT.lots), TT.sisaLots + ' sisa order · ' + f2(TT.sisaKg) + ' Kg', '#ec4899'], ['MESIN AKTIF', TT.nAct + ' / ' + TT.nMc, 'ada order aktif', '#10b981'],
-      ['REALISASI (KG)', f2(TT.real), fmt2(pct) + '% dari order', '#f59e0b']
+      ['TOTAL LOT', fmtNum(TT.lots), TT.sisaLots + ' sisa order · ' + f2(TT.sisaKg) + ' Kg', '#b9e600'], ['MESIN AKTIF', TT.nAct + ' / ' + TT.nMc, 'ada order aktif', '#2fe05f'],
+      ['REALISASI (KG)', f2(TT.real), fmt2(pct) + '% dari order', '#e0ff3d']
     ];
     kpis.forEach(function (k, i) {
       var x = M + i * (kw + 10);
-      box(x, KPI_Y, kw, KPI_H, 8, '#ffffff', '#d5def0', 0.8);
+      box(x, KPI_Y, kw, KPI_H, 8, '#ffffff', '#cfe3c4', 0.8);
       hex(k[3], 'f'); doc.roundedRect(x, KPI_Y, 5, KPI_H, 2.5, 2.5, 'F');
       font(true, 6.8, C.dim); spaced(k[0], x + 16, KPI_Y + 18, 1.5);
       font(true, 22, C.ink); T(k[1], x + 16, KPI_Y + 41);
       font(k[0] === 'TOTAL LOT' && TT.sisaLots > 0, 7.5, k[0] === 'TOTAL LOT' && TT.sisaLots > 0 ? C.orange : C.dim); T(k[2], x + 16, KPI_Y + 52);
     });
     // batang progres realisasi
-    hex('#e4eaf6', 'f'); doc.rect(M + 4 * (kw + 10) + 16, KPI_Y + 56, kw - 32, 3, 'F');
-    grad(M + 4 * (kw + 10) + 16, KPI_Y + 56, Math.max(0.5, (kw - 32) * pct / 100), 3, '#00e5ff', '#7c4dff');
+    hex('#e3efd9', 'f'); doc.rect(M + 4 * (kw + 10) + 16, KPI_Y + 56, kw - 32, 3, 'F');
+    grad(M + 4 * (kw + 10) + 16, KPI_Y + 56, Math.max(0.5, (kw - 32) * pct / 100), 3, '#c6ff00', '#00e589');
 
     // ---- kelompok mesin
     var gy = y0;
     rep.groups.forEach(function (g, gi2) {
       // judul kelompok
-      grad(M, gy, IW, GH, '#08102b', '#173a82');
+      grad(M, gy, IW, GH, '#04100a', '#14451d');
       hex(C.neon, 'f'); doc.rect(M, gy, 5, GH, 'F');
+      grad(M, gy + GH - 1.6, IW, 1.6, '#b8ff2c', '#04100a');   // garis neon lime di dasar judul kelompok
       font(true, 11.5, '#ffffff'); spaced(g.name, M + 16, gy + 17.5, 2.2);
       font(true, 8, C.neon); T(g.mcs.length + ' MESIN  ·  ' + g.lots + ' LOT  ·  ' + f2(g.kg) + ' KG  ·  ' + fmtNum(round2(g.cone)) + ' CONE', M + IW - 12, gy + 17, 'right');
       var hy = gy + GH;
       // judul kolom
-      hex('#101d47', 'f'); doc.rect(M, hy, IW, CHH, 'F');
+      hex('#0b2412', 'f'); doc.rect(M, hy, IW, CHH, 'F');
       cols.forEach(function (c, ci) {
-        font(true, 6.9, '#cfe0ff');
+        font(true, 6.9, '#d9ffc0');
         var al = c.a === 'c' ? 'center' : (c.a === 'r' ? 'right' : undefined), tx0 = c.a === 'c' ? xs[ci] + c.w / 2 : (c.a === 'r' ? xs[ci] + c.w - 6 : xs[ci] + 6);
         if (c.t.length === 2) { T(c.t[0], tx0, hy + 11.5, al); T(c.t[1], tx0, hy + 21, al); } else T(c.t[0], tx0, hy + 17.5, al);
       });
@@ -3794,7 +3807,7 @@ var Code128 = (function () {
           var cw = function (k) { return cols[CI[k]].w - 10; };
           font(false, 7.2, C.dim); T(String(i + 1), cx('no', 'c'), yb, 'center');
           font(true, 7.6, C.ink); T(fit(it.warna || '-', cw('warna')), cx('warna'), yb);
-          font(true, 7.6, '#0a5d8f'); T(fit(it.kikc, cw('kikc')), cx('kikc'), yb);
+          font(true, 7.6, '#1a6e00'); T(fit(it.kikc, cw('kikc')), cx('kikc'), yb);
           font(false, 7.6, C.ink); T(fit(it.noBenang || '-', cw('nb')), cx('nb'), yb);
           font(true, 7.4, C.dim); T(fit(r.sup || '-', cw('sup')), cx('sup', 'c'), yb, 'center');
           font(true, 7.8, C.ink); T(it.kgTxt === '' ? '-' : f2(it.kg), cx('qty', 'r'), yb, 'right');
@@ -3809,16 +3822,16 @@ var Code128 = (function () {
         });
         if (!mc.lots.length) {
           hex('#ffffff', 'f'); doc.rect(M + cols[0].w, ry, IW - cols[0].w, RH, 'F');
-          font(true, 7.4, mc.stop ? C.rose : '#9aa6c8'); spaced(mc.stop ? 'MESIN STOP' : 'KOSONG', M + cols[0].w + 10, ry + 11.6, 1.6);
+          font(true, 7.4, mc.stop ? C.rose : '#8fa88f'); spaced(mc.stop ? 'MESIN STOP' : 'KOSONG', M + cols[0].w + 10, ry + 11.6, 1.6);
         }
         // garis tegak tipis dan pembatas mesin
         for (var ci2 = 1; ci2 < cols.length; ci2++) line(xs[ci2], top, xs[ci2], top + bh, C.grid, 0.5);
-        line(M, top + bh, M + IW, top + bh, '#8fa4d6', 1);
-        line(M, top, M, top + bh, '#8fa4d6', 0.8); line(M + IW, top, M + IW, top + bh, '#8fa4d6', 0.8);
+        line(M, top + bh, M + IW, top + bh, '#7fae6e', 1);
+        line(M, top, M, top + bh, '#7fae6e', 0.8); line(M + IW, top, M + IW, top + bh, '#7fae6e', 0.8);
         // pil kode mesin
         var ph = Math.min(bh - 2, 20), pyy = top + (bh - ph) / 2;
         hex(C.page, 'f'); doc.rect(M + 0.5, top + 0.5, cols[0].w - 1, bh - 1, 'F');
-        box(M + 6, pyy, 44, ph, 5, mc.stop ? C.rose : '#0b1536', mc.stop ? C.rose : C.neon, 0.8);
+        box(M + 6, pyy, 44, ph, 5, mc.stop ? C.rose : '#06150a', mc.stop ? C.rose : C.neon, 0.8);
         font(true, mc.name.length > 3 ? 7.6 : 9, mc.stop ? '#ffffff' : C.neon); T(mc.name, M + 28, pyy + ph / 2 + 3.2, 'center');
         if (mc.cap) {   // kapasitas (kapasitas per siklus x 3 siklus) dan persen beban order aktif
           var pc2 = mc.load / mc.cap * 100, over = mc.load > mc.cap, cy2 = top + bh / 2;
@@ -3828,7 +3841,7 @@ var Code128 = (function () {
         ry += bh + MGAP;
       });
       // subtotal
-      hex('#e4ecfb', 'f'); doc.rect(M, ry, IW, SUBH, 'F');
+      hex('#e6f4d6', 'f'); doc.rect(M, ry, IW, SUBH, 'F');
       line(M, ry, M + IW, ry, C.cyan, 1.2);
       font(true, 8.2, C.ink); spaced('SUBTOTAL', M + 8, ry + 14.5, 1.4);
       T(f2(g.kg), xs[CI.qty] + cols[CI.qty].w - 6, ry + 14.5, 'right');
@@ -3839,29 +3852,29 @@ var Code128 = (function () {
 
     // ---- ringkasan bawah: grand total, realisasi, shift
     var sy = SUM_Y;
-    grad(M, sy, 440, SUM_H, '#08102b', '#173a82'); hex(C.neon, 'f'); doc.rect(M, sy, 5, SUM_H, 'F');
+    grad(M, sy, 440, SUM_H, '#04100a', '#14451d'); hex(C.neon, 'f'); doc.rect(M, sy, 5, SUM_H, 'F');
     font(true, 7.6, C.neon); spaced('GRAND TOTAL ORDER', M + 20, sy + 22, 2);
     var q1 = f2(TT.kg), c1 = fmtNum(round2(TT.cone));
     font(true, 28, '#ffffff'); T(q1, M + 20, sy + 62); var qw = doc.getTextWidth(q1);
     font(true, 10, C.neon); T('Kg', M + 26 + qw, sy + 62);
-    font(true, 28, '#8fd8ff'); T(c1, M + 150 + qw, sy + 62); var cwid = doc.getTextWidth(c1);
+    font(true, 28, '#9dffc2'); T(c1, M + 150 + qw, sy + 62); var cwid = doc.getTextWidth(c1);
     font(true, 10, C.neon); T('Cone', M + 156 + qw + cwid, sy + 62);
-    font(false, 7.6, '#9fb4ee'); T('STD = Kg / Cone  ·  rata-rata ' + (TT.cone > 0 ? fmt2(TT.kg / TT.cone) : '-'), M + 20, sy + 82);
+    font(false, 7.6, '#9fd69a'); T('STD = Kg / Cone  ·  rata-rata ' + (TT.cone > 0 ? fmt2(TT.kg / TT.cone) : '-'), M + 20, sy + 82);
     var rx0 = M + 454;
-    grad(rx0, sy, 360, SUM_H, '#173a82', '#2b1a6b'); hex('#a78bff', 'f'); doc.rect(rx0, sy, 5, SUM_H, 'F');
-    font(true, 7.6, '#c9b8ff'); spaced('REALISASI', rx0 + 20, sy + 22, 2);
+    grad(rx0, sy, 360, SUM_H, '#14451d', '#1a4a0e'); hex('#d4ff3a', 'f'); doc.rect(rx0, sy, 5, SUM_H, 'F');
+    font(true, 7.6, '#d6ff8a'); spaced('REALISASI', rx0 + 20, sy + 22, 2);
     var rq = f2(TT.real), rc = fmtNum(round2(TT.realCone));
     font(true, 24, '#ffffff'); T(rq, rx0 + 20, sy + 56); var rqw = doc.getTextWidth(rq);
-    font(true, 9, '#c9b8ff'); T('Kg', rx0 + 25 + rqw, sy + 56);
-    font(true, 24, '#d9ccff'); T(rc, rx0 + 125 + rqw, sy + 56); var rcw = doc.getTextWidth(rc);
-    font(true, 9, '#c9b8ff'); T('Cone', rx0 + 130 + rqw + rcw, sy + 56);
-    hex('#2a3c80', 'f'); doc.rect(rx0 + 20, sy + 70, 320, 5, 'F');
-    grad(rx0 + 20, sy + 70, Math.max(0.5, 320 * pct / 100), 5, '#00e5ff', '#a78bff');
+    font(true, 9, '#d6ff8a'); T('Kg', rx0 + 25 + rqw, sy + 56);
+    font(true, 24, '#e8ffb5'); T(rc, rx0 + 125 + rqw, sy + 56); var rcw = doc.getTextWidth(rc);
+    font(true, 9, '#d6ff8a'); T('Cone', rx0 + 130 + rqw + rcw, sy + 56);
+    hex('#1f4a22', 'f'); doc.rect(rx0 + 20, sy + 70, 320, 5, 'F');
+    grad(rx0 + 20, sy + 70, Math.max(0.5, 320 * pct / 100), 5, '#c6ff00', '#d4ff3a');
     font(true, 7.6, '#ffffff'); T(fmt2(pct) + '%', rx0 + 340, sy + 86, 'right');
     var tx1 = M + 828, tw1 = IW - 828;
-    box(tx1, sy, tw1, SUM_H, 8, '#ffffff', '#c3d0ec', 0.9);
-    hex('#101d47', 'f'); doc.roundedRect(tx1, sy, tw1, 20, 8, 8, 'F'); doc.rect(tx1, sy + 10, tw1, 10, 'F');
-    font(true, 7, '#cfe0ff'); T('SHIFT', tx1 + 12, sy + 13.5); T('GROUP', tx1 + tw1 / 2 - 6, sy + 13.5, 'center'); T('REAL KG', tx1 + tw1 - 10, sy + 13.5, 'right');
+    box(tx1, sy, tw1, SUM_H, 8, '#ffffff', '#bfdcae', 0.9);
+    hex('#0b2412', 'f'); doc.roundedRect(tx1, sy, tw1, 20, 8, 8, 'F'); doc.rect(tx1, sy + 10, tw1, 10, 'F');
+    font(true, 7, '#d9ffc0'); T('SHIFT', tx1 + 12, sy + 13.5); T('GROUP', tx1 + tw1 / 2 - 6, sy + 13.5, 'center'); T('REAL KG', tx1 + tw1 - 10, sy + 13.5, 'right');
     [1, 2, 3].forEach(function (s, i) {
       var yy = sy + 20 + i * 17;
       if (i % 2) { hex(C.band, 'f'); doc.rect(tx1 + 1, yy, tw1 - 2, 17, 'F'); }
@@ -3873,7 +3886,7 @@ var Code128 = (function () {
     font(true, 8.4, C.ink); T('Total', tx1 + 12, sy + 86); font(true, 8.4, C.green); T(f2(TT.real), tx1 + tw1 - 10, sy + 86, 'right');
 
     // ---- legenda
-    var lg = [['#ffe0bd', C.orange, 'SISA ORDER / SISA KIKC KEMARIN (belum celup)'], ['#c9efdc', '#7fc6a1', 'Sudah celup (data tab Celup)'], ['#ffffff', '#b9c6e4', 'Order aktif']], lx = M;
+    var lg = [['#ffe0bd', C.orange, 'SISA ORDER / SISA KIKC KEMARIN (belum celup)'], ['#c9efdc', '#7fc6a1', 'Sudah celup (data tab Celup)'], ['#ffffff', '#b3d3a0', 'Order aktif']], lx = M;
     lg.forEach(function (l) {
       box(lx, LEG_Y, 26, 14, 3, l[0], l[1], 0.8);
       font(true, 8.2, C.ink); T(l[2], lx + 34, LEG_Y + 10.5); lx += 34 + doc.getTextWidth(l[2]) + 26;
@@ -3882,11 +3895,11 @@ var Code128 = (function () {
     // ---- notes per no benang + catatan
     var nx = M, nw = 560;
     font(true, 7.6, C.dim); spaced('NOTES', nx, NOTE_Y - 6, 2);
-    hex('#101d47', 'f'); doc.rect(nx, NOTE_Y, nw, 24, 'F');
+    hex('#0b2412', 'f'); doc.rect(nx, NOTE_Y, nw, 24, 'F');
     var nc = [['NO.', 40, 'c'], ['NO. BENANG', 250, 'l'], ['STD', 100, 'r'], ['QTY (KG)', 170, 'r']], ncx = [nx];
     nc.forEach(function (c, i) { ncx.push(ncx[i] + c[1]); });
     nc.forEach(function (c, i) {
-      font(true, 7.6, '#cfe0ff');
+      font(true, 7.6, '#d9ffc0');
       T(c[0], c[2] === 'c' ? ncx[i] + c[1] / 2 : (c[2] === 'r' ? ncx[i] + c[1] - 10 : ncx[i] + 10), NOTE_Y + 15.5, c[2] === 'c' ? 'center' : (c[2] === 'r' ? 'right' : undefined));
     });
     for (var ni = 0; ni < nRows; ni++) {
@@ -3901,22 +3914,22 @@ var Code128 = (function () {
       }
     }
     var nty = NOTE_Y + 24 + nRows * NR;
-    hex('#e4ecfb', 'f'); doc.rect(nx, nty, nw, 26, 'F'); line(nx, nty, nx + nw, nty, C.cyan, 1.2);
+    hex('#e6f4d6', 'f'); doc.rect(nx, nty, nw, 26, 'F'); line(nx, nty, nx + nw, nty, C.cyan, 1.2);
     font(true, 13, C.ink); T(f2(TT.kg) + ' Kg', nx + nw / 2, nty + 18, 'center');
-    outline(nx, NOTE_Y, nw, 24 + nRows * NR + 26, 4, '#8fa4d6', 0.9);
+    outline(nx, NOTE_Y, nw, 24 + nRows * NR + 26, 4, '#7fae6e', 0.9);
     // CATATAN
     var cx0 = M + 580, cw0 = IW - 580;
-    hex('#101d47', 'f'); doc.rect(cx0, NOTE_Y, cw0, 24, 'F');
-    font(true, 7.6, '#cfe0ff'); T('CATATAN', cx0 + cw0 / 2, NOTE_Y + 15.5, 'center');
+    hex('#0b2412', 'f'); doc.rect(cx0, NOTE_Y, cw0, 24, 'F');
+    font(true, 7.6, '#d9ffc0'); T('CATATAN', cx0 + cw0 / 2, NOTE_Y + 15.5, 'center');
     for (var li = 0; li < nRows + 1; li++) {
       var lyy = NOTE_Y + 24 + li * NR;
       if (lyy + NR > NOTE_Y + 24 + nRows * NR + 26) break;
       hex('#ffffff', 'f'); doc.rect(cx0, lyy, cw0, NR, 'F'); line(cx0, lyy + NR, cx0 + cw0, lyy + NR, C.grid, 0.5);
     }
-    outline(cx0, NOTE_Y, cw0, 24 + nRows * NR + 26, 4, '#8fa4d6', 0.9);
+    outline(cx0, NOTE_Y, cw0, 24 + nRows * NR + 26, 4, '#7fae6e', 0.9);
 
     // ---- footer
-    grad(M, FOOT_Y, IW, 2, '#00e5ff', '#7c4dff');
+    grad(M, FOOT_Y, IW, 2, '#c6ff00', '#00e589');
     font(false, 8, C.dim); T('WIP YD  ·  Order Celup Harian  ·  STD = Kg / Cone  ·  Realisasi dari tab Celup', M, FOOT_Y + 18);
     font(true, 8, C.dim); T(stamp, M + IW, FOOT_Y + 18, 'right');
     return doc;
