@@ -690,6 +690,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-sm" id="btnResume" aria-expanded="false" aria-controls="resume"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
         <button type="button" class="btn-sm" id="btnPdf" aria-label="Unduh data hari ini sebagai PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
         <button type="button" class="btn-sm" id="btnPng" aria-label="Unduh data hari ini sebagai gambar PNG resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
+        <button type="button" class="btn-sm" id="btnWa" aria-label="Kirim data hari ini ke WhatsApp sebagai gambar yang tetap jelas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-4.2A8 8 0 1 1 8.4 18.8L4 20z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5.5 5.5l1-1.5-2-1-.8.8c-1-.4-1.9-1.3-2.3-2.3l.8-.8-1-2L9 9.5z"/></svg><span>Kirim WA</span></button>
       </div>
       <div class="resume" id="resume" hidden></div>
       <div id="tableState"></div>
@@ -830,6 +831,16 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
 
     <!-- ============ ALOKASI MESIN ============ -->
     <section id="viewMesin" class="view list" aria-label="Alokasi mesin">
+      <div class="daterow" id="mesinDateRow">
+        <button type="button" class="icon-btn" id="mesinPrev" aria-label="Tanggal sebelumnya">
+          <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <input class="input" id="mesinDate" type="date" aria-label="Pilih tanggal alokasi mesin">
+        <button type="button" class="icon-btn" id="mesinNext" aria-label="Tanggal berikutnya">
+          <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button type="button" class="btn-today active" id="mesinToday">Hari ini</button>
+      </div>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qMesin" type="search" placeholder="Cari KIKC, warna, atau mesin" autocomplete="off" enterkeyhint="search" aria-label="Cari di alokasi mesin">
@@ -844,6 +855,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-sm" id="btnResumeMesin" aria-expanded="false" aria-controls="resumeMesin"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
         <button type="button" class="btn-sm" id="btnPdfMesin" aria-label="Unduh Order Celup Harian sebagai PDF resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
         <button type="button" class="btn-sm" id="btnPngMesin" aria-label="Unduh Order Celup Harian sebagai gambar PNG 4K"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
+        <button type="button" class="btn-sm" id="btnWaMesin" aria-label="Kirim Order Celup Harian ke WhatsApp sebagai gambar yang tetap jelas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-4.2A8 8 0 1 1 8.4 18.8L4 20z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5.5 5.5l1-1.5-2-1-.8.8c-1-.4-1.9-1.300-2.300-2.300l.8-.8-1-2L9 9.500z"/></svg><span>Kirim WA</span></button>
       </div>
       <div class="resume" id="resumeMesin" hidden></div>
       <p class="lcount" id="nMesin" aria-live="polite"></p>
@@ -2372,8 +2384,14 @@ var Code128 = (function () {
     $('#planNext').disabled = !(cur < t || planDates.some(function (x) { return x > cur; }));
     $('#planPrev').disabled = !planDates.some(function (x) { return x < cur; });
     $('#planToday').classList.toggle('active', cur === t);
+    // Filter tanggal tab Mesin: memakai tanggal yang sama dengan tab Plan (alokasi mesin dihitung dari Plan tanggal itu)
+    $('#mesinDate').value = cur;
+    $('#mesinNext').disabled = $('#planNext').disabled;
+    $('#mesinPrev').disabled = $('#planPrev').disabled;
+    $('#mesinToday').classList.toggle('active', cur === t);
     $('#viewPlan').classList.toggle('plan-hist', planHistOn());
     if (state.view === 'plan') $('#subtitle').textContent = 'Plan · ' + dateLabel(cur) + (planHistOn() ? ' (riwayat)' : '');
+    else if (state.view === 'mesin') $('#subtitle').textContent = 'Alokasi mesin · ' + dateLabel(cur) + (planHistOn() ? ' (riwayat)' : '');
   }
   function setPlanDate(s) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return;
@@ -2425,6 +2443,11 @@ var Code128 = (function () {
     var next = planDates.filter(function (x) { return x > cur; })[0];
     if (next) setPlanDate(next); else if (cur < t) setPlanDate(t); else toast('Tidak ada Plan tersimpan setelah tanggal ini.', 'warn');
   });
+  // Tab Mesin: filter tanggal sama dengan tab Plan (satu tanggal untuk keduanya)
+  $('#mesinDate').addEventListener('change', function () { setPlanDate(this.value); });
+  $('#mesinToday').addEventListener('click', function () { setPlanDate(todayStr()); });
+  $('#mesinPrev').addEventListener('click', function () { $('#planPrev').click(); });
+  $('#mesinNext').addEventListener('click', function () { $('#planNext').click(); });
 
   // Create: 1) tentukan tanggal  2) Get Plan (baca sheet Plan)  3) Save (simpan ke sheet Plan Harian)
   var pc = { rows: null, headers: null, date: '', exists: 0, savedAt: '' };
@@ -2886,6 +2909,7 @@ var Code128 = (function () {
       restoreList('plan'); restoreList('wod'); restoreList('clp');
       mesinQ.key = ''; renderMesin(); loadMesinStop(false);   // dari data Plan di memori
       loadList('plan', false); loadList('clp', false);
+      planSyncUi(); loadPlanDates(false);
     }
   }
   // Ketuk 2x logo di pojok kiri atas: kolom untuk melihat / menempel URL web app (berakhiran /exec)
@@ -3699,7 +3723,8 @@ var Code128 = (function () {
 
     var now = new Date(), P2 = function (n) { return (n < 10 ? '0' : '') + n; };
     var HARI_P = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    var dateTxt = HARI_P[now.getDay()] + ', ' + now.getDate() + ' ' + BULAN_PNJ[now.getMonth()] + ' ' + now.getFullYear();
+    var pdt = (function () { var q = planCur().split('-'); return new Date(+q[0], +q[1] - 1, +q[2]); })();   // tanggal Plan yang dipilih di filter tanggal
+    var dateTxt = HARI_P[pdt.getDay()] + ', ' + pdt.getDate() + ' ' + BULAN_PNJ[pdt.getMonth()] + ' ' + pdt.getFullYear();
     var stamp = P2(now.getDate()) + '/' + P2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + P2(now.getHours()) + ':' + P2(now.getMinutes());
 
     // ---- ukur tinggi
@@ -3963,6 +3988,30 @@ var Code128 = (function () {
       cv.toBlob(function (blob) { resolve(blob ? { blob: blob, w: cv.width, h: cv.height } : null); }, 'image/png');
     }).then(function (r) { return r || dailyPng(rep, i + 1); });
   }
+  // Kirim WA untuk tab Data: tata letak sama dengan Unduh PNG, selebar 1600 px, dipotong tepat di batas baris, judul kolom diulang di tiap gambar
+  $('#btnWa').addEventListener('click', function () {
+    var b = this, lab = b.querySelector('span');
+    if (!state.rows.length) { toast('Belum ada data untuk dikirim.', 'warn'); return; }
+    var date = state.date, rows = state.rows.slice(), pd = shiftDate(date, -1), files = [];
+    b.disabled = true; lab.textContent = 'Menyiapkan...';
+    rsPrev(pd).then(function (prev) {
+      var WaDoc = function (o) { o.pref = WA_W / 842; o.maxpx = 60000000; return new PngDoc(o); };   // lebar halaman PDF Data = 842 pt
+      var doc = pdfBuild(WaDoc, rows, date, prev, 250);
+      if (doc.bad) throw new Error('Gambar terlalu besar untuk perangkat ini. Gunakan Unduh PDF.');
+      var parts = [];
+      doc.pages.forEach(function (cv, pi) {
+        var sc = cv.width / 842, topU = pi === 0 ? 56 : 16, nRows = Math.min(250, rows.length - pi * 250);
+        parts = parts.concat(waSlices(cv, { top: topU * sc, hdr: 24 * sc, start: (topU + 24) * sc, rh: 13 * sc, end: (topU + 24 + nRows * 13) * sc }));
+      });
+      var p = date.split('-'), base = 'WIP_YD_' + p[2] + '-' + p[1] + '-' + p[0];
+      return Promise.all(parts.map(waBlob)).then(function (bl) {
+        bl.forEach(function (x, i) { if (x) files.push(new File([x], base + '_WA_' + (i + 1) + 'dari' + bl.length + '.png', { type: 'image/png' })); });
+        if (!files.length) throw new Error('Gambar gagal dibuat.');
+      });
+    }).then(function () { return waSend(files); }).catch(function (e) {
+      toast('Gagal menyiapkan gambar. ' + errMsg(e), 'err', 7000);
+    }).then(function () { b.disabled = false; lab.textContent = 'Kirim WA'; });
+  });
   $('#btnPngMesin').addEventListener('click', function () {
     var b = this, lab = b.querySelector('span');
     if (!lst.plan.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
@@ -3973,6 +4022,85 @@ var Code128 = (function () {
     }).catch(function (e) {
       toast('PNG gagal dibuat. ' + errMsg(e), 'err', 7000);
     }).then(function () { b.disabled = false; lab.textContent = 'Unduh PNG'; });
+  });
+
+  /* ---------- Kirim WA: gambar dipotong per bagian agar tidak diperkecil WhatsApp ----------
+     WhatsApp (kualitas standar) memperkecil foto hingga sisi terpanjang sekitar 1600 px lalu mengompres JPEG, sehingga PNG 4K yang tinggi menjadi kecil dan pecah.
+     Di sini lembar digambar selebar 1600 px (tata letak sama dengan PNG) dan dipotong menjadi beberapa gambar setinggi maksimal 1600 px, dipotong di jarak kosong
+     antar kelompok mesin (bukan di tengah tabel). Tiap gambar tidak lagi diperkecil, jadi huruf tetap terbaca. Dikirim lewat menu Bagikan (pilih WhatsApp);
+     bila perangkat tidak mendukung, gambar diunduh satu per satu. */
+  var WA_W = 1600, WA_H = 1600;
+  function waCutRow(cv, from, lo, hi) {   // baris kosong (warna latar rata) terbawah antara lo..hi; -1 bila tidak ada
+    var ctx = cv.getContext('2d', { willReadFrequently: true }), w = cv.width;
+    for (var y = hi; y >= lo; y--) {
+      var d = ctx.getImageData(0, y, w, 1).data, ok = true;
+      for (var x = 4; x < w * 4; x += 12) {
+        if (Math.abs(d[x] - d[0]) > 6 || Math.abs(d[x + 1] - d[1]) > 6 || Math.abs(d[x + 2] - d[2]) > 6) { ok = false; break; }
+      }
+      if (ok) return y;
+    }
+    return -1;
+  }
+  // t (opsional, untuk tabel berbaris tetap): { top: y judul kolom, hdr: tinggi judul, start: y baris pertama, rh: tinggi baris, end: y akhir baris }, semua dalam px kanvas.
+  // Dengan t: potongan dibuat tepat di batas baris dan judul kolom diulang di atas tiap potongan lanjutan. Tanpa t: dipotong di baris kosong.
+  function waSlices(cv, t) {
+    var out = [], y = 0, H = cv.height;
+    while (y < H) {
+      var hdrOn = !!t && y > t.top + 1 && y < t.end - 1, hh = hdrOn ? t.hdr : 0;
+      var end = Math.min(H, y + WA_H - hh);
+      if (end < H) {
+        var lo = y + Math.round(WA_H * 0.35), cut = -1;
+        if (t && end <= t.end) {
+          var yy = Math.round(t.start + Math.floor((end - t.start) / t.rh) * t.rh);   // batas baris terdekat di atas batas tinggi
+          if (yy > lo) cut = yy;
+        } else {
+          var c = waCutRow(cv, y, Math.max(lo, t ? Math.round(t.end) : 0), end - 1);
+          if (c > 0) cut = c + 1;
+        }
+        if (cut > y) end = cut;
+      }
+      var part = document.createElement('canvas'), pc2 = null;
+      part.width = cv.width; part.height = (end - y) + hh;
+      pc2 = part.getContext('2d');
+      if (hdrOn) pc2.drawImage(cv, 0, t.top, cv.width, t.hdr, 0, 0, cv.width, t.hdr);
+      pc2.drawImage(cv, 0, y, cv.width, end - y, 0, hh, cv.width, end - y);
+      out.push(part);
+      y = end;
+    }
+    return out;
+  }
+  // Bagikan gambar (menu Bagikan > WhatsApp); bila tidak didukung, diunduh satu per satu
+  function waSend(files) {
+    var data = { files: files, title: 'WIP Yarn Dyeing' };
+    var dl = function () {
+      files.forEach(function (f, i) { setTimeout(function () { downloadBlob(f, f.name); }, i * 700); });
+      toast(files.length + ' gambar diunduh. Kirim semuanya ke WhatsApp dari galeri.', 'ok', 6000);
+    };
+    if (navigator.canShare && navigator.canShare(data) && navigator.share) {
+      return navigator.share(data).catch(function (e) { if (!e || e.name !== 'AbortError') dl(); });
+    }
+    dl();
+    return Promise.resolve();
+  }
+  function waBlob(cv) { return new Promise(function (res) { cv.toBlob(function (b) { res(b); }, 'image/png'); }); }
+  $('#btnWaMesin').addEventListener('click', function () {
+    var b = this, lab = b.querySelector('span');
+    if (!lst.plan.rows.length) { toast('Belum ada data Plan untuk dikirim.', 'warn'); return; }
+    b.disabled = true; lab.textContent = 'Menyiapkan...';
+    var base = dailyFileBase(), files = [];
+    dailyReady().then(function () {
+      var rep = dailyReport(), doc = dailyBuild(PngDoc, rep, { pref: WA_W / 1200, maxpx: 60000000 });
+      if (doc.bad) throw new Error('Gambar terlalu besar untuk perangkat ini. Gunakan Unduh PDF.');
+      var parts = waSlices(doc.pages[0]);
+      return Promise.all(parts.map(waBlob)).then(function (bl) {
+        bl.forEach(function (x, i) { if (x) files.push(new File([x], base + '_WA_' + (i + 1) + 'dari' + bl.length + '.png', { type: 'image/png' })); });
+        if (!files.length) throw new Error('Gambar gagal dibuat.');
+      });
+    }).then(function () {
+      return waSend(files);
+    }).catch(function (e) {
+      toast('Gagal menyiapkan gambar. ' + errMsg(e), 'err', 7000);
+    }).then(function () { b.disabled = false; lab.textContent = 'Kirim WA'; });
   });
 
   $('#filters').addEventListener('click', function (e) {
