@@ -777,7 +777,7 @@ function resetAlokasi(mode, iso) {
 // Tab Plan hanya membaca sheet "Plan Harian". Satu tanggal = satu salinan; Save ulang pada tanggal yang sama menggantikan salinan tanggal itu
 // (alokasi mesin yang sudah diisi pada tanggal itu dipertahankan menurut KIKC). Sheet "Plan Harian":
 // TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN
-// CELUP berisi tanggal celup atau "Sisa Order" (dihitung saat Get Plan/Save, aturan sama dengan tab Plan sebelumnya).
+// Tipe kolom: TANGGAL = tanggal, KG = angka desimal, CONE = angka bulat, CELUP = tanggal ("Sisa Order" tetap teks), DISIMPAN = tanggal+jam (dd/MM/yyyy HH:mm).
 // Tanggal hari ini dan ke depan boleh dibuat/diubah alokasinya; tanggal yang sudah lewat hanya riwayat (hanya lihat).
 const PLAN_HARIAN_HEAD = ['TANGGAL', 'KIKC', 'NO BENANG', 'SUPPLIER', 'WARNA', 'MESIN', 'ALOKASI', 'KG', 'CONE', 'KETERANGAN', 'CELUP', 'DISIMPAN'];
 
@@ -786,7 +786,7 @@ function planHarianSheet_() {
   let sh = findSheet_(ss, SHEET_PLAN_HARIAN);
   if (!sh) {
     sh = ss.insertSheet(SHEET_PLAN_HARIAN);
-    sh.getRange('A:L').setNumberFormat('@');   // semua teks apa adanya (tanggal DD/MM/YYYY, angka koma desimal) agar tidak diubah Sheet
+    sh.getRange('B:J').setNumberFormat('@');   // KIKC, No Benang, dst. teks apa adanya; kolom tanggal/angka diformat saat Save
     sh.getRange(1, 1, 1, PLAN_HARIAN_HEAD.length).setValues([PLAN_HARIAN_HEAD]).setFontWeight('bold');
     sh.setFrozenRows(1);
   }
@@ -804,6 +804,34 @@ function planEditableIso_(iso) { return iso >= Utilities.formatDate(new Date(), 
 
 // Isi sheet Plan seperti yang tampil di tab Plan (urutan kolom tampil; CELUP = tanggal celup atau "Sisa Order").
 // plan = hasil buildList_('plan'). ALOKASI awal = isi sheet "Alokasi" menurut KIKC.
+// ---- Tipe kolom sheet "Plan Harian": TANGGAL (tanggal), KG (angka desimal), CONE (angka bulat), CELUP (tanggal; "Sisa Order" tetap teks), DISIMPAN (tanggal+jam) ----
+const PLAN_HARIAN_FMT = ['dd/MM/yyyy', '@', '@', '@', '@', '@', '@', '#,##0.00', '0', '@', 'dd/MM/yyyy', 'dd/MM/yyyy HH:mm'];
+// Teks angka format Indonesia/Inggris ("67,5", "1.234,5", "67.5") -> angka; bukan angka -> null
+function numId_(v) {
+  let t = str_(v).replace(/\s+/g, '');
+  if (!t || !/^-?[\d.,]+$/.test(t)) return null;
+  const c = t.lastIndexOf(','), d = t.lastIndexOf('.');
+  if (c >= 0 && d >= 0) t = c > d ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  else if (c >= 0) t = t.replace(/,/g, '.');
+  else if (d >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+function kgCell_(v) { const n = numId_(v); return n === null ? str_(v).trim() : Math.round(n * 100) / 100; }
+function coneCell_(v) { const n = numId_(v); return n === null ? str_(v).trim() : Math.round(n); }
+function dateCell_(v) {   // "dd/MM/yyyy" -> tanggal; teks lain (mis. "Sisa Order") tetap teks
+  const t = str_(v).trim();
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(t) ? Utilities.parseDate(t, planTz_(), 'dd/MM/yyyy') : t;
+}
+function stampCell_(v) {
+  const t = str_(v).trim();
+  return /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(t) ? Utilities.parseDate(t, planTz_(), 'dd/MM/yyyy HH:mm') : t;
+}
+function planRowTyped_(dmy, x, stamp) {   // x = 10 kolom (KIKC .. CELUP), stamp = Date
+  return [Utilities.parseDate(dmy, planTz_(), 'dd/MM/yyyy'), x[0], x[1], x[2], x[3], x[4], x[5], kgCell_(x[6]), coneCell_(x[7]), x[8], dateCell_(x[9]), stamp];
+}
+function planFmtRows_(n) { const a = []; for (let i = 0; i < n; i++) a.push(PLAN_HARIAN_FMT.slice()); return a; }
+
 function planSnapshotBuild_(plan) {
   plan = plan || buildList_('plan');
   const h = plan.headers, ix = function (n) { return h.indexOf(n); };
@@ -863,14 +891,14 @@ function writePlanHarian_(iso, rows) {
         }
       }
     }
-    const stamp = Utilities.formatDate(new Date(), planTz_(), 'dd/MM/yyyy HH:mm');
+    const stamp = new Date();
     const data = rows.map(function (r) {
       const x = r.slice(), k = normKikc_(x[0]);
       if (Object.prototype.hasOwnProperty.call(keep, k)) x[5] = keep[k];   // alokasi yang sudah diisi pada tanggal ini tidak hilang saat Save ulang
-      return [dmy].concat(x).concat([stamp]);
+      return planRowTyped_(dmy, x, stamp);
     });
     const r0 = allCleared ? 2 : Math.max(sh.getLastRow(), 1) + 1;
-    sh.getRange(r0, 1, data.length, PLAN_HARIAN_HEAD.length).setNumberFormat('@').setValues(data);
+    sh.getRange(r0, 1, data.length, PLAN_HARIAN_HEAD.length).setNumberFormats(planFmtRows_(data.length)).setValues(data);
     SpreadsheetApp.flush();
     try { CacheService.getScriptCache().remove('plan_dates'); } catch (e) { /* abaikan */ }
     return { saved: data.length };
@@ -934,10 +962,15 @@ function getPlanHari(iso) {
     let lo = -1, hi = -1;
     colA.forEach(function (c, i) { if (str_(c[0]).trim() === want) { if (lo < 0) lo = i; hi = i; } });
     if (lo < 0) return out;
-    const block = sh.getRange(2 + lo, 1, hi - lo + 1, PLAN_HARIAN_HEAD.length).getDisplayValues();
-    block.forEach(function (r) {
+    const rng = sh.getRange(2 + lo, 1, hi - lo + 1, PLAN_HARIAN_HEAD.length);
+    const block = rng.getDisplayValues(), raw = rng.getValues();
+    block.forEach(function (r, i) {
       if (str_(r[0]).trim() !== want) return;
-      out.rows.push(r.slice(1, 11).map(function (x) { return str_(x).trim(); }));
+      const row = r.slice(1, 11).map(function (x) { return str_(x).trim(); });
+      const kg = raw[i][7], cone = raw[i][8];   // KG angka desimal (koma), CONE angka bulat; sel lama berisi teks dipakai apa adanya
+      if (typeof kg === 'number') row[6] = String(Math.round(kg * 100) / 100).replace('.', ',');
+      if (typeof cone === 'number') row[7] = String(Math.round(cone));
+      out.rows.push(row);
       if (!out.savedAt) out.savedAt = str_(r[11]).trim();
     });
     return out;
@@ -955,6 +988,29 @@ function hapusPemicuPlanHarian() {
 }
 function pasangPemicuPlanHarian() { return 'Tidak dipakai lagi. Plan disimpan lewat tab Plan > Create > Get Plan > Save. ' + hapusPemicuPlanHarian(); }
 function simpanPlanHarianOtomatis() { return hapusPemicuPlanHarian(); }
+
+// Jalankan SEKALI dari editor Apps Script: merapikan baris lama di sheet "Plan Harian" (yang tersimpan sebagai teks) menjadi tipe yang benar:
+// TANGGAL/CELUP = tanggal, KG = angka desimal, CONE = angka bulat, DISIMPAN = tanggal+jam. Aman dijalankan ulang.
+function rapikanPlanHarian() {
+  const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
+  if (!sh || sh.getLastRow() < 2) return 'Sheet Plan Harian kosong.';
+  const n = sh.getLastRow() - 1, rng = sh.getRange(2, 1, n, PLAN_HARIAN_HEAD.length);
+  const lock = lock_();
+  try {
+    const out = rng.getDisplayValues().map(function (r) {
+      if (!str_(r[1]).trim() && !str_(r[0]).trim()) return r;
+      const x = r.map(function (c) { return str_(c).trim(); });
+      x[0] = dateCell_(x[0]); x[7] = kgCell_(x[7]); x[8] = coneCell_(x[8]); x[10] = dateCell_(x[10]); x[11] = stampCell_(x[11]);
+      return x;
+    });
+    rng.setNumberFormats(planFmtRows_(n)).setValues(out);
+    SpreadsheetApp.flush();
+    try { CacheService.getScriptCache().remove('plan_dates'); } catch (e) { /* abaikan */ }
+    return n + ' baris dirapikan.';
+  } finally {
+    unlock_(lock);
+  }
+}
 
 // Jalankan SEKALI dari editor Apps Script (opsional): menyalin isi kolom Alokasi lama di sheet Plan ke sheet Alokasi.
 // Tanpa menjalankan ini pun, penyalinan terjadi otomatis saat tab Plan pertama kali dimuat setelah kode ini dipasang.

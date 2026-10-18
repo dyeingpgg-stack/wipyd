@@ -55,7 +55,8 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Alur membuat Plan (Admin): tab Plan > **Create** > tentukan tanggal planning > **Get Plan** (membaca sheet Plan, tampil ringkasan dan pratinjau) > **Save** (menyalin ke sheet Plan Harian).
   Get Plan tidak menulis apa pun; Save membaca ulang sheet Plan di server lalu menyimpannya.
 - Sheet Plan Harian (dibuat otomatis): `TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN`.
-  CELUP berisi tanggal celup atau "Sisa Order" (dihitung saat Get Plan/Save).
+  Tipe kolom: TANGGAL = tanggal (dd/MM/yyyy), KG = angka desimal, CONE = angka bulat, CELUP = tanggal (kecuali "Sisa Order" tetap teks), DISIMPAN = tanggal+jam (dd/MM/yyyy HH:mm).
+  CELUP dihitung saat Get Plan/Save. Baris lama yang masih tersimpan sebagai teks: jalankan `rapikanPlanHarian` sekali dari editor Apps Script.
 - Satu tanggal = satu salinan. Save ulang pada tanggal yang sama menggantikan salinannya (ada peringatan "Ganti & Save"); alokasi mesin yang sudah diisi pada tanggal itu dipertahankan menurut KIKC.
   Sheet Plan kosong (mis. importrange gagal) tidak disimpan, jadi salinan lama aman.
 - Tanggal planning boleh hari ini atau ke depan. Plan tanggal hari ini dan ke depan: alokasi mesin dan Reset Alokasi bisa dipakai (Admin) dan disimpan di kolom ALOKASI
