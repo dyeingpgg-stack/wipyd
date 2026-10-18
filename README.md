@@ -71,3 +71,4 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 ## Scorecard Plan dan tema PDF/PNG
 - Tab Plan punya dua kartu tambahan: **Realisasi (Kg)** (Kg celup dari tab Celup menurut KIKC, dengan persen dari Plan) dan **Sisa Order (Kg)** (jumlah Kg baris berstatus Sisa Order, plus jumlah lot). Keduanya ikut pencarian dan tanggal Plan yang dipilih.
 - Unduh PDF dan PNG Order Celup Harian (tab Mesin) memakai tema Green Lime Neon (palet ada di `dailyBuild`). Unggah `index.html` dan `sw.js` (cache v35).
+- Judul kelompok mesin (FONG'S, LOKAL, WOO-JIN, HISAKA, THIES) tidak lagi dicetak di PDF/PNG; ringkasan jumlah mesin, lot, Kg, dan Cone per kelompok tetap ada.

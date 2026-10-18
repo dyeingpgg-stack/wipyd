@@ -3783,7 +3783,6 @@ var Code128 = (function () {
       grad(M, gy, IW, GH, '#04100a', '#14451d');
       hex(C.neon, 'f'); doc.rect(M, gy, 5, GH, 'F');
       grad(M, gy + GH - 1.6, IW, 1.6, '#b8ff2c', '#04100a');   // garis neon lime di dasar judul kelompok
-      font(true, 11.5, '#ffffff'); spaced(g.name, M + 16, gy + 17.5, 2.2);
       font(true, 8, C.neon); T(g.mcs.length + ' MESIN  ·  ' + g.lots + ' LOT  ·  ' + f2(g.kg) + ' KG  ·  ' + fmtNum(round2(g.cone)) + ' CONE', M + IW - 12, gy + 17, 'right');
       var hy = gy + GH;
       // judul kolom
