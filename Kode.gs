@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -106,7 +106,7 @@ const API_FUNCS = {
   getLists: function (a) { return getLists(a[0]); },
   setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3]); },
   resetAlokasi: function (a) { return resetAlokasi(a[0]); },
-  getMesinStop: function () { return { success: true, stop: readMesinStop_() }; },
+  getMesinStop: function () { return { success: true, stop: readMesinStop_(), kap: MESIN_KAPASITAS, siklus: MESIN_SIKLUS }; },
   setMesinStop: function (a) { return setMesinStop(a[0], a[1], a[2]); }
 };
 
@@ -489,10 +489,11 @@ function listResult_(headers, rows) {
 // Kolom sheet "Plan" dicari menurut JUDUL di baris 1, jadi tetap benar walau kolom baru disisipkan.
 // Judul yang tidak ditemukan memakai posisi lama (A..H). Kolom "ALOKASI" (judul diawali ALOKASI) ikut dibaca dan ditaruh paling akhir.
 function planCols_(sp) {
-  const names = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN', 'CELUP'];
+  const names = ['KIKC', 'NO BENANG', 'SUPPLIER', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN', 'CELUP'];
+  const legacy = { 'KIKC': 0, 'NO BENANG': 1, 'WARNA': 2, 'MESIN': 3, 'KG': 4, 'CONE': 5, 'KETERANGAN': 6, 'CELUP': 7 };   // posisi lama bila judul tidak ditemukan (SUPPLIER tidak punya: kosong)
   const n = Math.max(1, Math.min(sp.getMaxColumns() - PLAN_FIRST_COL + 1, 30));
   const head = sp.getRange(1, PLAN_FIRST_COL, 1, n).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); });
-  const pick = names.map(function (nm, i) { const k = head.indexOf(nm); return k >= 0 ? k : i; });
+  const pick = names.map(function (nm) { const k = head.indexOf(nm); return k >= 0 ? k : (legacy[nm] !== undefined ? legacy[nm] : -1); });
   const headers = names.slice();
   let al = -1;
   for (let i = 0; i < head.length; i++) { if (head[i].indexOf('ALOKASI') === 0) { al = i; break; } }
@@ -521,14 +522,14 @@ function buildList_(key) {
     return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'KETERANGAN'], rows);
   }
   if (key === 'plan') {
-    // A..H sesuai urutan sheet "Plan": KIKC, No Benang, Warna, Mesin, Kg, Cone, Keterangan, Celup (kolom Celup diformat DD/MM/YYYY jika berisi tanggal)
+    // Urutan tampil: KIKC, No Benang, Supplier, Warna, Mesin, Kg, Cone, Keterangan, Celup (kolom dicari menurut judul baris 1; Celup diformat DD/MM/YYYY jika berisi tanggal)
     const sp = findSheet_(ss_(), SHEET_PLAN);
     if (!sp) throw new Error('Tab "' + SHEET_PLAN + '" tidak ditemukan di spreadsheet. Buat sheet bernama "' + SHEET_PLAN + '" (atau jalankan siapkanSheetPlan dari editor Apps Script).');
     const pc = planCols_(sp);
     const rowNos = [];
     let rows = readList_(sp, PLAN_FIRST_COL, pc.width, pc.pick, function (r) {
       return str_(r[pc.pick[0]]).trim().toUpperCase() !== 'KIKC';
-    }, pc.pick[7], { mdy: !!DATE_TEXT_MDY.plan, noSort: true, rowNos: rowNos });
+    }, pc.pick[8], { mdy: !!DATE_TEXT_MDY.plan, noSort: true, rowNos: rowNos });
     // Baris tanpa KIKC dibuang (mis. sisa isi kolom Alokasi lama di bawah data Plan), supaya tidak jadi baris kosong di tab Plan, hitungan, dan CSV
     const keep = [];
     rows.forEach(function (r, i) { if (str_(r[0]).trim()) keep.push(i); });
@@ -619,6 +620,15 @@ function getLists(force) {
 // Status mesin STOP / Ready (tombol di tab Mesin). Disimpan di Script Properties, jadi sama untuk semua pengguna.
 // Nilai awal (sebelum pernah diubah) ada di MESIN_STOP_AWAL.
 const MESIN_STOP_AWAL = ['A50', 'A12'];
+// Jumlah siklus per hari (3 shift = 3 siklus, 1 lot per shift per mesin). Kapasitas mesin di tab Mesin = angka di bawah x MESIN_SIKLUS.
+const MESIN_SIKLUS = 3;
+// Kapasitas tiap mesin PER SIKLUS (Kg). Dipakai tab Mesin: judul mesin, persentase beban, dan hasil unduh PDF/PNG.
+// Untuk mengubah kapasitas cukup edit angka di sini lalu Deploy versi baru.
+const MESIN_KAPASITAS = {
+  A18: 918, A20: 432, A21: 90, A0: 12, A25: 24, A50: 54, A100: 108,
+  A8: 44, A9: 44, A10: 44, A11: 165, A12: 165, A13: 165, A14: 165, A15: 165,
+  A16: 242, A17: 351
+};
 function readMesinStop_() {
   const v = PropertiesService.getScriptProperties().getProperty('mesinStop');
   if (v === null || v === undefined) return MESIN_STOP_AWAL.slice();
@@ -1027,7 +1037,7 @@ function siapkanSheetPlan() {
   const ss = ss_();
   if (findSheet_(ss, SHEET_PLAN)) { Logger.log('Sheet "' + SHEET_PLAN + '" sudah ada, tidak diubah.'); return; }
   const sh = ss.insertSheet(SHEET_PLAN);
-  const heads = ['KIKC', 'No Benang', 'Warna', 'Mesin', 'Kg', 'Cone', 'Keterangan', 'Celup'];
+  const heads = ['KIKC', 'No Benang', 'Supplier', 'Warna', 'Mesin', 'Kg', 'Cone', 'Keterangan', 'Celup'];
   sh.getRange(1, 1, 1, heads.length).setValues([heads]).setFontWeight('bold').setBackground('#d9ead3');
   sh.setFrozenRows(1);
   Logger.log('Sheet "' + SHEET_PLAN + '" dibuat dengan judul kolom: ' + heads.join(' | '));
