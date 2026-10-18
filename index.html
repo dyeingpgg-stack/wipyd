@@ -3679,7 +3679,7 @@ var Code128 = (function () {
   function dailyBuild(Doc, rep, extra) {
     var W = 1200, M = 30, IW = W - 2 * M, RH = 17, MGAP = 4, GH = 26, CHH = 28, SUBH = 22, GGAP = 16;
     var cols = [
-      { k: 'mc', w: 94, a: 'c', t: ['MC', 'KAP. 3 CYCLE'] }, { k: 'no', w: 26, a: 'c', t: ['NO'] }, { k: 'warna', w: 70, a: 'l', t: ['WARNA'] },
+      { k: 'mc', w: 94, a: 'c', t: ['MC'] }, { k: 'no', w: 26, a: 'c', t: ['NO'] }, { k: 'warna', w: 70, a: 'l', t: ['WARNA'] },
       { k: 'kikc', w: 84, a: 'l', t: ['KIKC'] }, { k: 'nb', w: 92, a: 'l', t: ['NO. BENANG'] }, { k: 'sup', w: 58, a: 'c', t: ['SUPPLIER'] },
       { k: 'qty', w: 72, a: 'r', t: ['QTY', '(KG)'] }, { k: 'cone', w: 58, a: 'r', t: ['CONE /', 'STR'] }, { k: 'std', w: 46, a: 'r', t: ['STD'] },
       { k: 'ikt', w: 40, a: 'c', t: ['IKT'] }, { k: 'kon', w: 132, a: 'l', t: ['KONSUMSI'] }, { k: 'sh', w: 54, a: 'c', t: ['SHIFT', 'CELUP'] },
@@ -3832,11 +3832,6 @@ var Code128 = (function () {
         hex(C.page, 'f'); doc.rect(M + 0.5, top + 0.5, cols[0].w - 1, bh - 1, 'F');
         box(M + 6, pyy, 44, ph, 5, mc.stop ? C.rose : '#06150a', mc.stop ? C.rose : C.neon, 0.8);
         font(true, mc.name.length > 3 ? 7.6 : 9, mc.stop ? '#ffffff' : C.neon); T(mc.name, M + 28, pyy + ph / 2 + 3.2, 'center');
-        if (mc.cap) {   // kapasitas (kapasitas per siklus x 3 siklus) dan persen beban order aktif
-          var pc2 = mc.load / mc.cap * 100, over = mc.load > mc.cap, cy2 = top + bh / 2;
-          font(false, 6, C.dim); T('Kap. ' + fmtNum(mc.cap), M + 54, cy2 - 1.2);
-          font(true, 6.4, over ? C.rose : C.ink); T(fmtNum(Math.round(pc2)) + '%' + (over ? ' OVER' : ''), M + 54, cy2 + 6.2);
-        }
         ry += bh + MGAP;
       });
       // subtotal
