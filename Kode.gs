@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -105,11 +105,12 @@ const API_FUNCS = {
   deleteData: function (a) { return deleteData(a[0], a[1], a[2]); },
   getList: function (a) { return getList(a[0], a[1]); },
   getLists: function (a) { return getLists(a[0]); },
-  setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3]); },
-  resetAlokasi: function (a) { return resetAlokasi(a[0]); },
+  setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3], a[4]); },
+  resetAlokasi: function (a) { return resetAlokasi(a[0], a[1]); },
+  getPlanSource: function (a) { return getPlanSource(a[0], a[1]); },
+  savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1]); },
   getPlanHari: function (a) { return getPlanHari(a[0]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
-  simpanPlanHariIni: function (a) { return simpanPlanHariIni(a[0]); },
   getMesinStop: function () { return { success: true, stop: readMesinStop_(), kap: MESIN_KAPASITAS, siklus: MESIN_SIKLUS }; },
   setMesinStop: function (a) { return setMesinStop(a[0], a[1], a[2]); }
 };
@@ -609,7 +610,6 @@ function getList(key, force) {
     }
     const res = buildList_(key);
     listCachePut_(key, res);
-    if (key === 'plan') { try { simpanPlanHarian_(false, res); } catch (e) { /* riwayat gagal disimpan: tidak boleh mengganggu tampilan Plan */ } }
     return res;
   } catch (e) {
     return { error: e.message };
@@ -618,7 +618,7 @@ function getList(key, force) {
 
 function getLists(force) {
   const lists = {};
-  LIST_KEYS.forEach(function (k) { lists[k.toLowerCase()] = getList(k, force); });
+  LIST_KEYS.forEach(function (k) { if (k.toLowerCase() === 'plan') return; lists[k.toLowerCase()] = getList(k, force); });   // Plan tidak ikut: tab Plan membaca sheet Plan Harian (getPlanHari)
   return { success: true, lists: lists };
 }
 
@@ -712,27 +712,58 @@ function saveAlokasiBatch_(pairs) {
   }
 }
 
-// Mengisi alokasi mesin satu KIKC (dipanggil dari tab Plan). rowNo tidak dipakai lagi; hanya KIKC yang menentukan.
-function setAlokasi(rowNo, kikc, value, mode) {
+// Mengisi alokasi mesin satu KIKC pada Plan satu tanggal (dipanggil dari tab Plan). Disimpan di kolom ALOKASI sheet "Plan Harian" (baris tanggal itu + KIKC),
+// dan dicatat juga di sheet "Alokasi" sebagai isian awal untuk Get Plan berikutnya. rowNo tidak dipakai lagi.
+function setAlokasi(rowNo, kikc, value, mode, iso) {
   needAdmin_(mode);
+  iso = planIsoOk_(iso);
+  if (!planEditableIso_(iso)) throw new Error('Plan tanggal yang sudah lewat hanya bisa dilihat.');
   const want = normKikc_(kikc);
   if (!want) throw new Error('KIKC kosong.');
   let v = str_(value).replace(/\s+/g, '').toUpperCase();
   if (/^\d+$/.test(v)) v = 'A' + v;   // ketik 9 = A9
   if (v.length > 12) throw new Error('Isi alokasi terlalu panjang.');
+  const lock = lock_();
+  try {
+    const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
+    if (!sh || sh.getLastRow() < 2) throw new Error('Plan tanggal ini belum dibuat. Gunakan Create > Get Plan > Save.');
+    const dmy = iso.split('-').reverse().join('/');
+    const col = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getDisplayValues();   // A TANGGAL, B KIKC
+    let n = 0;
+    col.forEach(function (c, i) {
+      if (str_(c[0]).trim() === dmy && normKikc_(c[1]) === want) { sh.getRange(i + 2, 7).setValue(v); n++; }   // G = ALOKASI
+    });
+    if (!n) throw new Error('KIKC ' + want + ' tidak ada di Plan tanggal ini.');
+    SpreadsheetApp.flush();
+  } finally {
+    unlock_(lock);
+  }
   saveAlokasiBatch_([[want, v]]);
   return { value: v };
 }
 
-// Reset: mengosongkan SEMUA alokasi mesin (menghapus isi sheet "Alokasi" selain judul). Sheet Plan tidak disentuh.
-function resetAlokasi(mode) {
+// Reset: mengosongkan semua alokasi mesin pada Plan satu tanggal (kolom ALOKASI di "Plan Harian") dan isi sheet "Alokasi" (isian awal Get Plan). Sheet Plan tidak disentuh.
+function resetAlokasi(mode, iso) {
   needAdmin_(mode);
+  iso = planIsoOk_(iso);
+  if (!planEditableIso_(iso)) throw new Error('Plan tanggal yang sudah lewat hanya bisa dilihat.');
   const lock = lock_();
   try {
-    const sh = alokasiSheet_();
-    const last = sh.getLastRow();
-    const n = last >= 2 ? last - 1 : 0;
-    if (n) sh.getRange(2, 1, n, Math.max(sh.getLastColumn(), 3)).clearContent();
+    let n = 0;
+    const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
+    if (sh && sh.getLastRow() >= 2) {
+      const dmy = iso.split('-').reverse().join('/');
+      const last = sh.getLastRow();
+      const a = sh.getRange(2, 1, last - 1, 1).getDisplayValues(), g = sh.getRange(2, 7, last - 1, 1).getDisplayValues();
+      let changed = false;
+      for (let i = 0; i < a.length; i++) {
+        if (str_(a[i][0]).trim() === dmy && str_(g[i][0]).trim()) { g[i][0] = ''; n++; changed = true; }
+      }
+      if (changed) sh.getRange(2, 7, last - 1, 1).setValues(g);
+    }
+    const al = alokasiSheet_();
+    const lastA = al.getLastRow();
+    if (lastA >= 2) al.getRange(2, 1, lastA - 1, Math.max(al.getLastColumn(), 3)).clearContent();
     SpreadsheetApp.flush();
     try { CacheService.getScriptCache().remove(LIST_PREFIX + 'plan_n'); } catch (e) { /* abaikan */ }
     return { cleared: n };
@@ -741,13 +772,13 @@ function resetAlokasi(mode) {
   }
 }
 
-
-// ---------- Riwayat Plan harian ----------
-// Sheet "Plan" (hasil importrange) TIDAK diubah. Setiap hari salinan tampilan tab Plan disimpan di sheet "Plan Harian":
+// ---------- Plan Harian ----------
+// Alur: tab Plan > Create > tentukan tanggal > Get Plan (membaca sheet "Plan" hasil importrange, TIDAK diubah) > Save (menyalin ke sheet "Plan Harian").
+// Tab Plan hanya membaca sheet "Plan Harian". Satu tanggal = satu salinan; Save ulang pada tanggal yang sama menggantikan salinan tanggal itu
+// (alokasi mesin yang sudah diisi pada tanggal itu dipertahankan menurut KIKC). Sheet "Plan Harian":
 // TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN
-// CELUP berisi tanggal celup, atau "Sisa Order" (aturan sama dengan tab Plan di aplikasi). Satu tanggal = satu salinan; salinan hari ini
-// ditimpa dengan keadaan terbaru (jadi isi akhir hari yang tersimpan). Penyimpanan terjadi otomatis saat tab Plan dimuat dan berubah,
-// setelah alokasi diubah, dan (jika pemicu dipasang lewat pasangPemicuPlanHarian) tiap malam walau tidak ada yang membuka aplikasi.
+// CELUP berisi tanggal celup atau "Sisa Order" (dihitung saat Get Plan/Save, aturan sama dengan tab Plan sebelumnya).
+// Tanggal hari ini dan ke depan boleh dibuat/diubah alokasinya; tanggal yang sudah lewat hanya riwayat (hanya lihat).
 const PLAN_HARIAN_HEAD = ['TANGGAL', 'KIKC', 'NO BENANG', 'SUPPLIER', 'WARNA', 'MESIN', 'ALOKASI', 'KG', 'CONE', 'KETERANGAN', 'CELUP', 'DISIMPAN'];
 
 function planHarianSheet_() {
@@ -755,7 +786,6 @@ function planHarianSheet_() {
   let sh = findSheet_(ss, SHEET_PLAN_HARIAN);
   if (!sh) {
     sh = ss.insertSheet(SHEET_PLAN_HARIAN);
-    sh.getRange(1, 1, 1, PLAN_HARIAN_HEAD.length).setNumberFormat('@');
     sh.getRange('A:L').setNumberFormat('@');   // semua teks apa adanya (tanggal DD/MM/YYYY, angka koma desimal) agar tidak diubah Sheet
     sh.getRange(1, 1, 1, PLAN_HARIAN_HEAD.length).setValues([PLAN_HARIAN_HEAD]).setFontWeight('bold');
     sh.setFrozenRows(1);
@@ -764,11 +794,16 @@ function planHarianSheet_() {
 }
 
 function planTz_() { return ss_().getSpreadsheetTimeZone(); }
-function planToday_() { return Utilities.formatDate(new Date(), planTz_(), 'dd/MM/yyyy'); }
 function planIso_(dmy) { const p = str_(dmy).split('/'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : ''; }
+function planIsoOk_(iso) {
+  iso = str_(iso).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error('Tanggal Plan tidak valid.');
+  return iso;
+}
+function planEditableIso_(iso) { return iso >= Utilities.formatDate(new Date(), planTz_(), 'yyyy-MM-dd'); }
 
-// Isi tab Plan seperti yang tampil di aplikasi (urutan kolom tampil; CELUP = tanggal celup atau "Sisa Order").
-// plan = hasil buildList_('plan') (boleh diberikan agar tidak membaca ulang).
+// Isi sheet Plan seperti yang tampil di tab Plan (urutan kolom tampil; CELUP = tanggal celup atau "Sisa Order").
+// plan = hasil buildList_('plan'). ALOKASI awal = isi sheet "Alokasi" menurut KIKC.
 function planSnapshotBuild_(plan) {
   plan = plan || buildList_('plan');
   const h = plan.headers, ix = function (n) { return h.indexOf(n); };
@@ -799,25 +834,25 @@ function planSnapshotBuild_(plan) {
   return { headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: rows };
 }
 
-function planHash_(t) { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
-
-// Simpan salinan Plan hari ini ke sheet "Plan Harian" (ganti salinan hari ini yang lama). Plan kosong TIDAK disimpan (mis. importrange sedang gagal),
-// supaya riwayat tidak terhapus. force = false: dilewati jika isinya sama dengan salinan terakhir.
-function simpanPlanHarian_(force, plan) {
-  const built = planSnapshotBuild_(plan);
-  if (!built.rows.length) return { saved: 0, skipped: 'Plan kosong' };
-  const today = planToday_(), sig = planHash_(JSON.stringify(built.rows));
-  const props = PropertiesService.getScriptProperties();
-  if (!force && props.getProperty('planSnap') === today + '|' + sig) return { saved: 0, skipped: 'tidak berubah' };
+// Tulis salinan Plan satu tanggal ke sheet "Plan Harian" (mengganti baris tanggal itu). rows = 10 kolom (KIKC .. CELUP).
+function writePlanHarian_(iso, rows) {
+  const dmy = iso.split('-').reverse().join('/');
   const lock = lock_();
   try {
     const sh = planHarianSheet_();
     const last = sh.getLastRow();
+    const keep = {};   // alokasi yang sudah ada pada tanggal ini, menurut KIKC
+    let allCleared = false;
     if (last >= 2) {
-      const col = sh.getRange(2, 1, last - 1, 1).getDisplayValues();
+      const col = sh.getRange(2, 1, last - 1, 7).getDisplayValues();
       const del = [];
-      col.forEach(function (c, i) { if (str_(c[0]).trim() === today) del.push(i + 2); });
-      if (del.length === last - 1) sh.getRange(2, 1, last - 1, PLAN_HARIAN_HEAD.length).clearContent();   // semua baris data: kosongkan saja (sheet harus punya baris non-judul)
+      col.forEach(function (c, i) {
+        if (str_(c[0]).trim() !== dmy) return;
+        del.push(i + 2);
+        const k = normKikc_(c[1]), a = str_(c[6]).trim();
+        if (k && a) keep[k] = a;
+      });
+      if (del.length && del.length === last - 1) { sh.getRange(2, 1, last - 1, PLAN_HARIAN_HEAD.length).clearContent(); allCleared = true; }   // semua baris data: kosongkan saja (sheet harus punya baris non-judul)
       else {
         let end = del.length - 1;   // hapus dari bawah, per blok baris berurutan
         while (end >= 0) {
@@ -829,11 +864,14 @@ function simpanPlanHarian_(force, plan) {
       }
     }
     const stamp = Utilities.formatDate(new Date(), planTz_(), 'dd/MM/yyyy HH:mm');
-    const data = built.rows.map(function (r) { return [today].concat(r).concat([stamp]); });
-    const r0 = Math.max(sh.getLastRow(), 1) + 1;
+    const data = rows.map(function (r) {
+      const x = r.slice(), k = normKikc_(x[0]);
+      if (Object.prototype.hasOwnProperty.call(keep, k)) x[5] = keep[k];   // alokasi yang sudah diisi pada tanggal ini tidak hilang saat Save ulang
+      return [dmy].concat(x).concat([stamp]);
+    });
+    const r0 = allCleared ? 2 : Math.max(sh.getLastRow(), 1) + 1;
     sh.getRange(r0, 1, data.length, PLAN_HARIAN_HEAD.length).setNumberFormat('@').setValues(data);
     SpreadsheetApp.flush();
-    props.setProperty('planSnap', today + '|' + sig);
     try { CacheService.getScriptCache().remove('plan_dates'); } catch (e) { /* abaikan */ }
     return { saved: data.length };
   } finally {
@@ -841,10 +879,29 @@ function simpanPlanHarian_(force, plan) {
   }
 }
 
-// Dipanggil aplikasi (Admin) setelah alokasi diubah, supaya salinan hari ini langsung ikut.
-function simpanPlanHariIni(mode) {
+// GET PLAN: membaca sheet "Plan" (importrange) langsung, tanpa cache, dan mengirim isinya untuk dilihat sebelum Save. Tidak menulis apa pun.
+function getPlanSource(iso, mode) {
   needAdmin_(mode);
-  return simpanPlanHarian_(true, null);
+  iso = planIsoOk_(iso);
+  if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
+  const built = planSnapshotBuild_(buildList_('plan'));
+  const ex = getPlanHari(iso);
+  return {
+    success: true, date: iso, headers: built.headers, rows: built.rows, total: built.rows.length,
+    exists: (ex && ex.rows) ? ex.rows.length : 0, savedAt: (ex && ex.savedAt) || ''
+  };
+}
+
+// SAVE: membaca ulang sheet "Plan" di server (bukan kiriman browser) lalu menyimpannya ke "Plan Harian" pada tanggal yang dipilih.
+// Plan kosong (mis. importrange sedang gagal) TIDAK disimpan, supaya salinan lama tidak terhapus.
+function savePlanTanggal(iso, mode) {
+  needAdmin_(mode);
+  iso = planIsoOk_(iso);
+  if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
+  const built = planSnapshotBuild_(buildList_('plan'));
+  if (!built.rows.length) throw new Error('Sheet Plan kosong (mis. IMPORTRANGE belum terisi). Plan tidak disimpan agar salinan lama aman.');
+  const r = writePlanHarian_(iso, built.rows);
+  return { success: true, saved: r.saved, date: iso };
 }
 
 // Daftar tanggal yang punya riwayat, format yyyy-mm-dd, urut naik.
@@ -889,14 +946,15 @@ function getPlanHari(iso) {
   }
 }
 
-// Jalankan SEKALI dari editor Apps Script: memasang pemicu harian (sekitar pukul 23.15-23.45) yang menyimpan Plan hari itu
-// walau tidak ada yang membuka aplikasi. Boleh dijalankan ulang (pemicu lama diganti). Pertama kali Google meminta izin: setujui.
-function pasangPemicuPlanHarian() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'simpanPlanHarianOtomatis') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('simpanPlanHarianOtomatis').timeBased().everyDays(1).atHour(23).nearMinute(30).create();
-  return 'Pemicu harian terpasang (sekitar pukul 23.30).';
+// Penyimpanan otomatis harian sudah diganti dengan Create > Get Plan > Save. Pemicu lama (jika pernah dipasang) menghapus dirinya sendiri
+// saat jalan berikutnya, atau jalankan hapusPemicuPlanHarian() sekali dari editor Apps Script.
+function hapusPemicuPlanHarian() {
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'simpanPlanHarianOtomatis') { ScriptApp.deleteTrigger(t); n++; } });
+  return n + ' pemicu lama dihapus.';
 }
-function simpanPlanHarianOtomatis() { return simpanPlanHarian_(true, null); }
+function pasangPemicuPlanHarian() { return 'Tidak dipakai lagi. Plan disimpan lewat tab Plan > Create > Get Plan > Save. ' + hapusPemicuPlanHarian(); }
+function simpanPlanHarianOtomatis() { return hapusPemicuPlanHarian(); }
 
 // Jalankan SEKALI dari editor Apps Script (opsional): menyalin isi kolom Alokasi lama di sheet Plan ke sheet Alokasi.
 // Tanpa menjalankan ini pun, penyalinan terjadi otomatis saat tab Plan pertama kali dimuat setelah kode ini dipasang.

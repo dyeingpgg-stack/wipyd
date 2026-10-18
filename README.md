@@ -48,17 +48,21 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Kolom **Celup** di tab Plan (dan status Finish di tab Mesin) memakai urutan: 1) tanggal di tab Celup (sheet CLP kolom A) menurut KIKC;
   2) jika KIKC tidak ada di tab Celup, aturan lama: kolom Celup di sheet Plan berisi tanggal (hasil input di tab Data) ditampilkan TODAY()-1; selain itu "Sisa Order"
   (hanya bila minimal satu baris sudah punya tanggal).
-- Perbarui `Kode.gs` dan `index.html` bersamaan; unggah juga `sw.js` (cache v32).
+- Perbarui `Kode.gs` dan `index.html` bersamaan; unggah juga `sw.js`.
 
-## Riwayat Plan harian (sheet "Plan Harian")
-- Sheet **Plan** (hasil importrange) tidak diubah. Setiap hari salinan tampilan tab Plan disimpan ke sheet baru **Plan Harian** (dibuat otomatis):
-  `TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN`.
-  Kolom CELUP berisi tanggal celup atau "Sisa Order", sama seperti yang terlihat di tab Plan.
-- Satu tanggal = satu salinan. Salinan hari ini selalu diperbarui ke keadaan terbaru, jadi yang tersimpan adalah isi akhir hari itu.
-- Penyimpanan otomatis terjadi: saat tab Plan dimuat dan isinya berubah, beberapa detik setelah alokasi diubah/direset, dan tiap malam
-  (sekitar pukul 23.30) bila pemicu dipasang: **jalankan `pasangPemicuPlanHarian` sekali dari editor Apps Script** lalu setujui izin yang diminta.
-- Plan yang kosong (mis. importrange sedang gagal) tidak disimpan, jadi riwayat tidak terhapus.
-- Di tab Plan ada pemilih tanggal (panah, kalender, "Hari ini"). Panah memilih tanggal riwayat terdekat. Tanggal selain hari ini = riwayat, hanya lihat
-  (alokasi dan Reset Alokasi dinonaktifkan). Resume dan Unduh CSV ikut tanggal yang dipilih.
-- Baris dengan status **Sisa Order** diberi highlight merah di tab Plan (dan di riwayat).
-- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy.
+## Plan Harian: Create > Get Plan > Save (sheet "Plan Harian")
+- Tab Plan sekarang **hanya membaca sheet "Plan Harian"**. Sheet **Plan** (hasil importrange) tidak diubah dan hanya dibaca saat **Get Plan**.
+- Alur membuat Plan (Admin): tab Plan > **Create** > tentukan tanggal planning > **Get Plan** (membaca sheet Plan, tampil ringkasan dan pratinjau) > **Save** (menyalin ke sheet Plan Harian).
+  Get Plan tidak menulis apa pun; Save membaca ulang sheet Plan di server lalu menyimpannya.
+- Sheet Plan Harian (dibuat otomatis): `TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN`.
+  CELUP berisi tanggal celup atau "Sisa Order" (dihitung saat Get Plan/Save).
+- Satu tanggal = satu salinan. Save ulang pada tanggal yang sama menggantikan salinannya (ada peringatan "Ganti & Save"); alokasi mesin yang sudah diisi pada tanggal itu dipertahankan menurut KIKC.
+  Sheet Plan kosong (mis. importrange gagal) tidak disimpan, jadi salinan lama aman.
+- Tanggal planning boleh hari ini atau ke depan. Plan tanggal hari ini dan ke depan: alokasi mesin dan Reset Alokasi bisa dipakai (Admin) dan disimpan di kolom ALOKASI
+  Plan Harian untuk tanggal itu. Tanggal yang sudah lewat = riwayat, hanya lihat.
+- Pemilih tanggal di tab Plan (panah, kalender, "Hari ini"); panah berpindah antar tanggal yang punya Plan. Resume dan Unduh CSV ikut tanggal yang dipilih.
+- Tab Mesin memakai Plan tanggal yang sedang dipilih di tab Plan (awalnya hari ini). Bila tanggal itu belum dibuat, tab Mesin kosong sampai Plan dibuat lewat Create.
+- Penyimpanan otomatis lama (saat tab dimuat, setelah alokasi, dan pemicu malam) dihapus. Jika dulu menjalankan `pasangPemicuPlanHarian`, jalankan `hapusPemicuPlanHarian` sekali dari editor Apps Script
+  (atau biarkan: pemicu lama menghapus dirinya sendiri saat jalan berikutnya).
+- Sheet **Alokasi** kini hanya menjadi isian awal kolom ALOKASI saat Get Plan (alokasi terakhir per KIKC).
+- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v34); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
