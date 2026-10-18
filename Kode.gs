@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -832,8 +832,28 @@ function planRowTyped_(dmy, x, stamp) {   // x = 10 kolom (KIKC .. CELUP), stamp
 }
 function planFmtRows_(n) { const a = []; for (let i = 0; i < n; i++) a.push(PLAN_HARIAN_FMT.slice()); return a; }
 
-function planSnapshotBuild_(plan) {
+// Lot "Sisa Order" bawaan hari sebelumnya: KIKC yang ada di salinan Plan Harian tanggal SEBELUM iso dan belum bertanggal Celup saat itu
+// (kolom CELUP kosong atau "Sisa Order"). Selama lot itu masih ada di Plan dan belum celup, labelnya tetap "Sisa Order",
+// walaupun belum ada satu pun baris Plan yang bertanggal Celup.
+function planCarry_(iso) {
+  const out = Object.create(null);
+  if (!iso) return out;
+  try {
+    const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
+    if (!sh || sh.getLastRow() < 2) return out;
+    sh.getRange(2, 1, sh.getLastRow() - 1, 11).getDisplayValues().forEach(function (c) {
+      const d = planIso_(str_(c[0]).trim());   // yyyy-MM-dd
+      if (!d || d >= iso) return;   // hanya tanggal sebelum tanggal yang dibuat
+      const k = normKikc_(c[1]), cel = str_(c[10]).trim();
+      if (k && (!cel || /^sisa\s*order$/i.test(cel))) out[k] = 1;
+    });
+  } catch (e) { /* tanpa riwayat: aturan lama (has) tetap berlaku */ }
+  return out;
+}
+
+function planSnapshotBuild_(plan, iso) {
   plan = plan || buildList_('plan');
+  const carry = planCarry_(iso);
   const h = plan.headers, ix = function (n) { return h.indexOf(n); };
   const cols = ['KIKC', 'NO BENANG', 'SUPPLIER', 'WARNA', 'MESIN', 'ALOKASI', 'KG', 'CONE', 'KETERANGAN'].map(ix);
   const iK = ix('KIKC'), iC = ix('CELUP');
@@ -857,7 +877,9 @@ function planSnapshotBuild_(plan) {
   });
   const has = eff.some(function (x) { return x; });
   const rows = plan.rows.map(function (r, i) {
-    return cols.map(function (c) { return c >= 0 ? str_(r[c]).trim() : ''; }).concat([eff[i] || (has ? 'Sisa Order' : '')]);
+    // "Sisa Order" = belum celup DAN (ada baris Plan lain yang sudah bertanggal Celup, ATAU lot ini sisa dari Plan hari sebelumnya)
+    const sisa = has || !!carry[normKikc_(r[iK])];
+    return cols.map(function (c) { return c >= 0 ? str_(r[c]).trim() : ''; }).concat([eff[i] || (sisa ? 'Sisa Order' : '')]);
   });
   return { headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: rows };
 }
@@ -912,7 +934,7 @@ function getPlanSource(iso, mode) {
   needAdmin_(mode);
   iso = planIsoOk_(iso);
   if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
-  const built = planSnapshotBuild_(buildList_('plan'));
+  const built = planSnapshotBuild_(buildList_('plan'), iso);
   const ex = getPlanHari(iso);
   return {
     success: true, date: iso, headers: built.headers, rows: built.rows, total: built.rows.length,
@@ -926,7 +948,7 @@ function savePlanTanggal(iso, mode) {
   needAdmin_(mode);
   iso = planIsoOk_(iso);
   if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
-  const built = planSnapshotBuild_(buildList_('plan'));
+  const built = planSnapshotBuild_(buildList_('plan'), iso);
   if (!built.rows.length) throw new Error('Sheet Plan kosong (mis. IMPORTRANGE belum terisi). Plan tidak disimpan agar salinan lama aman.');
   const r = writePlanHarian_(iso, built.rows);
   return { success: true, saved: r.saved, date: iso };

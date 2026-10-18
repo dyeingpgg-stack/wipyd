@@ -2189,7 +2189,7 @@ var Code128 = (function () {
     var alokJ = (isPlan && planEditable() && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // tanggal lewat atau Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], tr = '<tr>';
-      var sisa = iCel >= 0 && String(r[iCel] || '').trim() === 'Sisa Order';   // CELUP tersimpan di Plan Harian; "Sisa Order": seluruh baris diberi highlight
+      var sisa = iCel >= 0 && isSisaTxt(r[iCel]);   // CELUP tersimpan di Plan Harian; "Sisa Order": seluruh baris diberi highlight
       if (sisa) tr = '<tr class="sisa">';
       for (var p = 0; p < order.length; p++) {
         var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
@@ -2214,6 +2214,8 @@ var Code128 = (function () {
     m.rk = rk;
   }
   // Kolom CELUP tab Plan: "Sisa Order" hanya muncul bila minimal satu baris berisi tanggal. Jika semua baris kosong (atau hanya "SISA ORDER"), kolom dibiarkan kosong.
+  // Teks CELUP "Sisa Order" (huruf besar/kecil dan spasi diabaikan)
+  function isSisaTxt(v) { return /^sisa\s*order$/i.test(String(v === undefined || v === null ? '' : v).trim()); }
   function planHasCelup(m) {
     return m.rows.some(function (r) { return celupEff(m.headers, r).fin; });
   }
@@ -2306,7 +2308,7 @@ var Code128 = (function () {
       if (ig >= 0) kg += parseNum(r[ig]);
       if (ic >= 0) cone += parseNum(r[ic]);
       if (first) { var ci = clpInfo(k); if (ci) real += ci.kg; }   // Realisasi = Kg celup di tab Celup menurut KIKC (sama dengan PDF Order Celup Harian)
-      if (iz >= 0 && String(r[iz] || '').trim() === 'Sisa Order') { sisa += ig >= 0 ? parseNum(r[ig]) : 0; sisaLot++; }
+      if (iz >= 0 && isSisaTxt(r[iz])) { sisa += ig >= 0 ? parseNum(r[ig]) : 0; sisaLot++; }
     });
     setStat('#pLot', fmtNum(lot)); setStat('#pKg', fmtNum(kg)); setStat('#pCone', fmtNum(cone));
     setStat('#pReal', fmtNum(real)); setStat('#pSisa', fmtNum(sisa));
@@ -2615,7 +2617,8 @@ var Code128 = (function () {
     var ix = {};
     headers.forEach(function (h, i) { ix[String(h).toUpperCase()] = i; });
     var items = [];
-    var hasCelup = planHasCelup(lst.plan);   // "Sisa Order" hanya bila minimal satu baris Plan berisi tanggal Celup (sama dengan tab Plan)
+    var hasCelup = planHasCelup(lst.plan);   // aturan lama: belum celup dan minimal satu baris Plan berisi tanggal Celup = Sisa Order
+    var iCel = ix['CELUP'];   // label "Sisa Order" tersimpan di Plan Harian (termasuk lot sisa dari Plan hari sebelumnya) ikut menentukan, sama dengan tab Plan
     rows.forEach(function (r, i) {
       var eff = celupEff(headers, r);   // Finish = ada tanggal di tab Celup (CLP), atau (aturan lama) kolom CELUP Plan berisi tanggal
       var fin = eff.fin;
@@ -2628,7 +2631,7 @@ var Code128 = (function () {
         i: i, kikc: kikc, noBenang: r[ix['NO BENANG']] || '', warna: r[ix['WARNA']] || '',
         kgTxt: r[ix['KG']] || '', coneTxt: r[ix['CONE']] || '', ket: r[ix['KETERANGAN']] || '', sup: ix['SUPPLIER'] === undefined ? '' : String(r[ix['SUPPLIER']] || '').trim(),
         kg: parseNum(r[ix['KG']]), cone: parseNum(r[ix['CONE']]), from: m0, mesin: al || m0, alok: al,
-        fin: fin, celup: eff.date, sisa: !fin && hasCelup
+        fin: fin, celup: eff.date, sisa: !fin && (hasCelup || (iCel !== undefined && isSisaTxt(r[iCel])))
       });
     });
     var moved = items.filter(function (it) { return it.mesin !== it.from; }).length;   // lot yang dialokasikan ke mesin lain
@@ -2641,7 +2644,10 @@ var Code128 = (function () {
     order = MESIN_URUT.concat(tail);
     var blocks = order.map(function (m) {
       var all = items.filter(function (it) { return it.mesin === m; });   // urutan Plan dipertahankan
-      var lots = all.filter(function (it) { return !it.fin; }).concat(all.filter(function (it) { return it.fin; }));   // yang belum celup dulu, Finish di belakang
+      // Urutan di mesin: 1) Sisa Order (nomor baris / cycle #1 dst.), 2) order aktif lain, 3) Finish di belakang. Di dalam tiap kelompok urutan Plan dipertahankan.
+      var lots = all.filter(function (it) { return !it.fin && it.sisa; })
+        .concat(all.filter(function (it) { return !it.fin && !it.sisa; }))
+        .concat(all.filter(function (it) { return it.fin; }));
       var kg = 0, cone = 0, open = 0;
       all.forEach(function (it) { if (!it.fin) { kg += it.kg; cone += it.cone; open++; } });
       return { mesin: m, lots: lots, kg: kg, cone: cone, open: open, fin: all.length - open, stop: mesinStop.indexOf(m) >= 0 };

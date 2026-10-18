@@ -36,6 +36,8 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Tombol **Unduh PDF** dan **Unduh PNG** ada di tab Mesin (Admin dan Viewer). Hasilnya lembar **Order Celup Harian**: ringkasan di atas,
   tabel per kelompok mesin (kolom MC berisi kapasitas x 3 cycle dan persen beban), subtotal, Grand Total, Realisasi, Shift 1-3, Notes per No Benang, dan Catatan.
 - **Sisa Order** diberi warna oranye (baris oranye, garis oranye di kiri, dan label SISA ORDER). Lot yang sudah celup berwarna hijau.
+- **Sisa Order kemarin**: lot yang sudah ada di Plan Harian tanggal sebelumnya dan belum celup tetap berlabel Sisa Order di Plan hari ini (tab Plan, sheet Plan Harian, dan tab Mesin), walaupun belum ada baris Plan yang bertanggal Celup. Label dihitung saat Get Plan / Save, jadi untuk tanggal yang sudah terlanjur disimpan, ulangi Create > Get Plan > Save.
+- Di tab Mesin, lot Sisa Order selalu diletakkan di urutan paling atas tiap mesin (Cycle #1 dst.), disusul order aktif lain, lalu lot Finish.
 - STD = Kg / Cone. Shift, Group, dan Real Kg diambil dari tab Celup menurut KIKC.
 - PDF: teks dan garis berupa vektor, tajam di zoom berapa pun. PNG: lebar 3840 px (4K); bila HP tidak kuat, resolusi turun otomatis (ada pemberitahuan).
 - Kapasitas mesin = kapasitas per siklus x 3 siklus (mis. A18: 918 Kg x 3 = 2.754 Kg), diatur di `MESIN_KAPASITAS` dan `MESIN_SIKLUS` pada `Kode.gs`.
@@ -66,7 +68,7 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Penyimpanan otomatis lama (saat tab dimuat, setelah alokasi, dan pemicu malam) dihapus. Jika dulu menjalankan `pasangPemicuPlanHarian`, jalankan `hapusPemicuPlanHarian` sekali dari editor Apps Script
   (atau biarkan: pemicu lama menghapus dirinya sendiri saat jalan berikutnya).
 - Sheet **Alokasi** kini hanya menjadi isian awal kolom ALOKASI saat Get Plan (alokasi terakhir per KIKC).
-- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v34); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
+- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v38); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
 
 ## Scorecard Plan dan tema PDF/PNG
 - Tab Plan punya dua kartu tambahan: **Realisasi (Kg)** (Kg celup dari tab Celup menurut KIKC, dengan persen dari Plan) dan **Sisa Order (Kg)** (jumlah Kg baris berstatus Sisa Order, plus jumlah lot). Keduanya ikut pencarian dan tanggal Plan yang dipilih.
