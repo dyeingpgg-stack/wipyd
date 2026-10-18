@@ -763,8 +763,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
           <button type="button" class="btn-sm" id="btnResumePlan" aria-expanded="false" aria-controls="resumePlan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
           <button type="button" class="btn-sm admin-only" id="rsPlan" aria-label="Reset semua alokasi mesin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span>Reset Alokasi</span></button>
           <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh CSV</button>
-          <button type="button" class="btn-sm" id="btnPdfPlan" aria-label="Unduh Order Celup Harian sebagai PDF resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
-          <button type="button" class="btn-sm" id="btnPngPlan" aria-label="Unduh Order Celup Harian sebagai gambar PNG 4K"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
         </div>
       </div>
       <div class="resume" id="resumePlan" hidden></div>
@@ -798,8 +796,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       </div>
       <div class="dtools">
         <button type="button" class="btn-sm" id="btnResumeMesin" aria-expanded="false" aria-controls="resumeMesin"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
-        <button type="button" class="btn-sm" id="btnPdfMesin" aria-label="Unduh alokasi mesin sebagai PDF resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
-        <button type="button" class="btn-sm" id="btnPngMesin" aria-label="Unduh alokasi mesin sebagai gambar PNG 4K"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
+        <button type="button" class="btn-sm" id="btnPdfMesin" aria-label="Unduh Order Celup Harian sebagai PDF resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
+        <button type="button" class="btn-sm" id="btnPngMesin" aria-label="Unduh Order Celup Harian sebagai gambar PNG 4K"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
       </div>
       <div class="resume" id="resumeMesin" hidden></div>
       <p class="lcount" id="nMesin" aria-live="polite"></p>
@@ -3431,337 +3429,10 @@ var Code128 = (function () {
   });
 
 
-  /* ---------- Unduh tab Mesin: PDF (teks vektor, tajam di zoom berapa pun) dan PNG 4K ----------
-     Satu tata letak (mesinBuild) digambar dengan jsPDF untuk PDF dan dengan PngDoc (kanvas) untuk PNG.
-     PNG dibuat selebar 3840 px (4K); jika perangkat tidak kuat, resolusi turun otomatis. */
-  var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  var MX = { navy: '#0f1a3d', dim: '#56628b', teal: '#086f93', green: '#0c7d44', amber: '#965708', rose: '#c0275c', grid: '#d5ddee', panel: '#f6f9fe' };
-  var MX_TINT = {
-    green: ['#e8f6ee', '#7fc6a1'], amber: ['#fff6e6', '#d9a248'], rose: ['#fde8ef', '#d8537f'],
-    teal: ['#e9f5f9', '#9fcbdb'], plain: ['#ffffff', '#d5ddee'], stop: ['#fdecf2', '#e69bb5']
-  };
-
-  // Data laporan dari tab Plan (semua mesin dan lot, tidak ikut pencarian), sama dengan yang tampil di tab Mesin
-  function mesinReport() {
-    var m = lst.plan;
-    if (!m.headers.length || !m.rows.length) return null;
-    var res = buildAlokasi(m.headers, m.rows);
-    var blocks = res.blocks.filter(function (b) { return b.mesin || b.lots.length; });
-    var rep = { blocks: blocks, nMc: 0, nRun: 0, nIdl: 0, nStp: 0, kg: 0, cone: 0, lots: res.total, bar: { n: 0, mv: 0, sisa: 0 }, benang: [], tot: { lot: 0, cone: 0, fin: 0, act: 0, sisa: 0, total: 0 } };
-    var by = {};
-    blocks.forEach(function (b) {
-      if (b.mesin) {
-        rep.nMc++;
-        if (b.stop) rep.nStp++; else if (b.open) rep.nRun++; else rep.nIdl++;
-      }
-      rep.kg += b.kg; rep.cone += b.cone;
-      b.lots.forEach(function (it) {
-        if (!it.fin) { var k = it.sisa ? 'sisa' : (it.mesin !== it.from ? 'mv' : 'n'); rep.bar[k] += it.kg; }
-        var name = String(it.noBenang || '').trim() || '(tanpa no benang)';
-        var o = by[name] || (by[name] = { name: name, lot: 0, cone: 0, fin: 0, act: 0, sisa: 0, total: 0, mc: [] });
-        var c = it.fin ? 'fin' : (it.sisa ? 'sisa' : 'act');
-        o.lot++; o.cone += it.cone; o[c] += it.kg; o.total += it.kg;
-        if (b.mesin && o.mc.indexOf(b.mesin) < 0) o.mc.push(b.mesin);
-        var T = rep.tot; T.lot++; T.cone += it.cone; T[c] += it.kg; T.total += it.kg;
-      });
-    });
-    rep.benang = Object.keys(by).map(function (x) { return by[x]; }).sort(function (a, b) { return (b.total - a.total) || a.name.localeCompare(b.name); });
-    return rep;
-  }
-
-  function mesinBuild(Doc, rep, extra) {
-    var W = 1200, M = 36, IW = W - 2 * M, LX = 256, COLS = 6, CG = 8, CH = 158, GAP = 10;
-    var CW = (IW - LX - 14 - (COLS - 1) * CG) / COLS;
-    var now = new Date(), P2 = function (n) { return (n < 10 ? '0' : '') + n; };
-    var stamp = P2(now.getDate()) + '/' + P2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + P2(now.getHours()) + ':' + P2(now.getMinutes());
-    var pill = HARI[now.getDay()] + ', ' + now.getDate() + ' ' + BULAN[now.getMonth()] + ' ' + now.getFullYear();
-
-    // ---- ukur tinggi dulu supaya ukuran halaman pas
-    var HEAD_H = 96, STAT_Y = 104, STAT_H = 82, PY0 = STAT_Y + STAT_H + 16;
-    var lay = rep.blocks.map(function (b) {
-      var n = b.lots.length, rows = Math.ceil(n / COLS), h;
-      if (n) h = Math.max(100, 24 + rows * CH + (rows - 1) * CG);
-      else h = b.stop ? 64 : 80;
-      return h;
-    });
-    var y = PY0; lay.forEach(function (h) { y += h + GAP; });
-    var RS_TOP = y + 14, RS_ROW = 18, RS_HEAD = 24, RS_TOT = 24;
-    var RS_H = 58 + RS_HEAD + rep.benang.length * RS_ROW + RS_TOT + 16;
-    var FOOT_Y = RS_TOP + RS_H + 18, H = FOOT_Y + 40;
-
-    var o = { unit: 'pt', format: [W, H], orientation: 'p', compress: true };
-    if (extra) Object.keys(extra).forEach(function (k) { o[k] = extra[k]; });
-    var doc = new Doc(o);
-
-    var hex = function (c, kind) {
-      var n = parseInt(c.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-      if (kind === 'f') doc.setFillColor(r, g, b); else if (kind === 't') doc.setTextColor(r, g, b); else doc.setDrawColor(r, g, b);
-    };
-    var tx = function (s) { return String(s === null || s === undefined ? '' : s).replace(/[^\x20-\xFF]/g, '?'); };
-    var font = function (bold, size, color) { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); hex(color, 't'); };
-    var T = function (s, x, yy, align) { doc.text(tx(s), x, yy, align ? { align: align } : undefined); };
-    var box = function (x, yy, w, h, r, fill, stroke, lw) {
-      hex(fill, 'f'); hex(stroke || fill, 'd'); doc.setLineWidth(lw || 0.8);
-      doc.roundedRect(x, yy, w, h, r, r, stroke ? 'FD' : 'F');
-    };
-    var fit = function (s, w) {
-      s = tx(s);
-      if (doc.getTextWidth(s) <= w) return s;
-      while (s.length > 1 && doc.getTextWidth(s + '..') > w) s = s.slice(0, -1);
-      return s + '..';
-    };
-    var spaced = function (s, x, yy, k, align) {   // teks huruf renggang; font sudah diatur sebelumnya
-      s = tx(s); var w = 0, i;
-      for (i = 0; i < s.length; i++) w += doc.getTextWidth(s.charAt(i)) + k;
-      w -= k;
-      var cx = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-      for (i = 0; i < s.length; i++) { doc.text(s.charAt(i), cx, yy); cx += doc.getTextWidth(s.charAt(i)) + k; }
-    };
-    var kgTxt = function (n) { return fmtNum(round2(n)); };
-    var wrapTxt = function (s, w, maxLines) {   // pecah teks per kata sesuai lebar; sisa dipotong dengan ".."
-      var words = tx(s).replace(/\s+/g, ' ').trim().split(' '), lines = [], cur = '', i, t;
-      for (i = 0; i < words.length; i++) {
-        t = cur ? cur + ' ' + words[i] : words[i];
-        if (doc.getTextWidth(t) <= w || !cur) { cur = t; } else { lines.push(cur); cur = words[i]; }
-        if (lines.length === maxLines) break;
-      }
-      if (lines.length < maxLines && cur) lines.push(cur);
-      var used = lines.join(' ').length, full = words.join(' ');
-      if (lines.length && used < full.length) lines[lines.length - 1] = fit(lines[lines.length - 1].replace(/\.+$/, '') + '..', w);
-      return lines.map(function (l) { return fit(l, w); });
-    };
-
-    // ---- header
-    hex(MX.teal, 'd'); doc.setLineWidth(2.6); doc.circle(M + 18, 54, 15, 'S');
-    doc.setLineWidth(1.8); doc.circle(M + 18, 54, 8, 'S');
-    hex(MX.teal, 'f'); doc.circle(M + 18, 54, 2.6, 'F');
-    font(true, 8.5, MX.teal); spaced('WIP YARN DYEING', M + 48, 36, 2.6);
-    font(true, 32, MX.navy); T('ORDER CELUP', M + 48, 70);
-    var pw = 178;
-    box(M + IW - pw, 26, pw, 26, 13, MX_TINT.teal[0], MX.teal, 1);
-    font(true, 11, MX.teal); T(pill, M + IW - pw / 2, 43.5, 'center');
-    font(false, 8, MX.dim); T('Dibuat ' + stamp + ' · ' + rep.nMc + ' mesin · ' + rep.lots + ' lot', M + IW, 68, 'right');
-    hex('#7fb0c4', 'd'); doc.setLineWidth(1.2); doc.line(M, 86, M + IW, 86);
-
-    // ---- kartu ringkasan
-    var sw = 126, sg = 12;
-    var stats = [['JUMLAH MESIN', rep.nMc, MX.teal, MX_TINT.teal], ['RUNNING', rep.nRun, MX.green, MX_TINT.green], ['IDLE', rep.nIdl, MX.amber, MX_TINT.amber], ['STOP', rep.nStp, MX.rose, MX_TINT.stop]];
-    stats.forEach(function (s, i) {
-      var x = M + i * (sw + sg);
-      box(x, STAT_Y, sw, STAT_H, 10, '#ffffff', s[3][1], 1);
-      font(true, 7.5, MX.dim); spaced(s[0], x + 12, STAT_Y + 20, 1.6);
-      font(true, 38, s[2]); T(fmtNum(s[1]), x + 12, STAT_Y + 64);
-    });
-    var bx = M + 4 * (sw + sg), bw = IW - 4 * (sw + sg);
-    box(bx, STAT_Y, bw, STAT_H, 10, '#ffffff', MX_TINT.teal[1], 1);
-    font(true, 7.5, MX.dim); spaced('TOTAL ORDER CELUP', bx + 14, STAT_Y + 20, 1.6);
-    var lg = [['Aktif', MX.green], ['Dialokasi', MX.amber], ['Sisa Order', MX.rose]], lx = bx + bw - 14;
-    for (var li = lg.length - 1; li >= 0; li--) {
-      font(false, 7.5, MX.dim); var lw = doc.getTextWidth(lg[li][0]);
-      T(lg[li][0], lx, STAT_Y + 20, 'right'); hex(lg[li][1], 'f'); doc.circle(lx - lw - 6, STAT_Y + 17.6, 2.6, 'F');
-      lx -= lw + 22;
-    }
-    var kgS = kgTxt(rep.kg), coneS = fmtNum(round2(rep.cone));
-    font(true, 30, MX.navy); T(kgS, bx + 14, STAT_Y + 54); var w1 = doc.getTextWidth(kgS);
-    font(true, 10, MX.teal); T('Kg', bx + 20 + w1, STAT_Y + 54); var w2 = doc.getTextWidth('Kg');
-    var cx0 = bx + 20 + w1 + w2 + 18;
-    font(true, 30, MX.teal); T(coneS, cx0, STAT_Y + 54); var w3 = doc.getTextWidth(coneS);
-    font(true, 10, MX.dim); T('Cone', cx0 + w3 + 6, STAT_Y + 54);
-    var bar0 = bx + 14, barW = bw - 28, tot = rep.bar.n + rep.bar.mv + rep.bar.sisa;
-    hex('#dfe6f2', 'f'); doc.rect(bar0, STAT_Y + 64, barW, 7, 'F');
-    if (tot > 0) {
-      var cur = bar0;
-      [[rep.bar.n, MX.green], [rep.bar.mv, '#d9892b'], [rep.bar.sisa, MX.rose]].forEach(function (sg2) {
-        var w = barW * sg2[0] / tot; if (w <= 0) return;
-        hex(sg2[1], 'f'); doc.rect(cur, STAT_Y + 64, w, 7, 'F'); cur += w;
-      });
-    }
-
-    // ---- panel per mesin
-    var py = PY0;
-    rep.blocks.forEach(function (b, bi) {
-      var h = lay[bi], n = b.lots.length, px = M;
-      var sc = b.stop ? MX.rose : (b.open ? MX.green : MX.amber);
-      var tint = b.stop ? MX_TINT.stop : (b.open ? MX_TINT.plain : MX_TINT.plain);
-      box(px, py, IW, h, 12, b.stop && !n ? tint[0] : MX.panel, b.stop ? tint[1] : '#c9d4e8', 1);
-      // kolom kiri
-      var label = b.mesin || '-';
-      box(px + 14, py + 12, 46, 26, 6, sc);
-      font(true, label.length > 3 ? 12 : 14, '#ffffff'); T(label, px + 37, py + 30, 'center');
-      font(true, 14, MX.navy); T('MC. ' + (b.mesin || 'TANPA MESIN'), px + 68, py + 26);
-      var ptxt = b.stop ? 'STOP' : (b.open ? b.open + ' ORDER AKTIF' : 'IDLE');
-      font(true, 6.8, sc);
-      var pwid = doc.getTextWidth(ptxt) + (b.stop ? 16 : 26);
-      box(px + 68, py + 31, pwid, 12.5, 6.25, b.stop ? '#fbdbe6' : (b.open ? '#dcf1e5' : '#fbecd0'), sc, 0.7);
-      if (!b.stop) { hex(sc, 'f'); doc.circle(px + 68 + 8, py + 37.2, 2.2, 'F'); }
-      font(true, 6.8, sc); T(ptxt, px + 68 + (b.stop ? 8 : 14), py + 39.6);
-      var kap = kapTotal(b.mesin), showKg = b.open > 0 || (n > 0 && !b.stop);
-      if (showKg) {
-        var ks = kgTxt(b.kg);
-        font(true, 24, sc); T(ks, px + 14, py + 66); var kw = doc.getTextWidth(ks);
-        font(false, 9, MX.dim); T('Kg', px + 18 + kw, py + 66);
-        font(false, 8.5, MX.dim); T(fmtNum(round2(b.cone)) + ' cone', px + 18 + kw + doc.getTextWidth('Kg') + 8, py + 66);
-      }
-      if (kap && !(b.stop && !n)) {
-        var pct = b.kg / kap, over = b.kg > kap, ty = py + h - 26;
-        hex('#dfe6f2', 'f'); doc.rect(px + 14, ty, 210, 5, 'F');
-        hex(over ? MX.rose : MX.teal, 'f'); doc.rect(px + 14, ty, Math.max(0, Math.min(1, pct)) * 210, 5, 'F');
-        font(over, 7.5, over ? MX.rose : MX.dim); T('Kap. ' + fmtNum(MESIN_KAP[b.mesin]) + ' Kg × ' + MESIN_SIKLUS + ' Cycle = ' + fmtNum(kap) + ' Kg' + (over ? ' · OVER' : ''), px + 14, ty + 15);
-        font(true, 7.5, over ? MX.rose : MX.navy); T(fmtNum(Math.round(pct * 100)) + '%', px + 224, ty + 15, 'right');
-      } else if (kap) {
-        font(false, 7, MX.dim); T('Kap. ' + fmtNum(MESIN_KAP[b.mesin]) + ' Kg × ' + MESIN_SIKLUS + ' Cycle = ' + fmtNum(kap) + ' Kg', px + 14, py + h - 8);
-      }
-      // garis pemisah
-      hex(b.stop ? '#eab7c8' : '#d3dcec', 'd'); doc.setLineWidth(0.8); doc.line(px + LX - 12, py + 10, px + LX - 12, py + h - 10);
-      // area lot
-      var rx = px + LX, rw = IW - LX - 14;
-      if (!n) {
-        if (b.stop) { font(true, 9.5, MX.rose); T('MESIN STOP · tidak menerima lot', rx + rw / 2, py + h / 2 + 3.5, 'center'); }
-        else { font(false, 9.5, MX.dim); T('Siap pakai · belum ada lot', rx + rw / 2, py + h / 2 + 3.5, 'center'); }
-      }
-      b.lots.forEach(function (it, i) {
-        var col = i % COLS, rr = Math.floor(i / COLS), x = rx + col * (CW + CG), yy = py + 12 + rr * (CH + CG);
-        var moved = it.mesin !== it.from;
-        var st = it.sisa && !it.fin ? MX_TINT.rose : (it.fin ? MX_TINT.green : (moved ? MX_TINT.amber : MX_TINT.plain));
-        var fillC = it.fin ? '#eef8f2' : (it.sisa ? '#fdecf1' : (moved ? '#fffaf0' : '#ffffff'));
-        box(x, yy, CW, CH, 7, fillC, st[1], it.fin || it.sisa || moved ? 1.2 : 0.8);
-        var cw8 = CW - 16;
-        // baris atas: CYCLE #n (kiri) dan warna (kanan)
-        font(true, 6.2, MX.dim);
-        var cyT = 'CYCLE #' + (i + 1), cyW = doc.getTextWidth(cyT) + 10;
-        box(x + 8, yy + 8, cyW, 13, 3.5, '#f1f5fb', '#d0d9ea', 0.6);
-        T(cyT, x + 13, yy + 16.8);
-        if (it.warna) {
-          font(true, 7, MX.amber);
-          var wT = fit(it.warna, cw8 - cyW - 14), wW = doc.getTextWidth(wT) + 10;
-          box(x + CW - 8 - wW, yy + 8, wW, 13, 3.5, '#fff6e6', '#e0b565', 0.6);
-          T(wT, x + CW - 8 - wW / 2, yy + 16.8, 'center');
-        }
-        font(true, 6, MX.dim); T('KIKC REF', x + 8, yy + 34);
-        font(true, 10.5, MX.green); T(fit(it.kikc, cw8), x + 8, yy + 46);
-        // Yarn type & supplier: "benang // SUPPLIER", mengecil bila panjang
-        var sup = it.sup || supplierOf(it.kikc);
-        font(true, 6, MX.dim); T(sup ? 'YARN TYPE & SUPPLIER' : 'YARN TYPE', x + 8, yy + 59);
-        var ya = tx(it.noBenang || '-') + (sup ? ' // ' : ''), yb2 = tx(sup || ''), yfs = 8.5, wya, wyb;
-        for (;;) {
-          doc.setFontSize(yfs); doc.setFont('helvetica', 'bold'); wya = doc.getTextWidth(ya); wyb = doc.getTextWidth(yb2);
-          if (wya + wyb <= cw8 || yfs <= 5.8) break;
-          yfs -= 0.4;
-        }
-        if (wya + wyb > cw8) { while (yb2.length > 1 && wya + doc.getTextWidth(yb2 + '..') > cw8) yb2 = yb2.slice(0, -1); yb2 += '..'; }
-        font(true, yfs, MX.navy); doc.text(ya, x + 8, yy + 70);
-        font(true, yfs, MX.green); doc.text(yb2, x + 8 + wya, yy + 70);
-        // kotak CONES / BERAT (KG)
-        box(x + 8, yy + 77, cw8, 27, 5, '#f7f9fd', '#d5ddee', 0.6);
-        font(true, 5.8, MX.dim); T('CONES', x + 14, yy + 86.5); T('BERAT (KG)', x + CW - 14, yy + 86.5, 'right');
-        font(true, 10.5, MX.navy); T(it.coneTxt === '' ? '-' : fmtNum(it.cone), x + 14, yy + 99);
-        font(true, 10.5, MX.green); T(it.kgTxt === '' ? '-' : fmt2(it.kg), x + CW - 14, yy + 99, 'right');
-        // keterangan KIKC
-        font(true, 6, MX.dim); T('KETERANGAN', x + 8, yy + 117);
-        font(false, 7.5, MX.navy);
-        wrapTxt(ketKikcOf(it.kikc, it.ket) || '-', cw8, 2).forEach(function (ln, li2) { T(ln, x + 8, yy + 126.5 + li2 * 9); });
-        var parts = [];
-        if (it.fin) parts.push('FINISH'); else if (it.sisa) parts.push('SISA ORDER');
-        if (moved) parts.push('DIALOKASI');
-        if (parts.length) { font(true, 6.8, it.fin ? MX.green : (it.sisa ? MX.rose : MX.amber)); T(fit(parts.join(' · '), cw8), x + 8, yy + 150); }
-      });
-      py += h + GAP;
-    });
-
-    // ---- resume per nomor benang
-    box(M, RS_TOP, IW, RS_H, 12, '#ffffff', '#c9d4e8', 1);
-    font(true, 15, MX.navy); T('RESUME PER NOMOR BENANG', M + 14, RS_TOP + 26);
-    font(false, 8, MX.dim); T(rep.benang.length + ' nomor benang · ' + rep.tot.lot + ' lot · Total = Plan Order + Realisasi + Sisa Order', M + IW - 14, RS_TOP + 25, 'right');
-    hex(MX.teal, 'd'); doc.setLineWidth(1.4); doc.line(M + 14, RS_TOP + 34, M + 14 + 70, RS_TOP + 34);
-    var cols = [
-      { w: 230, a: 'l', t: 'No Benang' }, { w: 90, a: 'r', t: 'Lot' }, { w: 120, a: 'r', t: 'Cone' },
-      { w: 170, a: 'r', t: 'Plan Order (Kg)' }, { w: 170, a: 'r', t: 'Realisasi (Kg)' }, { w: 170, a: 'r', t: 'Sisa Order (Kg)' }, { w: 150, a: 'r', t: 'Total (Kg)' }
-    ];
-    var tx0 = M + 14, ty0 = RS_TOP + 44, tw = IW - 28, xs = [], ax = tx0;
-    cols.forEach(function (c) { xs.push(ax); ax += c.w; });
-    var cell = function (ci, s, yb, bold, color) {
-      var c = cols[ci]; font(bold, 8.5, color);
-      if (c.a === 'r') T(s, xs[ci] + c.w - 8, yb, 'right'); else T(fit(s, c.w - 12), xs[ci] + 8, yb);
-    };
-    hex('#e3eef6', 'f'); doc.rect(tx0, ty0, tw, RS_HEAD, 'F');
-    cols.forEach(function (c, ci) { cell(ci, c.t, ty0 + 15.5, true, MX.teal); });
-    var num = function (v) { v = round2(v); return v ? fmt2(v) : ''; };
-    rep.benang.forEach(function (r, ri) {
-      var yy = ty0 + RS_HEAD + ri * RS_ROW;
-      if (ri % 2 === 1) { hex('#f1f6fb', 'f'); doc.rect(tx0, yy, tw, RS_ROW, 'F'); }
-      var yb = yy + 12.5;
-      cell(0, r.name, yb, true, MX.navy);
-      cell(1, fmtNum(r.lot), yb, false, MX.navy); cell(2, fmtNum(round2(r.cone)), yb, false, MX.navy);
-      cell(3, num(r.act), yb, false, MX.navy); cell(4, num(r.fin), yb, false, MX.green); cell(5, num(r.sisa), yb, false, MX.rose);
-      cell(6, fmt2(round2(r.total)), yb, true, MX.navy);
-    });
-    var ty1 = ty0 + RS_HEAD + rep.benang.length * RS_ROW;
-    hex('#d6e6f1', 'f'); doc.rect(tx0, ty1, tw, RS_TOT, 'F');
-    hex(MX.teal, 'd'); doc.setLineWidth(1); doc.line(tx0, ty1, tx0 + tw, ty1);
-    var tt = rep.tot, tb = ty1 + 15.5;
-    cell(0, 'TOTAL', tb, true, MX.navy);
-    cell(1, fmtNum(tt.lot), tb, true, MX.navy); cell(2, fmtNum(round2(tt.cone)), tb, true, MX.navy);
-    cell(3, fmt2(round2(tt.act)), tb, true, MX.navy); cell(4, fmt2(round2(tt.fin)), tb, true, MX.green);
-    cell(5, fmt2(round2(tt.sisa)), tb, true, MX.rose); cell(6, fmt2(round2(tt.total)), tb, true, MX.navy);
-
-    // ---- legenda
-    hex(MX.teal, 'd'); doc.setLineWidth(0.8); doc.line(M, FOOT_Y, M + IW, FOOT_Y);
-    var leg = [['Finish', MX.green], ['Sisa order', MX.rose], ['Dialokasi (beda dari Plan)', MX.amber], ['Running', MX.green], ['Idle', MX.amber], ['Stop', MX.rose]], lx2 = M;
-    leg.forEach(function (l) {
-      hex(l[1], 'f'); doc.rect(lx2, FOOT_Y + 14, 6, 6, 'F');
-      font(false, 8, MX.dim); T(l[0], lx2 + 11, FOOT_Y + 20.5); lx2 += 11 + doc.getTextWidth(l[0]) + 20;
-    });
-    font(true, 8, MX.dim); T('WIP YD · Data per ' + rep.nMc + ' mesin · urutan mesin tetap', M + IW, FOOT_Y + 20.5, 'right');
-    return doc;
-  }
-
-  function mesinFileBase() {
-    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
-    return 'WIP_YD_Mesin_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
-  }
-  $('#btnPdfMesin').addEventListener('click', function () {
-    var b = this, lab = b.querySelector('span'), rep = mesinReport();
-    if (!rep) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
-    b.disabled = true; lab.textContent = 'Menyiapkan...';
-    Promise.all([loadJsPdf(), loadList('wod', false).catch(function () { /* supplier dikosongkan bila WOD gagal dimuat */ })]).then(function (x) {
-      var J = x[0];
-      rep = mesinReport() || rep;
-      var doc = mesinBuild(J, rep);
-      doc.save(mesinFileBase() + '.pdf');
-      toast('PDF diunduh: ' + rep.nMc + ' mesin, ' + rep.lots + ' lot (teks vektor, tajam saat diperbesar).', 'ok');
-    }).catch(function (e) {
-      toast('PDF gagal dibuat. ' + errMsg(e), 'err', 7000);
-    }).then(function () { b.disabled = false; lab.textContent = 'Unduh PDF'; });
-  });
   // PNG: coba 4K (3840 px lebar); bila kanvas terlalu besar untuk perangkat, turun bertahap
   var PNG_MESIN_TRY = [{ pref: 3.2, maxpx: 48000000 }, { pref: 3.2, maxpx: 30000000 }, { pref: 3.2, maxpx: 16000000 }, { pref: 3.2, maxpx: 8000000 }];
-  function mesinPng(rep, i) {
-    if (i >= PNG_MESIN_TRY.length) return Promise.reject(new Error('Gambar terlalu besar untuk perangkat ini. Gunakan Unduh PDF.'));
-    var doc;
-    try { doc = mesinBuild(PngDoc, rep, PNG_MESIN_TRY[i]); } catch (e) { return mesinPng(rep, i + 1); }
-    if (doc.bad) { doc = null; return mesinPng(rep, i + 1); }
-    var cv = doc.pages[0];
-    return new Promise(function (resolve) {
-      cv.toBlob(function (blob) { resolve(blob ? { blob: blob, w: cv.width, h: cv.height } : null); }, 'image/png');
-    }).then(function (r) { return r || mesinPng(rep, i + 1); });
-  }
-  $('#btnPngMesin').addEventListener('click', function () {
-    var b = this, lab = b.querySelector('span'), rep = mesinReport();
-    if (!rep) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
-    b.disabled = true; lab.textContent = 'Menyiapkan...';
-    Promise.resolve(loadList('wod', false)).catch(function () { /* supplier dikosongkan bila WOD gagal dimuat */ }).then(function () {
-      rep = mesinReport() || rep;
-      return mesinPng(rep, 0);
-    }).then(function (r) {
-        downloadBlob(r.blob, mesinFileBase() + '.png');
-        toast('PNG diunduh: ' + r.w + ' × ' + r.h + ' px' + (r.w < 3800 ? ' (resolusi diturunkan sesuai kemampuan perangkat; PDF tetap vektor tajam)' : ' (4K)') + '.', 'ok', r.w < 3800 ? 8000 : undefined);
-      }).catch(function (e) {
-        toast('PNG gagal dibuat. ' + errMsg(e), 'err', 7000);
-      }).then(function () { b.disabled = false; lab.textContent = 'Unduh PNG'; });
-  });
 
-
-  /* ---------- Unduh Order Celup Harian (tab Plan): PDF vektor dan PNG 4K ----------
+  /* ---------- Unduh Order Celup Harian (tab Mesin): PDF vektor dan PNG 4K ----------
      Tata letak mengikuti lembar "Order Celup Harian": tabel per kelompok mesin, subtotal, grand total, realisasi, ringkasan Shift, notes per No Benang.
      STD = Kg / Cone. Realisasi (Shift, Group, Real Kg) diambil dari tab Celup menurut KIKC. */
   var MESIN_GRUP = {   // kelompok merek mesin pada lembar Order Celup Harian
@@ -3779,13 +3450,13 @@ var Code128 = (function () {
     var res = buildAlokasi(m.headers, m.rows);
     var groups = [], gi = {};
     GRUP_URUT.concat(['LAINNYA']).forEach(function (n) { gi[n] = { name: n, mcs: [], kg: 0, cone: 0, real: 0, lots: 0 }; groups.push(gi[n]); });
-    var T = { kg: 0, cone: 0, lots: 0, real: 0, realCone: 0, nMc: 0, nAct: 0 };
+    var T = { kg: 0, cone: 0, lots: 0, real: 0, realCone: 0, nMc: 0, nAct: 0, sisaLots: 0, sisaKg: 0 };
     var shift = { 1: { kg: 0, g: '' }, 2: { kg: 0, g: '' }, 3: { kg: 0, g: '' } };
     var by = {};
     res.blocks.forEach(function (b) {
       if (!b.mesin && !b.lots.length) return;
       var g = gi[MESIN_GRUP[b.mesin]] || gi['LAINNYA'];
-      var mc = { name: b.mesin || 'TANPA MESIN', stop: b.stop, lots: [] };
+      var mc = { name: b.mesin || 'TANPA MESIN', stop: b.stop, lots: [], load: b.kg, cap: kapTotal(b.mesin) };
       T.nMc++; if (b.open) T.nAct++;
       b.lots.forEach(function (it) {
         var ci = clpInfo(it.kikc);
@@ -3796,6 +3467,7 @@ var Code128 = (function () {
         mc.lots.push(row);
         g.kg += it.kg; g.cone += it.cone; g.real += row.real; g.lots++;
         T.kg += it.kg; T.cone += it.cone; T.lots++; T.real += row.real; T.realCone += row.realCone;
+        if (it.sisa) { T.sisaLots++; T.sisaKg += it.kg; }
         if (row.has && shift[row.sh]) { shift[row.sh].kg += row.real; if (!shift[row.sh].g && row.grup) shift[row.sh].g = row.grup; }
         var name = String(it.noBenang || '').trim() || '(tanpa no benang)';
         var o = by[name] || (by[name] = { name: name, kg: 0, cone: 0 });
@@ -3811,10 +3483,10 @@ var Code128 = (function () {
   function dailyBuild(Doc, rep, extra) {
     var W = 1200, M = 30, IW = W - 2 * M, RH = 17, MGAP = 4, GH = 26, CHH = 28, SUBH = 22, GGAP = 16;
     var cols = [
-      { k: 'mc', w: 50, a: 'c', t: ['MC'] }, { k: 'no', w: 26, a: 'c', t: ['NO'] }, { k: 'warna', w: 70, a: 'l', t: ['WARNA'] },
+      { k: 'mc', w: 94, a: 'c', t: ['MC', 'KAP. 3 CYCLE'] }, { k: 'no', w: 26, a: 'c', t: ['NO'] }, { k: 'warna', w: 70, a: 'l', t: ['WARNA'] },
       { k: 'kikc', w: 84, a: 'l', t: ['KIKC'] }, { k: 'nb', w: 92, a: 'l', t: ['NO. BENANG'] }, { k: 'sup', w: 58, a: 'c', t: ['SUPPLIER'] },
       { k: 'qty', w: 72, a: 'r', t: ['QTY', '(KG)'] }, { k: 'cone', w: 58, a: 'r', t: ['CONE /', 'STR'] }, { k: 'std', w: 46, a: 'r', t: ['STD'] },
-      { k: 'ikt', w: 40, a: 'c', t: ['IKT'] }, { k: 'kon', w: 176, a: 'l', t: ['KONSUMSI'] }, { k: 'sh', w: 54, a: 'c', t: ['SHIFT', 'CELUP'] },
+      { k: 'ikt', w: 40, a: 'c', t: ['IKT'] }, { k: 'kon', w: 132, a: 'l', t: ['KONSUMSI'] }, { k: 'sh', w: 54, a: 'c', t: ['SHIFT', 'CELUP'] },
       { k: 'gr', w: 46, a: 'c', t: ['GROUP'] }, { k: 'real', w: 70, a: 'r', t: ['REAL', 'KG'] }, { k: 'kat', w: 56, a: 'c', t: ['KATEGORI', 'WARNA'] },
       { k: 'ket', w: 0, a: 'l', t: ['KETERANGAN'] }
     ];
@@ -3868,7 +3540,7 @@ var Code128 = (function () {
       for (i = 0; i < s.length; i++) { doc.text(s.charAt(i), cx, yy); cx += doc.getTextWidth(s.charAt(i)) + k; }
     };
     var f2 = function (n) { return fmt2(round2(n)); };
-    var C = { ink: '#0a1230', navy2: '#13296b', cyan: '#00b8d9', neon: '#38e8ff', violet: '#6c47ff', green: '#0c7d44', rose: '#c0275c', amber: '#b86e00', dim: '#5a6690', grid: '#e1e8f5', band: '#f3f7fd', page: '#f4f7fd' };
+    var C = { ink: '#0a1230', navy2: '#13296b', cyan: '#00b8d9', neon: '#38e8ff', violet: '#6c47ff', green: '#0c7d44', rose: '#c0275c', amber: '#b86e00', orange: '#f26a00', dim: '#5a6690', grid: '#e1e8f5', band: '#f3f7fd', page: '#f4f7fd' };
 
     // latar halaman
     hex(C.page, 'f'); doc.rect(0, 0, W, H, 'F');
@@ -3892,7 +3564,7 @@ var Code128 = (function () {
     var kw = (IW - 40) / 5, TT = rep.T, pct = TT.kg > 0 ? Math.min(100, TT.real / TT.kg * 100) : 0;
     var kpis = [
       ['TOTAL ORDER (KG)', f2(TT.kg), rep.T.lots + ' lot', C.cyan], ['TOTAL CONE', fmtNum(round2(TT.cone)), 'STD rata-rata ' + (TT.cone > 0 ? fmt2(TT.kg / TT.cone) : '-'), C.violet],
-      ['TOTAL LOT', fmtNum(TT.lots), rep.groups.length + ' kelompok mesin', '#ec4899'], ['MESIN AKTIF', TT.nAct + ' / ' + TT.nMc, 'ada order aktif', '#10b981'],
+      ['TOTAL LOT', fmtNum(TT.lots), TT.sisaLots + ' sisa order · ' + f2(TT.sisaKg) + ' Kg', '#ec4899'], ['MESIN AKTIF', TT.nAct + ' / ' + TT.nMc, 'ada order aktif', '#10b981'],
       ['REALISASI (KG)', f2(TT.real), fmt2(pct) + '% dari order', '#f59e0b']
     ];
     kpis.forEach(function (k, i) {
@@ -3901,7 +3573,7 @@ var Code128 = (function () {
       hex(k[3], 'f'); doc.roundedRect(x, KPI_Y, 5, KPI_H, 2.5, 2.5, 'F');
       font(true, 6.8, C.dim); spaced(k[0], x + 16, KPI_Y + 18, 1.5);
       font(true, 22, C.ink); T(k[1], x + 16, KPI_Y + 41);
-      font(false, 7.5, C.dim); T(k[2], x + 16, KPI_Y + 52);
+      font(k[0] === 'TOTAL LOT' && TT.sisaLots > 0, 7.5, k[0] === 'TOTAL LOT' && TT.sisaLots > 0 ? C.orange : C.dim); T(k[2], x + 16, KPI_Y + 52);
     });
     // batang progres realisasi
     hex('#e4eaf6', 'f'); doc.rect(M + 4 * (kw + 10) + 16, KPI_Y + 56, kw - 32, 3, 'F');
@@ -3929,9 +3601,10 @@ var Code128 = (function () {
         var n = Math.max(1, mc.lots.length), bh = n * RH, top = ry;
         mc.lots.forEach(function (r, i) {
           var it = r.it, yy = ry + i * RH, yb = yy + 11.6;
-          var bg = it.fin ? '#e3f6ec' : (it.sisa ? '#fff0f4' : (i % 2 ? C.band : '#ffffff'));
+          var bg = it.fin ? '#e3f6ec' : (it.sisa ? '#ffe0bd' : (i % 2 ? C.band : '#ffffff'));
           hex(bg, 'f'); doc.rect(M + cols[0].w, yy, IW - cols[0].w, RH, 'F');
           line(M + cols[0].w, yy + RH, M + IW, yy + RH, C.grid, 0.5);
+          if (it.sisa && !it.fin) { hex(C.orange, 'f'); doc.rect(M + cols[0].w, yy, 3.5, RH, 'F'); }
           var cx = function (k, a) { var c = cols[CI[k]], x = xs[CI[k]]; return a === 'c' ? x + c.w / 2 : (a === 'r' ? x + c.w - 6 : x + 6); };
           var cw = function (k) { return cols[CI[k]].w - 10; };
           font(false, 7.2, C.dim); T(String(i + 1), cx('no', 'c'), yb, 'center');
@@ -3943,6 +3616,7 @@ var Code128 = (function () {
           font(false, 7.8, C.ink); T(it.coneTxt === '' ? '-' : fmtNum(it.cone), cx('cone', 'r'), yb, 'right');
           font(false, 7.6, C.dim); T(r.std === null ? '-' : fmt2(r.std), cx('std', 'r'), yb, 'right');
           font(false, 7.2, C.ink); T(fit(r.ket || '-', cw('kon')), cx('kon'), yb);
+          if (it.sisa && !it.fin) { box(xs[CI.ket] + 6, yy + 3, 56, 11, 5.5, C.orange); font(true, 6.2, '#ffffff'); T('SISA ORDER', xs[CI.ket] + 34, yy + 10.8, 'center'); }
           if (r.has) {
             font(true, 7.6, C.ink); T(r.sh || '', cx('sh', 'c'), yb, 'center'); T(fit(r.grup || '', cw('gr')), cx('gr', 'c'), yb, 'center');
             font(true, 7.8, C.green); T(f2(r.real), cx('real', 'r'), yb, 'right');
@@ -3959,8 +3633,13 @@ var Code128 = (function () {
         // pil kode mesin
         var ph = Math.min(bh - 2, 20), pyy = top + (bh - ph) / 2;
         hex(C.page, 'f'); doc.rect(M + 0.5, top + 0.5, cols[0].w - 1, bh - 1, 'F');
-        box(M + 6, pyy, cols[0].w - 12, ph, 5, mc.stop ? C.rose : '#0b1536', mc.stop ? C.rose : C.neon, 0.8);
-        font(true, mc.name.length > 3 ? 7.6 : 9, mc.stop ? '#ffffff' : C.neon); T(mc.name, M + cols[0].w / 2, pyy + ph / 2 + 3.2, 'center');
+        box(M + 6, pyy, 44, ph, 5, mc.stop ? C.rose : '#0b1536', mc.stop ? C.rose : C.neon, 0.8);
+        font(true, mc.name.length > 3 ? 7.6 : 9, mc.stop ? '#ffffff' : C.neon); T(mc.name, M + 28, pyy + ph / 2 + 3.2, 'center');
+        if (mc.cap) {   // kapasitas (kapasitas per siklus x 3 siklus) dan persen beban order aktif
+          var pc2 = mc.load / mc.cap * 100, over = mc.load > mc.cap, cy2 = top + bh / 2;
+          font(false, 6, C.dim); T('Kap. ' + fmtNum(mc.cap), M + 54, cy2 - 1.2);
+          font(true, 6.4, over ? C.rose : C.ink); T(fmtNum(Math.round(pc2)) + '%' + (over ? ' OVER' : ''), M + 54, cy2 + 6.2);
+        }
         ry += bh + MGAP;
       });
       // subtotal
@@ -4009,7 +3688,7 @@ var Code128 = (function () {
     font(true, 8.4, C.ink); T('Total', tx1 + 12, sy + 86); font(true, 8.4, C.green); T(f2(TT.real), tx1 + tw1 - 10, sy + 86, 'right');
 
     // ---- legenda
-    var lg = [['#ffe3ec', '#e48aa8', 'SISA ORDER / SISA KIKC KEMARIN (belum celup)'], ['#c9efdc', '#7fc6a1', 'Sudah celup (data tab Celup)'], ['#ffffff', '#b9c6e4', 'Order aktif']], lx = M;
+    var lg = [['#ffe0bd', C.orange, 'SISA ORDER / SISA KIKC KEMARIN (belum celup)'], ['#c9efdc', '#7fc6a1', 'Sudah celup (data tab Celup)'], ['#ffffff', '#b9c6e4', 'Order aktif']], lx = M;
     lg.forEach(function (l) {
       box(lx, LEG_Y, 26, 14, 3, l[0], l[1], 0.8);
       font(true, 8.2, C.ink); T(l[2], lx + 34, LEG_Y + 10.5); lx += 34 + doc.getTextWidth(l[2]) + 26;
@@ -4063,7 +3742,7 @@ var Code128 = (function () {
     return 'WIP_YD_Order_Celup_Harian_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
   }
   function dailyReady() { return Promise.all([loadList('wod', false), loadList('clp', false)].map(function (p) { return Promise.resolve(p).catch(function () { /* data pelengkap: dilewati bila gagal */ }); })); }
-  $('#btnPdfPlan').addEventListener('click', function () {
+  $('#btnPdfMesin').addEventListener('click', function () {
     var b = this, lab = b.querySelector('span');
     if (!lst.plan.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
     b.disabled = true; lab.textContent = 'Menyiapkan...';
@@ -4086,7 +3765,7 @@ var Code128 = (function () {
       cv.toBlob(function (blob) { resolve(blob ? { blob: blob, w: cv.width, h: cv.height } : null); }, 'image/png');
     }).then(function (r) { return r || dailyPng(rep, i + 1); });
   }
-  $('#btnPngPlan').addEventListener('click', function () {
+  $('#btnPngMesin').addEventListener('click', function () {
     var b = this, lab = b.querySelector('span');
     if (!lst.plan.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
     b.disabled = true; lab.textContent = 'Menyiapkan...';

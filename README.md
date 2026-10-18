@@ -31,16 +31,16 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 2. Unggah ke hosting: `index.html`, `viewer.html`, `manifest-viewer.webmanifest`, `sw.js`. Lalu muat ulang aplikasi sekali.
    `Kode.gs` dan `index.html` harus diperbarui bersamaan.
 
-## Tab Mesin: unduh PDF dan PNG (HD)
+## Tab Mesin: unduh PDF dan PNG "Order Celup Harian" (HD)
 
-- Tombol **Unduh PDF** dan **Unduh PNG** ada di tab Mesin (Admin dan Viewer). Hasilnya memakai tata letak "Alokasi Mesin":
-  ringkasan mesin, panel tiap mesin dengan kartu lot, kapasitas dan persen beban, lalu **Resume per Nomor Benang** di bagian bawah (No Benang, Lot, Cone, Plan Order, Realisasi, Sisa Order, Total). Judul hasil unduhan: "Order Celup".
-- PDF: teks dan garis berupa vektor, jadi tetap tajam di zoom berapa pun.
-- PNG: lebar 3840 px (4K). Jika HP tidak kuat membuat gambar sebesar itu, resolusi turun otomatis (ada pemberitahuan). PDF tidak terpengaruh.
-- Kapasitas mesin = kapasitas per siklus x 3 siklus (3 shift, 1 lot per shift per mesin), mis. A18: 918 Kg x 3 = 2.754 Kg. Kapasitas per siklus diatur di `MESIN_KAPASITAS`, jumlah siklus di `MESIN_SIKLUS`, keduanya pada `Kode.gs` (cadangan di `MESIN_KAP` dalam `index.html`).
-  Mengubah kapasitas: edit `Kode.gs`, lalu Deploy versi baru.
+- Tombol **Unduh PDF** dan **Unduh PNG** ada di tab Mesin (Admin dan Viewer). Hasilnya lembar **Order Celup Harian**: ringkasan di atas,
+  tabel per kelompok mesin (kolom MC berisi kapasitas x 3 cycle dan persen beban), subtotal, Grand Total, Realisasi, Shift 1-3, Notes per No Benang, dan Catatan.
+- **Sisa Order** diberi warna oranye (baris oranye, garis oranye di kiri, dan label SISA ORDER). Lot yang sudah celup berwarna hijau.
+- STD = Kg / Cone. Shift, Group, dan Real Kg diambil dari tab Celup menurut KIKC.
+- PDF: teks dan garis berupa vektor, tajam di zoom berapa pun. PNG: lebar 3840 px (4K); bila HP tidak kuat, resolusi turun otomatis (ada pemberitahuan).
+- Kapasitas mesin = kapasitas per siklus x 3 siklus (mis. A18: 918 Kg x 3 = 2.754 Kg), diatur di `MESIN_KAPASITAS` dan `MESIN_SIKLUS` pada `Kode.gs`.
+- Kelompok mesin diatur di `MESIN_GRUP` dan `GRUP_URUT` (dalam `index.html`).
 - Pustaka PDF (jsPDF) dimuat dari internet saat tombol PDF dipakai pertama kali; PNG tidak memerlukannya.
-- Perbarui `Kode.gs` dan `index.html` bersamaan, dan unggah juga `sw.js` (versi cache v31).
 
 ## Tab Plan: kolom Supplier, aturan Celup, dan unduh Order Celup Harian
 
@@ -48,7 +48,4 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Kolom **Celup** di tab Plan (dan status Finish di tab Mesin) memakai urutan: 1) tanggal di tab Celup (sheet CLP kolom A) menurut KIKC;
   2) jika KIKC tidak ada di tab Celup, aturan lama: kolom Celup di sheet Plan berisi tanggal (hasil input di tab Data) ditampilkan TODAY()-1; selain itu "Sisa Order"
   (hanya bila minimal satu baris sudah punya tanggal).
-- Tombol **Unduh PDF** / **Unduh PNG** di tab Plan membuat lembar **Order Celup Harian** (kelompok mesin, subtotal, grand total, realisasi, ringkasan Shift, notes per No Benang).
-  STD = Kg / Cone. Shift, Group, dan Real Kg diambil dari tab Celup menurut KIKC.
-- Kelompok mesin diatur di `MESIN_GRUP` dan `GRUP_URUT` (dalam `index.html`).
 - Perbarui `Kode.gs` dan `index.html` bersamaan; unggah juga `sw.js` (cache v32).
