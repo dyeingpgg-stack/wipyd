@@ -221,6 +221,12 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .filters::-webkit-scrollbar{display:none}
   .fchip{flex:none;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 15px var(--body);cursor:pointer}
   .fchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
+  /* Tab Plan: baris Sisa Order diberi highlight; riwayat Plan hanya lihat */
+  tbody tr.sisa td{background:rgba(var(--r-rgb),.13) !important}
+  tbody tr.sisa td:first-child{box-shadow:inset 3px 0 0 var(--rose)}
+  .tag-sisa{display:inline-block;padding:2px 10px;border-radius:999px;font:700 12px var(--body);color:var(--rose);background:rgba(var(--r-rgb),.14);border:1px solid rgba(var(--r-rgb),.55);white-space:nowrap}
+  #viewPlan.plan-hist #rsPlan{display:none}
+  #viewPlan.plan-hist #nPlan{color:var(--amber);font-weight:600}
   .daterow{flex:none;display:flex;gap:8px;align-items:stretch;margin-bottom:10px}
   .daterow .input{flex:1;min-width:0;min-height:48px;padding:6px 10px;text-align:center;color-scheme:var(--scheme);font-family:var(--display);font-weight:600;font-size:17px}
   .daterow .icon-btn{width:48px;height:48px}
@@ -748,6 +754,16 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
 
     <!-- ============ PLAN ============ -->
     <section id="viewPlan" class="view list" aria-label="Daftar Plan">
+      <div class="daterow" id="planDateRow">
+        <button type="button" class="icon-btn" id="planPrev" aria-label="Riwayat Plan sebelumnya">
+          <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <input class="input" id="planDate" type="date" aria-label="Pilih tanggal riwayat Plan">
+        <button type="button" class="icon-btn" id="planNext" aria-label="Riwayat Plan berikutnya">
+          <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button type="button" class="btn-today active" id="planToday">Hari ini</button>
+      </div>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPlan" type="search" placeholder="Cari di daftar Plan" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Plan">
@@ -2072,6 +2088,7 @@ var Code128 = (function () {
     lst[k] = { headers: [], rows: [], sig: '', at: 0, loading: false, query: '', error: '', page: 1, rk: '' };
   });
 
+  lst.planh = { headers: [], rows: [], sig: '', at: 0, loading: false, query: '', error: '', page: 1, rk: '', date: '', savedAt: '' };   // riwayat Plan (tanggal yang dipilih di tab Plan)
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
   function listCacheKey(k) { return 'wipyd_list4_' + k; }
   function restoreList(k) {
@@ -2096,26 +2113,27 @@ var Code128 = (function () {
     if (k === 'plan' || k === 'wod' || k === 'clp') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan (atau supplier dari WOD, atau tab Celup) berubah
   }
   function renderList0(k) {
-    var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
+    var hist = k === 'plan' && planHistOn();   // riwayat Plan tanggal lain: data dari sheet Plan Harian, hanya lihat
+    var d = LISTS[k], m = hist ? lst.planh : lst[k], q = nq(m.query.trim());
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
       if (k === 'plan') { planStats(null, m.headers); renderResumePlan(); }
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
       if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
-      else if (m.at) listState(k, '<div class="state">Belum ada data.</div>');
+      else if (m.at) listState(k, '<div class="state">' + (hist ? 'Belum ada riwayat Plan pada tanggal ini.' : 'Belum ada data.') + '</div>');
       else listState(k, '');
       return;
     }
     var ps = pageSize();
-    var rk = m.sig + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (k === 'plan' ? '|' + lst.clp.sig : '');
+    var rk = m.sig + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (k === 'plan' ? '|' + (hist ? 'H' + m.date : lst.clp.sig) : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     m.rows.forEach(function (r, i) { if (!q || nq(r.join(' ')).indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
     if (k === 'plan') { planStats(rows, m.headers); renderResumePlan(); }
     if (!rows.length) {
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true;
-      note.textContent = '0 dari ' + m.rows.length + ' baris';
+      note.textContent = (hist ? 'Riwayat ' + dateLabel(m.date) + ' · ' : '') + '0 dari ' + m.rows.length + ' baris';
       listState(k, '<div class="state">Tidak ada baris yang cocok dengan pencarian.</div>');
       return;
     }
@@ -2133,16 +2151,21 @@ var Code128 = (function () {
     };
     // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
     var order = colOrder(k, hd);
-    var hasCelup = k === 'plan' ? planHasCelup(m) : false;
+    var hasCelup = (k === 'plan' && !hist) ? planHasCelup(m) : false;
+    var iCel = k === 'plan' ? hd.indexOf('CELUP') : -1;
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('');
     var out = [];
-    var alokJ = (k === 'plan' && m.rowNos && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // Viewer: Alokasi tampil sebagai teks biasa
+    var alokJ = (k === 'plan' && !hist && m.rowNos && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], tr = '<tr>';
+      var sisa = false;   // "Sisa Order" di kolom Celup: seluruh baris diberi highlight
+      if (iCel >= 0) sisa = (hist ? String(r[iCel] || '').trim() : celupView(hd, r, hasCelup)) === 'Sisa Order';
+      if (sisa) tr = '<tr class="sisa">';
       for (var p = 0; p < order.length; p++) {
         var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
-        if (k === 'plan' && hd[j] === 'CELUP') cell = celupView(hd, r, hasCelup);
+        if (k === 'plan' && !hist && hd[j] === 'CELUP') cell = celupView(hd, r, hasCelup);
         if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
+        else if (sisa && j === iCel) tr += '<td' + cls(p, hd[j], true) + '><span class="tag-sisa">Sisa Order</span></td>';
         else tr += '<td' + cls(p, hd[j], true) + '>' + (cell === '' ? '<span class="dim">-</span>' : esc(cell)) + '</td>';
       }
       out.push(tr + '</tr>');
@@ -2151,7 +2174,7 @@ var Code128 = (function () {
     wrap.classList.remove('hidden');
     var sp = q + '|' + m.page;
     if (sp !== m.sp) { wrap.scrollTop = 0; m.sp = sp; }   // ke atas hanya saat ganti halaman atau pencarian, bukan saat data diperbarui
-    note.textContent = (q ? rows.length + ' dari ' + m.rows.length : m.rows.length) + ' baris';
+    note.textContent = (hist ? 'Riwayat ' + dateLabel(m.date) + (m.savedAt ? ' (disimpan ' + m.savedAt + ') · ' : ' · ') : '') + (q ? rows.length + ' dari ' + m.rows.length : m.rows.length) + ' baris';
     pager.hidden = pages <= 1;
     $('#pi' + d.id).innerHTML = 'Halaman <b>' + m.page + '</b> dari ' + pages +
       '<small>baris ' + (start + 1) + '–' + (start + shown.length) + ' dari ' + rows.length + '</small>';
@@ -2214,7 +2237,7 @@ var Code128 = (function () {
   }
   // Unduh CSV tab Plan: baris yang sedang tampil (ikut pencarian), urutan kolom sama dengan layar, pemisah titik koma agar rapi di Excel Indonesia
   function exportPlanCsv() {
-    var m = lst.plan, hd = m.headers;
+    var hist = planHistOn(), m = planView(), hd = m.headers;
     if (!hd.length || !m.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
     var q = nq(m.query.trim());
     var rows = m.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
@@ -2226,14 +2249,14 @@ var Code128 = (function () {
       return '"' + v.replace(/"/g, '""') + '"';   // semua sel diberi kutip, jadi angka desimal seperti 67,5 tidak pecah kolom di aplikasi mana pun
     }
     // Kolom CELUP di CSV mengikuti tampilan: "Sisa Order" hanya bila minimal satu baris Plan berisi tanggal (dihitung dari seluruh Plan, bukan hasil pencarian)
-    var hasCelup = planHasCelup(m);
+    var hasCelup = hist ? false : planHasCelup(m);
     var val = function (r, c) {
-      return hd[c] === 'CELUP' ? celupView(hd, r, hasCelup) : (r[c] === undefined || r[c] === null ? '' : String(r[c]).trim());
+      return hd[c] === 'CELUP' && !hist ? celupView(hd, r, hasCelup) : (r[c] === undefined || r[c] === null ? '' : String(r[c]).trim());
     };
     var lines = [order.map(function (c) { return cell(hd[c]); }).join(';')];
     rows.forEach(function (r) { lines.push(order.map(function (c) { return cell(val(r, c)); }).join(';')); });
     var d = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
-    var name = 'Plan_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes()) + '.csv';
+    var name = hist ? 'Plan_' + m.date.replace(/-/g, '') + '_riwayat.csv' : 'Plan_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes()) + '.csv';
     var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name; a.style.display = 'none';
@@ -2297,6 +2320,80 @@ var Code128 = (function () {
     });
   }
 
+  /* ---------- Riwayat Plan per tanggal (sheet "Plan Harian", disimpan otomatis oleh server) ----------
+     Hari ini = Plan langsung (bisa alokasi). Tanggal lain = salinan Plan hari itu, hanya lihat. */
+  var planSel = '';   // '' atau hari ini = Plan langsung; yyyy-mm-dd lain = riwayat
+  var planDates = [], planDatesAt = 0, planSnapTimer = null;
+  function planHistOn() { return !!planSel && planSel !== todayStr(); }
+  function planView() { return planHistOn() ? lst.planh : lst.plan; }
+  function planSyncUi() {
+    var t = todayStr(), cur = planSel || t;
+    var di = $('#planDate'); di.max = t; di.value = cur;
+    $('#planNext').disabled = cur >= t;
+    var hasPrev = !planDates.length || planDates.some(function (d) { return d < cur; });
+    $('#planPrev').disabled = !hasPrev;
+    $('#planToday').classList.toggle('active', cur === t);
+    $('#viewPlan').classList.toggle('plan-hist', planHistOn());
+    $('#subtitle').textContent = state.view === 'plan' ? (planHistOn() ? 'Riwayat Plan · ' + dateLabel(cur) : LISTS.plan.sub) : $('#subtitle').textContent;
+  }
+  function setPlanDate(s) {
+    var t = todayStr();
+    if (!s) return;
+    if (s > t) s = t;
+    planSel = s === t ? '' : s;
+    lst.plan.rk = ''; lst.planh.rk = ''; RSX.plan.key = '';
+    planSyncUi();
+    if (planHistOn()) loadPlanHist(false); else { renderList('plan'); loadList('plan', false); }
+  }
+  function loadPlanDates(force) {
+    if (!force && planDatesAt && Date.now() - planDatesAt < LIST_FRESH) return;
+    planDatesAt = Date.now();
+    gs('getPlanTanggal').then(function (r) {
+      if (r && r.dates) { planDates = r.dates; planSyncUi(); }
+    }).catch(function () { /* tombol sebelumnya/berikutnya tetap jalan per hari */ });
+  }
+  function loadPlanHist(force) {
+    if (!planHistOn()) return;
+    var m = lst.planh, s = planSel;
+    if (m.date !== s) { m.headers = []; m.rows = []; m.sig = ''; m.at = 0; m.error = ''; m.page = 1; m.savedAt = ''; m.date = s; m.rk = ''; }
+    else if (!force && m.at && Date.now() - m.at < LIST_FRESH) { renderList0('plan'); return; }
+    m.loading = true; m.error = ''; renderList0('plan');
+    $('#btnRefresh').classList.add('spin');
+    gs('getPlanHari', s).then(function (r) {
+      if (!r) throw new Error('Server tidak mengembalikan data.');
+      if (r.error) throw new Error(r.error);
+      if (planSel !== s) return;   // sudah pindah tanggal
+      var sp = sortPlan(r.headers || [], (r.rows || []).slice(), null);
+      m.headers = r.headers || []; m.rows = sp.rows; m.savedAt = r.savedAt || ''; m.at = Date.now();
+      m.sig = hashStr(JSON.stringify(m.rows) + s); m.rk = '';
+      if (r.dates) { planDates = r.dates; planDatesAt = Date.now(); }
+    }).catch(function (e) {
+      m.error = 'Gagal memuat riwayat Plan. ' + errMsg(e);
+    }).then(function () {
+      m.loading = false; stopSpin(); if (planSel === s) { m.rk = ''; renderList0('plan'); planSyncUi(); }
+    });
+  }
+  $('#planDate').addEventListener('change', function () { setPlanDate(this.value); });
+  $('#planToday').addEventListener('click', function () { setPlanDate(todayStr()); });
+  $('#planPrev').addEventListener('click', function () {
+    var cur = planSel || todayStr();
+    var prev = planDates.filter(function (d) { return d < cur; }).pop();
+    if (prev) setPlanDate(prev);
+    else if (!planDates.length) setPlanDate(shiftDate(cur, -1));
+    else toast('Tidak ada riwayat Plan sebelum tanggal ini.', 'warn');
+  });
+  $('#planNext').addEventListener('click', function () {
+    var cur = planSel || todayStr(), t = todayStr();
+    if (cur >= t) return;
+    var next = planDates.filter(function (d) { return d > cur && d < t; })[0];
+    setPlanDate(next || t);
+  });
+  // Setelah alokasi berubah, salinan Plan hari ini di server ikut diperbarui (ditunda sebentar agar beberapa perubahan sekaligus disimpan satu kali)
+  function planSnapSoon() {
+    clearTimeout(planSnapTimer);
+    planSnapTimer = setTimeout(function () { gs('simpanPlanHariIni', state.mode).then(function () { planDatesAt = 0; loadPlanDates(true); }).catch(function () { /* server menyimpan juga saat Plan dimuat */ }); }, 4000);
+  }
+
   /* ---------- Ubah kolom ALOKASI langsung dari tab Plan ---------- */
   var ALOK_MESIN = ['A8', 'A9', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15'];   // pilihan mesin untuk alokasi
   function alokSelect(v, oi) {
@@ -2320,6 +2417,7 @@ var Code128 = (function () {
       m.sig = hashStr(JSON.stringify(m.rows) + JSON.stringify(m.rowNos));
       lsSet(listCacheKey('plan'), JSON.stringify({ headers: m.headers, rows: m.rows, sig: m.sig, rowNos: m.rowNos }));
       toast(kikc + (r.value ? ' dialokasi ke ' + r.value : ' alokasi dikosongkan'), 'ok');
+      planSnapSoon();
       m.rk = ''; renderList('plan');   // tabel Plan dan tab Mesin ikut diperbarui
     }).catch(function (e) {
       sel.value = prev;
@@ -2352,6 +2450,7 @@ var Code128 = (function () {
       m.sig = hashStr(JSON.stringify(m.rows) + JSON.stringify(m.rowNos));
       lsSet(listCacheKey('plan'), JSON.stringify({ headers: m.headers, rows: m.rows, sig: m.sig, rowNos: m.rowNos }));
       toast('Semua alokasi mesin dikosongkan.', 'ok');
+      planSnapSoon();
       m.rk = ''; renderList('plan');
     }).catch(function (e) {
       toast('Reset alokasi gagal. ' + errMsg(e), 'err', 7000);
@@ -2382,12 +2481,12 @@ var Code128 = (function () {
     $('#q' + d.id).addEventListener('input', function () {
       var v = this.value;
       clearTimeout(t);
-      t = setTimeout(function () { lst[k].query = v; lst[k].page = 1; renderList(k); }, 150);
+      t = setTimeout(function () { lst[k].query = v; lst[k].page = 1; if (k === 'plan') { lst.planh.query = v; lst.planh.page = 1; } renderList(k); }, 150);
     });
     $('#p' + d.id).addEventListener('click', function (e) {   // rewind / sebelumnya / berikutnya / forward
       var b = e.target.closest ? e.target.closest('[data-pg]') : null;
       if (!b || b.disabled) return;
-      var g = b.getAttribute('data-pg'), m = lst[k];
+      var g = b.getAttribute('data-pg'), m = (k === 'plan' && planHistOn()) ? lst.planh : lst[k];
       if (g === 'first') m.page = 1;
       else if (g === 'prev') m.page -= 1;
       else if (g === 'next') m.page += 1;
@@ -2395,7 +2494,7 @@ var Code128 = (function () {
       renderList(k);
     });
     $('#s' + d.id).addEventListener('click', function (e) {
-      if (e.target.closest && e.target.closest('[data-retry]')) loadList(k, true);
+      if (e.target.closest && e.target.closest('[data-retry]')) { if (k === 'plan' && planHistOn()) loadPlanHist(true); else loadList(k, true); }
     });
   });
 
@@ -2679,7 +2778,7 @@ var Code128 = (function () {
       if (name === 'plan') restoreList('clp');   // kolom Celup di Plan memakai tab Celup
       renderList(name);          // langsung tampil dari memori, tanpa menunggu server
       loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
-      if (name === 'plan') loadList('clp', false);
+      if (name === 'plan') { loadList('clp', false); planSyncUi(); loadPlanDates(false); if (planHistOn()) loadPlanHist(false); }
     } else if (isMesin) {
       restoreList('plan'); restoreList('wod'); restoreList('clp');
       mesinQ.key = ''; renderMesin(); loadMesinStop(false);   // dari data Plan di memori
@@ -2701,7 +2800,8 @@ var Code128 = (function () {
   });
   $('#btnRefresh').addEventListener('click', function () {
     if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
-    else if (LISTS[state.view]) { loadList(state.view, true); if (state.view === 'plan') loadList('clp', true); }
+    else if (state.view === 'plan' && planHistOn()) { loadPlanHist(true); loadPlanDates(true); }
+    else if (LISTS[state.view]) { loadList(state.view, true); if (state.view === 'plan') { loadList('clp', true); loadPlanDates(true); } }
     else if (state.view === 'data') loadData(); else loadKikc();
   });
 
@@ -3058,7 +3158,7 @@ var Code128 = (function () {
   // Plan: Lot, Kg, Cone per No Benang (semua baris Plan, tidak ikut pencarian), plus kartu Teralokasi dan Belum Alokasi
   function renderResumePlan() {
     if (!rsToggle('plan', '#resumePlan', '#btnResumePlan')) return;
-    var m = lst.plan, box = $('#resumePlan'), key = m.sig + '|' + m.rows.length;
+    var m = planView(), box = $('#resumePlan'), key = m.sig + '|' + m.rows.length + '|' + (planHistOn() ? m.date : '');
     if (key === RSX.plan.key) return;
     RSX.plan.key = key;
     var hd = m.headers, ik = hd.indexOf('KIKC'), ib = hd.indexOf('NO BENANG'), ig = hd.indexOf('KG'), ic = hd.indexOf('CONE'), ia = hd.indexOf('ALOKASI');

@@ -49,3 +49,16 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
   2) jika KIKC tidak ada di tab Celup, aturan lama: kolom Celup di sheet Plan berisi tanggal (hasil input di tab Data) ditampilkan TODAY()-1; selain itu "Sisa Order"
   (hanya bila minimal satu baris sudah punya tanggal).
 - Perbarui `Kode.gs` dan `index.html` bersamaan; unggah juga `sw.js` (cache v32).
+
+## Riwayat Plan harian (sheet "Plan Harian")
+- Sheet **Plan** (hasil importrange) tidak diubah. Setiap hari salinan tampilan tab Plan disimpan ke sheet baru **Plan Harian** (dibuat otomatis):
+  `TANGGAL | KIKC | NO BENANG | SUPPLIER | WARNA | MESIN | ALOKASI | KG | CONE | KETERANGAN | CELUP | DISIMPAN`.
+  Kolom CELUP berisi tanggal celup atau "Sisa Order", sama seperti yang terlihat di tab Plan.
+- Satu tanggal = satu salinan. Salinan hari ini selalu diperbarui ke keadaan terbaru, jadi yang tersimpan adalah isi akhir hari itu.
+- Penyimpanan otomatis terjadi: saat tab Plan dimuat dan isinya berubah, beberapa detik setelah alokasi diubah/direset, dan tiap malam
+  (sekitar pukul 23.30) bila pemicu dipasang: **jalankan `pasangPemicuPlanHarian` sekali dari editor Apps Script** lalu setujui izin yang diminta.
+- Plan yang kosong (mis. importrange sedang gagal) tidak disimpan, jadi riwayat tidak terhapus.
+- Di tab Plan ada pemilih tanggal (panah, kalender, "Hari ini"). Panah memilih tanggal riwayat terdekat. Tanggal selain hari ini = riwayat, hanya lihat
+  (alokasi dan Reset Alokasi dinonaktifkan). Resume dan Unduh CSV ikut tanggal yang dipilih.
+- Baris dengan status **Sisa Order** diberi highlight merah di tab Plan (dan di riwayat).
+- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy.
