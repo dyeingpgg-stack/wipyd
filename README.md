@@ -68,7 +68,7 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Penyimpanan otomatis lama (saat tab dimuat, setelah alokasi, dan pemicu malam) dihapus. Jika dulu menjalankan `pasangPemicuPlanHarian`, jalankan `hapusPemicuPlanHarian` sekali dari editor Apps Script
   (atau biarkan: pemicu lama menghapus dirinya sendiri saat jalan berikutnya).
 - Sheet **Alokasi** kini hanya menjadi isian awal kolom ALOKASI saat Get Plan (alokasi terakhir per KIKC).
-- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v42); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
+- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v43); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
 
 ## Scorecard Plan dan tema PDF/PNG
 - Tab Plan punya dua kartu tambahan: **Realisasi (Kg)** (Kg celup dari tab Celup menurut KIKC, dengan persen dari Plan) dan **Sisa Order (Kg)** (jumlah Kg baris berstatus Sisa Order, plus jumlah lot). Keduanya ikut pencarian dan tanggal Plan yang dipilih.
@@ -80,3 +80,5 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Kirim WA di tab Data**: sama seperti di tab Mesin, gambar selebar 1600 px dipotong tepat di batas baris (maks. 1600 px tinggi), judul kolom diulang di tiap gambar lanjutan, lalu dibagikan lewat menu Bagikan.
 - **Filter tanggal di tab Mesin**: sama seperti tab Plan (panah sebelumnya / berikutnya, pilih tanggal, tombol Hari ini). Tanggal dipakai bersama tab Plan, karena alokasi mesin dihitung dari Plan tanggal itu. Judul tanggal pada PDF/PNG Order Celup Harian mengikuti tanggal yang dipilih.
 - **Kirim WA langsung ke WhatsApp**: bila persiapan gambar memakan waktu hingga izin Bagikan dari browser habis, gambar tidak lagi diunduh; tombol berubah menjadi "Kirim sekarang" dan ketukan berikutnya langsung membuka menu Bagikan. Data hari sebelumnya untuk tab Data disiapkan lebih awal supaya jarang perlu langkah ini.
+- **Plan terakhir tetap tampil**: bila tanggal yang dipilih (mis. besok) belum punya Plan, tab Plan dan tab Mesin menampilkan Plan terakhir yang tersimpan, lengkap dengan catatan tanggalnya, dan alokasi mesinnya masih bisa diubah. Tampilan berganti ke Plan baru setelah Create > Get Plan > Save dilakukan untuk tanggal itu (Get Plan saja hanya pratinjau).
+- **Sisa Order dari Plan tanggal berapa**: kartu Sisa Order di tab Plan menampilkan "dari Plan dd/mm/yyyy" (tanggal Plan paling awal tempat lot itu belum celup); label Sisa Order di baris tabel memuat tanggal yang sama saat ditunjuk. Perlu Kode.gs v21.

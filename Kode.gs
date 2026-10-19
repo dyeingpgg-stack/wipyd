@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -109,7 +109,7 @@ const API_FUNCS = {
   resetAlokasi: function (a) { return resetAlokasi(a[0], a[1]); },
   getPlanSource: function (a) { return getPlanSource(a[0], a[1]); },
   savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1]); },
-  getPlanHari: function (a) { return getPlanHari(a[0]); },
+  getPlanHari: function (a) { return getPlanHari(a[0], a[1]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
   getMesinStop: function () { return { success: true, stop: readMesinStop_(), kap: MESIN_KAPASITAS, siklus: MESIN_SIKLUS }; },
   setMesinStop: function (a) { return setMesinStop(a[0], a[1], a[2]); }
@@ -845,7 +845,7 @@ function planCarry_(iso) {
       const d = planIso_(str_(c[0]).trim());   // yyyy-MM-dd
       if (!d || d >= iso) return;   // hanya tanggal sebelum tanggal yang dibuat
       const k = normKikc_(c[1]), cel = str_(c[10]).trim();
-      if (k && (!cel || /^sisa\s*order$/i.test(cel))) out[k] = 1;
+      if (k && (!cel || /^sisa\s*order$/i.test(cel)) && (!out[k] || d < out[k])) out[k] = d;   // isi = tanggal Plan paling awal (yyyy-MM-dd) lot ini mulai belum celup
     });
   } catch (e) { /* tanpa riwayat: aturan lama (has) tetap berlaku */ }
   return out;
@@ -971,12 +971,21 @@ function getPlanTanggal() {
 }
 
 // Riwayat Plan satu tanggal (yyyy-mm-dd).
-function getPlanHari(iso) {
+// fb (opsional, true): bila tanggal itu belum punya Plan, kembalikan Plan terakhir sebelum tanggal itu (date = tanggal Plan yang ditampilkan,
+// requested = tanggal yang diminta, fallback = true). Plan baru muncul setelah Create > Get Plan > Save dibuat untuk tanggal tersebut.
+// sisaFrom: { KIKC: yyyy-mm-dd } tanggal Plan asal tiap lot berlabel "Sisa Order" (Plan paling awal tempat lot itu belum celup).
+function getPlanHari(iso, fb) {
   try {
     iso = str_(iso).trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error('Tanggal tidak valid.');
-    const want = iso.split('-').reverse().join('/');
-    const out = { success: true, date: iso, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: getPlanTanggal().dates || [] };
+    const dates = getPlanTanggal().dates || [];
+    let shown = iso, fell = false;
+    if (fb && dates.indexOf(iso) < 0) {
+      const prev = dates.filter(function (d) { return d < iso; }).pop();
+      if (prev) { shown = prev; fell = true; }
+    }
+    const want = shown.split('-').reverse().join('/');
+    const out = { success: true, date: shown, requested: iso, fallback: fell, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: dates, sisaFrom: {} };
     const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
     if (!sh || sh.getLastRow() < 2) return out;
     const last = sh.getLastRow();
@@ -986,6 +995,7 @@ function getPlanHari(iso) {
     if (lo < 0) return out;
     const rng = sh.getRange(2 + lo, 1, hi - lo + 1, PLAN_HARIAN_HEAD.length);
     const block = rng.getDisplayValues(), raw = rng.getValues();
+    let carry = null;
     block.forEach(function (r, i) {
       if (str_(r[0]).trim() !== want) return;
       const row = r.slice(1, 11).map(function (x) { return str_(x).trim(); });
@@ -994,6 +1004,11 @@ function getPlanHari(iso) {
       if (typeof cone === 'number') row[7] = String(Math.round(cone));
       out.rows.push(row);
       if (!out.savedAt) out.savedAt = str_(r[11]).trim();
+      if (/^sisa\s*order$/i.test(row[9])) {   // CELUP = "Sisa Order": cari Plan asalnya
+        if (!carry) carry = planCarry_(shown);
+        const k = normKikc_(row[0]);
+        if (k && !out.sisaFrom[k]) out.sisaFrom[k] = carry[k] || shown;
+      }
     });
     return out;
   } catch (e) {
