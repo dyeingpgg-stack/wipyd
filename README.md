@@ -68,7 +68,7 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Penyimpanan otomatis lama (saat tab dimuat, setelah alokasi, dan pemicu malam) dihapus. Jika dulu menjalankan `pasangPemicuPlanHarian`, jalankan `hapusPemicuPlanHarian` sekali dari editor Apps Script
   (atau biarkan: pemicu lama menghapus dirinya sendiri saat jalan berikutnya).
 - Sheet **Alokasi** kini hanya menjadi isian awal kolom ALOKASI saat Get Plan (alokasi terakhir per KIKC).
-- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v41); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
+- Setelah memasang `Kode.gs` baru: Deploy > Manage deployments > New version > Deploy. Unggah `index.html` dan `sw.js` (cache v42); `Kode.gs` dan `index.html` harus diperbarui bersamaan.
 
 ## Scorecard Plan dan tema PDF/PNG
 - Tab Plan punya dua kartu tambahan: **Realisasi (Kg)** (Kg celup dari tab Celup menurut KIKC, dengan persen dari Plan) dan **Sisa Order (Kg)** (jumlah Kg baris berstatus Sisa Order, plus jumlah lot). Keduanya ikut pencarian dan tanggal Plan yang dipilih.
@@ -79,3 +79,4 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Kirim WA** (tab Mesin): WhatsApp memperkecil foto hingga sisi terpanjang sekitar 1600 px dan mengompresnya, sehingga PNG 4K yang tinggi menjadi pecah. Tombol ini membuat gambar selebar 1600 px yang dipotong beberapa bagian (maks. 1600 px tinggi, dipotong di jarak antar kelompok mesin) lalu membuka menu Bagikan; pilih WhatsApp. Bila Bagikan tidak didukung, gambar diunduh. Alternatif paling tajam: kirim file PDF sebagai dokumen.
 - **Kirim WA di tab Data**: sama seperti di tab Mesin, gambar selebar 1600 px dipotong tepat di batas baris (maks. 1600 px tinggi), judul kolom diulang di tiap gambar lanjutan, lalu dibagikan lewat menu Bagikan.
 - **Filter tanggal di tab Mesin**: sama seperti tab Plan (panah sebelumnya / berikutnya, pilih tanggal, tombol Hari ini). Tanggal dipakai bersama tab Plan, karena alokasi mesin dihitung dari Plan tanggal itu. Judul tanggal pada PDF/PNG Order Celup Harian mengikuti tanggal yang dipilih.
+- **Kirim WA langsung ke WhatsApp**: bila persiapan gambar memakan waktu hingga izin Bagikan dari browser habis, gambar tidak lagi diunduh; tombol berubah menjadi "Kirim sekarang" dan ketukan berikutnya langsung membuka menu Bagikan. Data hari sebelumnya untuk tab Data disiapkan lebih awal supaya jarang perlu langkah ini.

@@ -2899,6 +2899,7 @@ var Code128 = (function () {
       if (state.followToday && state.date !== todayStr()) { state.date = todayStr(); state.rows = []; }
       syncDateUi();
       if (qLen()) flushQueue(); else loadData();   // kirim dulu yang tertunda agar tabel langsung lengkap
+      rsPrev(shiftDate(state.date, -1));   // siapkan data hari sebelumnya di memori agar Kirim WA langsung tanpa menunggu server
     } else if (isList) {
       restoreList(name);
       if (name === 'plan') restoreList('clp');   // kolom Celup di Plan memakai tab Celup
@@ -3990,7 +3991,8 @@ var Code128 = (function () {
   }
   // Kirim WA untuk tab Data: tata letak sama dengan Unduh PNG, selebar 1600 px, dipotong tepat di batas baris, judul kolom diulang di tiap gambar
   $('#btnWa').addEventListener('click', function () {
-    var b = this, lab = b.querySelector('span');
+    var b = this, lab = b.querySelector('span'), key = 'd' + state.date;
+    if (waResume(b, key)) return;
     if (!state.rows.length) { toast('Belum ada data untuk dikirim.', 'warn'); return; }
     var date = state.date, rows = state.rows.slice(), pd = shiftDate(date, -1), files = [];
     b.disabled = true; lab.textContent = 'Menyiapkan...';
@@ -4008,9 +4010,9 @@ var Code128 = (function () {
         bl.forEach(function (x, i) { if (x) files.push(new File([x], base + '_WA_' + (i + 1) + 'dari' + bl.length + '.png', { type: 'image/png' })); });
         if (!files.length) throw new Error('Gambar gagal dibuat.');
       });
-    }).then(function () { return waSend(files); }).catch(function (e) {
+    }).then(function () { return waSend(files, b, key); }).catch(function (e) {
       toast('Gagal menyiapkan gambar. ' + errMsg(e), 'err', 7000);
-    }).then(function () { b.disabled = false; lab.textContent = 'Kirim WA'; });
+    }).then(function () { b.disabled = false; lab.textContent = b._waFiles ? 'Kirim sekarang' : 'Kirim WA'; });
   });
   $('#btnPngMesin').addEventListener('click', function () {
     var b = this, lab = b.querySelector('span');
@@ -4069,22 +4071,42 @@ var Code128 = (function () {
     }
     return out;
   }
-  // Bagikan gambar (menu Bagikan > WhatsApp); bila tidak didukung, diunduh satu per satu
-  function waSend(files) {
+  // Bagikan gambar (menu Bagikan > WhatsApp); bila tidak didukung, diunduh satu per satu.
+  // Browser hanya mengizinkan menu Bagikan dalam beberapa detik setelah tombol diketuk. Bila persiapan gambar lebih lama dari itu
+  // (mis. menunggu data hari sebelumnya dari server), menu Bagikan ditolak (NotAllowedError). Gambar TIDAK diunduh: tombol berubah menjadi
+  // "Kirim sekarang", ketukan berikutnya langsung membuka menu Bagikan memakai gambar yang sudah jadi.
+  function waDownload(files) {
+    files.forEach(function (f, i) { setTimeout(function () { downloadBlob(f, f.name); }, i * 700); });
+    toast(files.length + ' gambar diunduh. Kirim semuanya ke WhatsApp dari galeri.', 'ok', 6000);
+  }
+  function waSend(files, btn, key) {
     var data = { files: files, title: 'WIP Yarn Dyeing' };
-    var dl = function () {
-      files.forEach(function (f, i) { setTimeout(function () { downloadBlob(f, f.name); }, i * 700); });
-      toast(files.length + ' gambar diunduh. Kirim semuanya ke WhatsApp dari galeri.', 'ok', 6000);
-    };
     if (navigator.canShare && navigator.canShare(data) && navigator.share) {
-      return navigator.share(data).catch(function (e) { if (!e || e.name !== 'AbortError') dl(); });
+      return navigator.share(data).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        if (e && e.name === 'NotAllowedError' && btn) {
+          btn._waFiles = files; btn._waKey = key; btn._waAt = Date.now();
+          toast('Gambar sudah siap. Ketuk "Kirim sekarang" untuk membuka WhatsApp.', 'ok', 6000);
+          return;
+        }
+        waDownload(files);
+      });
     }
-    dl();
+    waDownload(files);
     return Promise.resolve();
+  }
+  function waResume(btn, key) {   // ketukan kedua: bagikan gambar yang sudah siap (dipanggil langsung dari ketukan, jadi diizinkan)
+    var f = btn._waFiles;
+    if (!f) return false;
+    btn._waFiles = null; btn.querySelector('span').textContent = 'Kirim WA';
+    if (btn._waKey !== key || Date.now() - btn._waAt > 180000) return false;   // tanggal berganti atau sudah lama: buat ulang
+    navigator.share({ files: f, title: 'WIP Yarn Dyeing' }).catch(function (e) { if (!e || e.name !== 'AbortError') waDownload(f); });
+    return true;
   }
   function waBlob(cv) { return new Promise(function (res) { cv.toBlob(function (b) { res(b); }, 'image/png'); }); }
   $('#btnWaMesin').addEventListener('click', function () {
-    var b = this, lab = b.querySelector('span');
+    var b = this, lab = b.querySelector('span'), key = 'm' + planCur();
+    if (waResume(b, key)) return;
     if (!lst.plan.rows.length) { toast('Belum ada data Plan untuk dikirim.', 'warn'); return; }
     b.disabled = true; lab.textContent = 'Menyiapkan...';
     var base = dailyFileBase(), files = [];
@@ -4097,10 +4119,10 @@ var Code128 = (function () {
         if (!files.length) throw new Error('Gambar gagal dibuat.');
       });
     }).then(function () {
-      return waSend(files);
+      return waSend(files, b, key);
     }).catch(function (e) {
       toast('Gagal menyiapkan gambar. ' + errMsg(e), 'err', 7000);
-    }).then(function () { b.disabled = false; lab.textContent = 'Kirim WA'; });
+    }).then(function () { b.disabled = false; lab.textContent = b._waFiles ? 'Kirim sekarang' : 'Kirim WA'; });
   });
 
   $('#filters').addEventListener('click', function (e) {
