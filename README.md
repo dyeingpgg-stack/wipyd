@@ -123,3 +123,6 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 
 ## Filter Pack disembunyikan (v26)
 - Filter **Belum Pack** / **Finish (Pack)** di tab Data disembunyikan sementara. Untuk menampilkan lagi, ubah `SHOW_PACK_FILTER` menjadi `true` di `index.html`. Kolom Tgl Pack dan tab Terlewat tidak berubah. Cache `sw.js` v48.
+
+## Terlewat hanya untuk Admin (v27)
+- Tab **Terlewat** (termasuk angka notifikasinya) disembunyikan di mode Viewer, dan server menolak `getTerlewat` tanpa tanda Admin. Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v49) bersamaan.

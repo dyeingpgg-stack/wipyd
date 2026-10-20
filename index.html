@@ -534,7 +534,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   html[data-mode="admin"] .topbar{border-bottom-color:rgba(var(--a-rgb),.55)}
   .modebtn{display:none !important}
   html[data-mode="viewer"] .admin-only{display:none !important}
-  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(7,1fr)}
+  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(6,1fr)}
   @media(max-width:430px){.tab{font-size:11px;gap:3px}.tab svg{width:22px;height:22px}}
   .tab .bdg{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rose);color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 10px rgba(var(--r-rgb),.6)}
   @media (min-width:900px),(max-height:480px) and (orientation:landscape){.tab .bdg{position:static;margin-left:auto}}
@@ -880,7 +880,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
 
     <!-- ============ CELUP ============ -->
     <!-- ============ TERLEWAT ============ -->
-    <section id="viewMiss" class="view list" aria-label="Lot terlewat">
+    <section id="viewMiss" class="view list admin-only" aria-label="Lot terlewat">
       <div class="daterow">
         <button type="button" class="icon-btn" id="missPrev" aria-label="Hari sebelumnya">
           <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
@@ -962,7 +962,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
       Data
     </button>
-    <button type="button" class="tab" id="tabMiss" data-view="miss" aria-selected="false">
+    <button type="button" class="tab admin-only" id="tabMiss" data-view="miss" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
       Terlewat<span class="bdg" id="missBadge" hidden></span>
     </button>
@@ -3039,12 +3039,13 @@ var Code128 = (function () {
     wrap.classList.remove('hidden');
   }
   function loadMiss(force) {
+    if (!isAdmin()) return Promise.resolve();   // Terlewat hanya untuk Admin (server juga menolak)
     if (!force && MS.data && MS.at && Date.now() - MS.at < LIST_FRESH && MS.dataDate === MS.date) return Promise.resolve();
     var my = ++MS.seq, dt = MS.date;
     MS.loading = true; MS.error = '';
     if (state.view === 'miss') $('#btnRefresh').classList.add('spin');
     if (!MS.data) renderMiss();
-    return gs('getTerlewat', dt, !!force).then(function (r) {
+    return gs('getTerlewat', dt, !!force, state.mode).then(function (r) {
       if (my !== MS.seq) return;
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
@@ -3084,7 +3085,7 @@ var Code128 = (function () {
 
   /* ---------- Tab ---------- */
   function showView(name) {
-    if (name === 'form' && !isAdmin()) name = 'data';   // tab Input hanya untuk mode Admin
+    if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Terlewat hanya untuk mode Admin
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
@@ -3159,10 +3160,11 @@ var Code128 = (function () {
       if ($('#editSheet').classList.contains('show')) closeEdit();
       if ($('#delSheet').classList.contains('show')) closeDel();
       if ($('#scanner').classList.contains('show')) closeScanner();
-      if (state.view === 'form') showView('data');
+      if (state.view === 'form' || state.view === 'miss') showView('data');
     } else if (!state.kikc.length) {
       loadKikc();                                       // Viewer tidak memuat daftar KIKC; dimuat saat masuk Admin
     }
+    if (isAdmin()) loadMiss(false);
     if (state.view === 'data') renderRows();
     else if (state.view === 'miss') renderMiss();
     else if (LISTS[state.view]) renderList(state.view);
