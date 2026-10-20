@@ -3283,14 +3283,15 @@ var Code128 = (function () {
     return '';
   }
 
+  var SHOW_PACK_FILTER = false;   // filter "Belum Pack" / "Finish (Pack)" di tab Data disembunyikan sementara; ubah ke true untuk menampilkan lagi
   function renderFilters() {
     var items = [{ v: '', t: 'Semua' }].concat(POSISI.map(function (p) { return { v: p, t: p }; }));
     var pk = [{ v: 'open', t: 'Belum Pack' }, { v: 'fin', t: 'Finish (Pack)' }];
     $('#filters').innerHTML = items.map(function (it) {
       return '<button type="button" class="fchip' + (state.filterPos === it.v ? ' active' : '') + '" data-pos="' + esc(it.v) + '">' + esc(it.t) + '</button>';
-    }).join('') + '<span class="fsep" aria-hidden="true"></span>' + pk.map(function (it) {
+    }).join('') + (!SHOW_PACK_FILTER ? '' : '<span class="fsep" aria-hidden="true"></span>' + pk.map(function (it) {
       return '<button type="button" class="fchip pk' + (state.filterPack === it.v ? ' active' : '') + '" data-pack="' + it.v + '">' + esc(it.t) + '</button>';
-    }).join('');
+    }).join(''));
   }
 
   function setTableState(html) {

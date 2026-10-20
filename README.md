@@ -120,3 +120,6 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Kolom **Lewat** menunjukkan sudah berapa hari sejak input terakhir (urut paling lama dulu); kolom Posisi terakhir menunjukkan posisi saat terakhir diinput.
 - **Notifikasi:** angka merah di tab Terlewat (jumlah lot terlewat hari ini) dan pemberitahuan sekali saat aplikasi dibuka. Angka diperbarui setelah input terkirim atau tombol muat ulang.
 - Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v47) bersamaan.
+
+## Filter Pack disembunyikan (v26)
+- Filter **Belum Pack** / **Finish (Pack)** di tab Data disembunyikan sementara. Untuk menampilkan lagi, ubah `SHOW_PACK_FILTER` menjadi `true` di `index.html`. Kolom Tgl Pack dan tab Terlewat tidak berubah. Cache `sw.js` v48.
