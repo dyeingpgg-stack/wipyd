@@ -126,3 +126,4 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 
 ## Terlewat hanya untuk Admin (v27)
 - Tab **Terlewat** (termasuk angka notifikasinya) disembunyikan di mode Viewer, dan server menolak `getTerlewat` tanpa tanda Admin. Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v49) bersamaan.
+- **PDF/PNG Order Celup Harian lebih ringkas**: judul, kartu ringkasan, dan ringkasan bawah (Grand Total, Realisasi, Shift) dikecilkan. Pada judul, tanggal besar = hari order celup dan tepat di bawahnya tertulis "PLAN TANGGAL dd/mm/yyyy" (tanggal Plan yang dipakai alokasi mesin, bisa lebih lama bila Plan baru belum dibuat). Baris lot memakai huruf lebih besar (hingga 9 pt) dengan lebar kolom dihitung otomatis dari isi data, sehingga kolom rapat dan teks tidak terpotong.
