@@ -111,7 +111,12 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
   3) aturan lama (tanggal dari sheet Plan = kemarin, atau Sisa Order). Tanggal Plan tidak pernah menimpa tanggal tab Celup.
 - **Lot yang sudah ada di tab Celup tidak bisa diplan lagi:** saat Get Plan / Save, lot yang tanggal Celup-nya SEBELUM tanggal planning dikeluarkan (jumlahnya ditampilkan di pratinjau).
   Lot yang celup pada atau setelah tanggal planning tetap ikut, supaya Plan hari itu tidak kehilangan lot yang baru saja dicelup. Plan yang sudah tersimpan tidak diubah.
-- **Lot yang sudah ada di sheet PACK (Tanggal Pack terisi) tidak muncul di input data:** daftar KIKC tab Input menyembunyikannya (jumlahnya tertulis di keterangan di bawah kolom KIKC),
-  dan Simpan / Ubah KIKC menolak lot tersebut dengan pesan "sudah ada di sheet PACK". Mengubah data lama dengan KIKC yang tidak diganti tetap bisa.
-  Peta PACK di-cache 10 menit, jadi lot yang baru masuk PACK bisa terlambat beberapa menit ditolak (tombol Sinkron Tgl Pack di tab Terlewat menyegarkannya).
-- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v46) bersamaan.
+- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v46, lihat v25 di bawah) bersamaan.
+
+## Sheet PACK hanya untuk kontrol (v25)
+- Koreksi v24: lot yang ada di sheet PACK **tetap muncul dan bisa diinput** di tab Input (tidak disembunyikan, tidak ditolak). Sheet PACK hanya dipakai tab **Terlewat** dan penanda Finish di tab Data.
+- Tab **Terlewat** memeriksa lot yang pernah terdata dalam **14 hari** sebelum tanggal pemeriksaan (ubah `TERLEWAT_HARI` di `Kode.gs`) tetapi **tidak terdata pada tanggal itu**, kecuali yang sudah ada di sheet PACK (Tanggal Pack pada/ sebelum tanggal itu).
+  Contoh: AHN26J001 terdata di posisi CELUP kemarin, hari ini tidak diinput, dan tidak ada di sheet PACK -> muncul.
+- Kolom **Lewat** menunjukkan sudah berapa hari sejak input terakhir (urut paling lama dulu); kolom Posisi terakhir menunjukkan posisi saat terakhir diinput.
+- **Notifikasi:** angka merah di tab Terlewat (jumlah lot terlewat hari ini) dan pemberitahuan sekali saat aplikasi dibuka. Angka diperbarui setelah input terkirim atau tombol muat ulang.
+- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v47) bersamaan.

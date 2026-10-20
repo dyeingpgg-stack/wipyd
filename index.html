@@ -536,6 +536,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   html[data-mode="viewer"] .admin-only{display:none !important}
   html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(7,1fr)}
   @media(max-width:430px){.tab{font-size:11px;gap:3px}.tab svg{width:22px;height:22px}}
+  .tab .bdg{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rose);color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 10px rgba(var(--r-rgb),.6)}
+  @media (min-width:900px),(max-height:480px) and (orientation:landscape){.tab .bdg{position:static;margin-left:auto}}
   .tag.fin{color:var(--lime);border-color:rgba(var(--g-rgb),.65);background:rgba(var(--g-rgb),.1)}
   .fsep{flex:none;width:1px;margin:4px 2px;background:var(--edge-strong)}
   .fchip.pk{border-style:dashed}
@@ -890,7 +892,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-today active" id="missToday">Hari ini</button>
       </div>
       <div class="stats s4" aria-live="polite">
-        <div class="stat"><small id="msPrevL">Lot kemarin</small><b id="msPrev">-</b></div>
+        <div class="stat"><small id="msPrevL">Lot sebelumnya</small><b id="msPrev">-</b></div>
         <div class="stat g"><small>Terdata hari ini</small><b id="msToday">-</b></div>
         <div class="stat a"><small>Sudah Pack (Finish)</small><b id="msPack">-</b></div>
         <div class="stat r"><small>Terlewat</small><b id="msMiss">-</b></div>
@@ -908,7 +910,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <div class="table-wrap hidden" id="wMiss">
         <table>
           <thead><tr>
-            <th class="l-s l-s0 l-last">KIKC</th><th>No benang</th><th>Warna</th><th>Mesin</th><th>Kg</th><th>Cone</th><th>Shift</th><th>Grup</th><th>Tgl Celup</th><th>Posisi terakhir</th><th>QC</th><th>Keterangan</th><th>Input terakhir</th>
+            <th class="l-s l-s0 l-last">KIKC</th><th>No benang</th><th>Warna</th><th>Mesin</th><th>Kg</th><th>Cone</th><th>Shift</th><th>Grup</th><th>Tgl Celup</th><th>Posisi terakhir</th><th>QC</th><th>Keterangan</th><th>Lewat</th><th>Input terakhir</th>
           </tr></thead>
           <tbody id="bMiss"></tbody>
         </table>
@@ -962,7 +964,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     </button>
     <button type="button" class="tab" id="tabMiss" data-view="miss" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-      Terlewat
+      Terlewat<span class="bdg" id="missBadge" hidden></span>
     </button>
     <button type="button" class="tab" id="tabMesin" data-view="mesin" aria-selected="false">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12" r="1.5"/></svg>
@@ -1965,7 +1967,7 @@ var Code128 = (function () {
       setTimeout(function () { closeScanner(); if (cb) cb(item, text); }, 350);
     } else if (text !== scan.lastMiss) {
       scan.lastMiss = text;
-      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD dan GRM, atau sudah ada di sheet PACK). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
+      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD dan GRM). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
     }
   }
 
@@ -2152,7 +2154,7 @@ var Code128 = (function () {
       inCombo.setEnabled(true, 'Ketik untuk cari KIKC');
       edCombo.setEnabled(true, 'Ketik untuk cari KIKC');
       var cn = r.counts;
-      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia' + (cn ? ' (WOD ' + cn.wod + ', GRM ' + cn.grm + (cn.packed ? '; ' + cn.packed + ' lot sudah Pack disembunyikan' : '') + ')' : '') + '. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.' + (r.warn ? ' Catatan: ' + r.warn : ''));
+      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia' + (cn ? ' (WOD ' + cn.wod + ', GRM ' + cn.grm + ')' : '') + '. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.' + (r.warn ? ' Catatan: ' + r.warn : ''));
     }).catch(function (e) {
       if (state.kikc.length) {   // masih ada daftar tersimpan: tetap bisa dipakai
         setKikcStatus('ready', state.kikc.length + ' KIKC (daftar tersimpan). Gagal memperbarui: ' + errMsg(e));
@@ -2962,7 +2964,6 @@ var Code128 = (function () {
     $('#missDate').max = t; $('#missDate').value = MS.date;
     $('#missNext').disabled = MS.date >= t;
     $('#missToday').classList.toggle('active', isT);
-    $('#msPrevL').textContent = isT ? 'Lot kemarin' : 'Lot H-1';
     if (state.view === 'miss') $('#subtitle').textContent = 'Terlewat · ' + dateLabel(MS.date) + ' vs ' + dateLabel(shiftDate(MS.date, -1));
   }
   function setMissDate(s) {
@@ -2981,6 +2982,14 @@ var Code128 = (function () {
     var v = this.value; clearTimeout(tMiss);
     tMiss = setTimeout(function () { MS.query = v; renderMiss(); }, 150);
   });
+  // Notifikasi: angka merah di tab Terlewat (hanya untuk pemeriksaan tanggal hari ini) + pemberitahuan sekali per pembukaan aplikasi
+  function setMissBadge(d) {
+    var b = $('#missBadge');
+    if (!d || d.date !== todayStr()) return;
+    var n = d.counts ? d.counts.missing : 0;
+    b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
+    if (n && !MS.notified) { MS.notified = true; toast(n + ' lot terlewat: pernah terdata tetapi belum terdata hari ini dan belum ada di sheet PACK. Lihat tab Terlewat.', 'warn', 8000); }
+  }
   function missState(html) { var el = $('#sMiss'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
   function missFiltered() {
     var q = nq(MS.query.trim()), d = MS.data;
@@ -3001,14 +3010,15 @@ var Code128 = (function () {
     }
     var c = d.counts;
     setStat('#msPrev', fmtNum(c.prev)); setStat('#msToday', fmtNum(c.today)); setStat('#msPack', fmtNum(c.packed)); setStat('#msMiss', fmtNum(c.missing));
-    var pl = dateLabel(d.prev), tl = dateLabel(d.date);
-    $('#msNote').textContent = 'Lot yang terdata ' + (d.prev === todayStr() ? 'hari ini' : pl) + ' tetapi belum terdata ' + (d.date === todayStr() ? 'hari ini' : tl) + ', di luar lot yang sudah punya Tanggal Pack.' + (d.warn ? ' ' + d.warn : '');
+    var tl = dateLabel(d.date), pl = d.days + ' hari sebelum ' + (d.date === todayStr() ? 'hari ini' : tl);
+    $('#msNote').textContent = 'Lot yang terdata dalam ' + pl + ' tetapi belum terdata ' + (d.date === todayStr() ? 'hari ini' : tl) + ', di luar lot yang sudah ada di sheet PACK (Tanggal Pack). Lot yang tidak ada di PACK dan tidak diinput akan muncul di sini.' + (d.warn ? ' ' + d.warn : '');
+    setMissBadge(d);
     var rows = missFiltered();
     if (!d.rows.length) {
       wrap.classList.add('hidden');
       missState('<div class="state">' + (c.prev === 0
-        ? 'Tidak ada data pada ' + esc(pl) + ', jadi belum ada yang bisa dibandingkan.'
-        : 'Tidak ada lot terlewat. Semua lot ' + esc(pl) + ' sudah terdata di ' + esc(tl) + ' atau sudah Pack.') + '</div>');
+        ? 'Tidak ada data dalam ' + esc(pl) + ', jadi belum ada yang bisa dibandingkan.'
+        : 'Tidak ada lot terlewat. Semua lot yang terdata sebelumnya sudah terdata di ' + esc(tl) + ' atau sudah ada di sheet PACK.') + '</div>');
       return;
     }
     if (!rows.length) { wrap.classList.add('hidden'); missState('<div class="state">Tidak ada lot yang cocok dengan pencarian.</div>'); return; }
@@ -3023,6 +3033,7 @@ var Code128 = (function () {
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
+        '<td>' + (r.hari ? '<span class="tag ' + (r.hari >= 3 ? 'bad' : 'warn') + '">' + r.hari + ' hari</span>' : '') + '</td>' +
         '<td class="dim">' + esc(r.waktu) + '</td></tr>';
     }).join('');
     wrap.classList.remove('hidden');
@@ -3062,10 +3073,10 @@ var Code128 = (function () {
   $('#btnCsvMiss').addEventListener('click', function () {
     var rows = missFiltered();
     if (!rows.length) { toast('Tidak ada lot terlewat untuk diunduh.', 'warn'); return; }
-    var hd = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'INPUT TERAKHIR'];
+    var hd = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'LEWAT (HARI)', 'INPUT TERAKHIR'];
     var cell = function (v) { v = v === undefined || v === null ? '' : String(v); if (/^[=+@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
     var lines = [hd.map(cell).join(';')];
-    rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.waktu].map(cell).join(';')); });
+    rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.hari, r.waktu].map(cell).join(';')); });
     var name = 'Lot_Terlewat_' + MS.date.replace(/-/g, '') + '.csv';
     downloadBlob(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
     toast(rows.length + ' baris diunduh: ' + name, 'ok');
@@ -3206,6 +3217,7 @@ var Code128 = (function () {
       if (done === false) retryT = setTimeout(flushQueue, 8000);
       else if (sent) toast(sent > 1 ? sent + ' data tersimpan di Sheet.' : 'Tersimpan di Sheet.', 'ok', 2200);
       if (state.view === 'data') loadData();
+      if (sent) loadMiss(true);   // angka notifikasi Terlewat ikut diperbarui setelah input terkirim
     });
     return flushP;
   }
@@ -4623,6 +4635,7 @@ var Code128 = (function () {
     showView('data');                       // Viewer: langsung ke tab Data; daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
+  setTimeout(function () { loadMiss(false); }, 2500);   // cek lot terlewat di latar belakang untuk notifikasi
   if (qLen()) flushQueue();
 })();
 </script>
