@@ -82,3 +82,36 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Kirim WA langsung ke WhatsApp**: bila persiapan gambar memakan waktu hingga izin Bagikan dari browser habis, gambar tidak lagi diunduh; tombol berubah menjadi "Kirim sekarang" dan ketukan berikutnya langsung membuka menu Bagikan. Data hari sebelumnya untuk tab Data disiapkan lebih awal supaya jarang perlu langkah ini.
 - **Plan terakhir tetap tampil**: bila tanggal yang dipilih (mis. besok) belum punya Plan, tab Plan dan tab Mesin menampilkan Plan terakhir yang tersimpan, lengkap dengan catatan tanggalnya, dan alokasi mesinnya masih bisa diubah. Tampilan berganti ke Plan baru setelah Create > Get Plan > Save dilakukan untuk tanggal itu (Get Plan saja hanya pratinjau).
 - **Sisa Order dari Plan tanggal berapa**: kartu Sisa Order di tab Plan menampilkan "dari Plan dd/mm/yyyy" (tanggal Plan paling awal tempat lot itu belum celup); label Sisa Order di baris tabel memuat tanggal yang sama saat ditunjuk. Perlu Kode.gs v21.
+
+## Tanggal Pack, Finish, dan tab Terlewat (v22)
+- Sheet **WIP YD (Jawaban)** kini punya kolom **P = Tanggal Pack** (judul `TANGGAL PACK`; jika Anda sudah menamai sendiri, judul tidak diubah).
+  Isinya diambil dari sheet **PACK** kolom **A** (Tanggal Pack), dicocokkan menurut **KIKC**. Kolom KIKC di sheet PACK dicari menurut judul `KIKC` di baris 1; jika tidak ada, dipakai kolom **B**
+  (ubah `PACK_KIKC_DEFAULT` di `Kode.gs` bila KIKC ada di kolom lain). Bila satu KIKC punya beberapa tanggal Pack, yang terbaru dipakai.
+  Teks tanggal di sheet PACK dibaca DD/MM/YYYY; jika berformat MM/DD/YYYY ubah `DATE_TEXT_MDY` menjadi `{ clp: true, pack: true }`.
+- **Lot yang punya Tanggal Pack = Finish.** Tab **Data** menampilkan kolom **Tgl Pack** (label hijau), ringkasan jumlah lot Finish, dan filter **Belum Pack** / **Finish (Pack)**.
+  Tampilan memakai data sheet PACK langsung (cache 10 menit); kolom P di sheet menjadi salinan.
+- Cara kolom P terisi: otomatis saat Simpan (bila tanggal sudah ada di cache), tombol **Sinkron Tgl Pack** di tab Terlewat (Admin), atau pemicu tiap jam:
+  jalankan `pasangPemicuTanggalPack` sekali dari editor Apps Script (hapus: `hapusPemicuTanggalPack`). Sinkron hanya mengisi/memperbarui, tidak pernah menghapus isi kolom P.
+  **Jangan taruh rumus di kolom P**: jika ada rumus, aplikasi tidak menulis ke kolom P (rumus aman), tab Data tetap membaca sheet PACK.
+- Tab baru **Terlewat**: daftar lot yang terdata pada tanggal H-1 (kemarin) tetapi tidak terdata pada tanggal terpilih (default hari ini), kecuali lot yang sudah punya Tanggal Pack.
+  Ada kartu Lot kemarin / Terdata hari ini / Sudah Pack / Terlewat, pencarian, pilih tanggal, dan Unduh CSV. Diurutkan menurut posisi terakhir (CELUP, HDX, RF, WIP, KELOS, PACK).
+  Lot dianggap terdata bila ada minimal satu input (posisi apa pun) pada tanggal itu.
+- Uji dari editor Apps Script: `tesPack` (melihat hasil baca sheet PACK tanpa menulis).
+- Pasang: ganti `Kode.gs` lalu Deploy > Manage deployments > New version; unggah `index.html` dan `sw.js` (cache v44). `Kode.gs` dan `index.html` harus diperbarui bersamaan.
+
+## Kolom Celup tab Plan = tanggal Plan terbaru (v23)
+- Lot yang ada di Plan tanggal P lalu **terinput data pada tanggal setelah P** menampilkan **CELUP = P** (mis. Plan 19/10, input 20/10 -> 19/10), bukan Sisa Order.
+- Lot Sisa Order dari Plan lama (mis. 16/10) yang dibuat lagi di Plan 19/10 lalu diinput 20/10 -> CELUP = **19/10** (Plan terbaru). Aturan ini berlaku juga saat melihat Plan tanggal lama.
+- "Terinput" = ada minimal satu baris di sheet Jawaban (posisi apa pun) dengan tanggal setelah tanggal Plan. Input di hari yang sama dengan Plan belum dihitung.
+- Dihitung saat tab dibuka (tidak mengubah isi sheet Plan Harian); lot ini juga berstatus Finish di tab Mesin. Lot yang belum terinput tetap memakai aturan lama (tanggal tab Celup atau Sisa Order).
+- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v45) bersamaan.
+
+## Aturan prioritas Celup, Plan, dan Pack (v24)
+- **Tab Celup (sheet CLP) tetap master data produksi.** Kolom CELUP tab Plan dan status Finish memakai urutan: 1) tanggal di tab Celup menurut KIKC; 2) tanggal Plan terbaru yang sudah disusul input data (aturan v23);
+  3) aturan lama (tanggal dari sheet Plan = kemarin, atau Sisa Order). Tanggal Plan tidak pernah menimpa tanggal tab Celup.
+- **Lot yang sudah ada di tab Celup tidak bisa diplan lagi:** saat Get Plan / Save, lot yang tanggal Celup-nya SEBELUM tanggal planning dikeluarkan (jumlahnya ditampilkan di pratinjau).
+  Lot yang celup pada atau setelah tanggal planning tetap ikut, supaya Plan hari itu tidak kehilangan lot yang baru saja dicelup. Plan yang sudah tersimpan tidak diubah.
+- **Lot yang sudah ada di sheet PACK (Tanggal Pack terisi) tidak muncul di input data:** daftar KIKC tab Input menyembunyikannya (jumlahnya tertulis di keterangan di bawah kolom KIKC),
+  dan Simpan / Ubah KIKC menolak lot tersebut dengan pesan "sudah ada di sheet PACK". Mengubah data lama dengan KIKC yang tidak diganti tetap bisa.
+  Peta PACK di-cache 10 menit, jadi lot yang baru masuk PACK bisa terlambat beberapa menit ditolak (tombol Sinkron Tgl Pack di tab Terlewat menyegarkannya).
+- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v46) bersamaan.

@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; lot yang sudah ada di sheet PACK tidak muncul di daftar KIKC dan ditolak saat input; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -52,6 +52,10 @@ const SHEET_PLAN = 'Plan';
 const SHEET_PLAN_HARIAN = 'Plan Harian';   // riwayat Plan per hari (salinan tampilan tab Plan, termasuk alokasi dan Celup / Sisa Order)
 const SHEET_ALOKASI = 'Alokasi';   // penyimpanan alokasi mesin per KIKC (tidak terpengaruh perubahan sheet Plan)
 const SHEET_JAWABAN = 'WIP YD (Jawaban)';
+const SHEET_PACK = 'PACK';         // sumber Tanggal Pack: kolom A = Tanggal Pack, kolom KIKC dicari menurut judul baris 1 (jika tidak ada: kolom B)
+const PACK_DATE_COL = 1;           // kolom A = Tanggal Pack
+const PACK_KIKC_DEFAULT = 2;       // kolom B = KIKC bila judul "KIKC" tidak ditemukan di baris 1 sheet PACK
+const PACK_TTL = 600;              // cache peta KIKC -> Tanggal Pack (detik)
 const WOD_FIRST_COL = 3;         // kolom C = KIKC
 const WOD_WIDTH = 10;            // C..L
 const GRM_FIRST_COL = 2;         // kolom B = KIKC
@@ -69,15 +73,16 @@ const CLP_FIRST_COL = 1;         // kolom A = TANGGAL
 const CLP_WIDTH = 10;            // A..J (J = KET)
 const PLAN_FIRST_COL = 1;        // kolom A = KIKC
 const PLAN_WIDTH = 8;            // A..H (H = CELUP)
-const DATE_TEXT_MDY = { clp: true };   // sheet yang menyimpan tanggal sebagai TEKS MM/DD/YYYY (selain itu dibaca DD/MM/YYYY)
+const DATE_TEXT_MDY = { clp: true, pack: false };   // sheet yang menyimpan tanggal sebagai TEKS MM/DD/YYYY (selain itu dibaca DD/MM/YYYY)
 const MAX_ROWS = 300;
 const TOKEN_SALT = 'wipyd-v1';
 const APP_PIN = '';              // OPSIONAL: isi mis. '2468'. Kosong = tanpa PIN.
 const MODE_ADMIN = 'admin';       // tanda yang dikirim aplikasi saat berada di mode Admin
-const HEADERS = ['Timestamp', 'ID UNIK', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'POSISI', 'QC', 'NOTE QC', 'KETERANGAN', 'KET KIKC'];
-const TOTAL_COLS = 15;
+const HEADERS = ['Timestamp', 'ID UNIK', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'POSISI', 'QC', 'NOTE QC', 'KETERANGAN', 'KET KIKC', 'TANGGAL PACK'];
+const TOTAL_COLS = 16;
 const COL_KET = 14;
 const COL_KET_KIKC = 15;
+const COL_PACK = 16;             // kolom P = Tanggal Pack (diisi dari sheet PACK)
 
 // ================= 1. Render HTML + API =================
 function doGet(e) {
@@ -111,6 +116,8 @@ const API_FUNCS = {
   savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1]); },
   getPlanHari: function (a) { return getPlanHari(a[0], a[1]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
+  getTerlewat: function (a) { return getTerlewat(a[0], a[1]); },
+  syncTanggalPack: function (a) { return syncTanggalPack(a[0]); },
   getMesinStop: function () { return { success: true, stop: readMesinStop_(), kap: MESIN_KAPASITAS, siklus: MESIN_SIKLUS }; },
   setMesinStop: function (a) { return setMesinStop(a[0], a[1], a[2]); }
 };
@@ -184,18 +191,25 @@ function getJawabanSheet_(createIfMissing) {
 // (ditandai di Script Properties), jadi simpan data tidak perlu membaca header setiap kali.
 function ensureColumns_(sheet) {
   const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('colsOk4') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
+  if (props.getProperty('colsOk5') === '1' && sheet.getMaxColumns() >= TOTAL_COLS) return;
   if (sheet.getMaxColumns() < TOTAL_COLS) sheet.insertColumnsAfter(sheet.getMaxColumns(), TOTAL_COLS - sheet.getMaxColumns());
-  const h = sheet.getRange(1, COL_KET_KIKC).getDisplayValue();
-  if (!String(h).trim()) {
-    sheet.getRange(1, COL_KET_KIKC).setValue(HEADERS[COL_KET_KIKC - 1]).setFontWeight('bold').setBackground('#d9ead3');
-  }
+  [COL_KET_KIKC, COL_PACK].forEach(function (c) {
+    const h = sheet.getRange(1, c).getDisplayValue();
+    if (!String(h).trim()) sheet.getRange(1, c).setValue(HEADERS[c - 1]).setFontWeight('bold').setBackground('#d9ead3');
+  });
   // Format kolom diatur SEKALI untuk seluruh kolom, jadi setiap simpan tidak perlu mengatur format sel lagi.
   try {
     sheet.getRangeList(['C:F', 'I:O']).setNumberFormat('@');
     sheet.getRange('A:A').setNumberFormat('dd/MM/yyyy HH:mm:ss');
+    sheet.getRange(2, COL_PACK, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat('dd/MM/yyyy');
   } catch (e) { /* abaikan jika dikunci */ }
-  props.setProperty('colsOk4', '1');
+  // Jika kolom P sudah berisi RUMUS (mis. ARRAYFORMULA), aplikasi tidak menulis ke kolom P agar rumusnya tidak rusak.
+  try {
+    const n = Math.max(1, Math.min(5, sheet.getMaxRows() - 1));
+    const fm = sheet.getRange(2, COL_PACK, n, 1).getFormulas();
+    props.setProperty('packFormula', fm.some(function (r) { return r[0]; }) ? '1' : '0');
+  } catch (e) { /* abaikan */ }
+  props.setProperty('colsOk5', '1');
 }
 
 function str_(v) { return (v === undefined || v === null) ? '' : String(v); }
@@ -406,7 +420,14 @@ function getKikcData() {
     }
 
     idxPut_(out);
-    return { success: true, data: out, counts: { wod: nWod, grm: nGrm }, warn: warn };
+    // Lot yang sudah ada di sheet PACK (Tanggal Pack terisi) tidak ditampilkan di daftar KIKC untuk input data
+    let data = out, nPack = 0;
+    try {
+      const pk = getPackMap_(false);
+      if (pk.missing) warn = (warn ? warn + ' ' : '') + 'Sheet "' + SHEET_PACK + '" tidak ditemukan, lot Pack belum disaring.';
+      else data = out.filter(function (i) { if (pk.map[normKikc_(i.kikc)]) { nPack++; return false; } return true; });
+    } catch (ePk) { data = out; }
+    return { success: true, data: data, counts: { wod: nWod, grm: nGrm, packed: nPack }, warn: warn };
   } catch (e) {
     return { error: e.message };
   }
@@ -590,13 +611,13 @@ function listCacheGet_(key) {
   } catch (e) { return null; }
 }
 
-function listCachePut_(key, obj) {
+function listCachePut_(key, obj, ttl) {
   try {
     const s = JSON.stringify(obj);
     const n = Math.ceil(s.length / LIST_CHUNK), put = {};
     for (let i = 0; i < n; i++) put[LIST_PREFIX + key + '_' + i] = s.substr(i * LIST_CHUNK, LIST_CHUNK);
     put[LIST_PREFIX + key + '_n'] = String(n);
-    CacheService.getScriptCache().putAll(put, LIST_TTL);
+    CacheService.getScriptCache().putAll(put, ttl || LIST_TTL);
   } catch (e) { /* terlalu besar untuk cache: tidak masalah, tetap dibaca dari sheet */ }
 }
 
@@ -867,8 +888,15 @@ function planSnapshotBuild_(plan, iso) {
       if (k && !clpMap[k]) clpMap[k] = str_(r[ct]).trim();
     });
   }
+  // Lot yang sudah ada di tab Celup (CLP) dengan tanggal SEBELUM tanggal planning tidak bisa diplan lagi (sudah celup). Lot yang celup pada/ sesudah tanggal planning tetap ikut.
+  let excluded = 0;
+  const src = plan.rows.filter(function (r) {
+    const k = str_(r[iK]).trim().toUpperCase(), d = (k && clpMap[k]) ? planIso_(clpMap[k]) : '';
+    if (d && iso && d < iso) { excluded++; return false; }
+    return true;
+  });
   const kemarin = Utilities.formatDate(new Date(Date.now() - 86400000), planTz_(), 'dd/MM/yyyy');
-  const eff = plan.rows.map(function (r) {
+  const eff = src.map(function (r) {
     const k = str_(r[iK]).trim().toUpperCase();
     if (k && clpMap[k]) return clpMap[k];
     const v = iC >= 0 ? str_(r[iC]).trim() : '';
@@ -876,12 +904,12 @@ function planSnapshotBuild_(plan, iso) {
     return '';
   });
   const has = eff.some(function (x) { return x; });
-  const rows = plan.rows.map(function (r, i) {
+  const rows = src.map(function (r, i) {
     // "Sisa Order" = belum celup DAN (ada baris Plan lain yang sudah bertanggal Celup, ATAU lot ini sisa dari Plan hari sebelumnya)
     const sisa = has || !!carry[normKikc_(r[iK])];
     return cols.map(function (c) { return c >= 0 ? str_(r[c]).trim() : ''; }).concat([eff[i] || (sisa ? 'Sisa Order' : '')]);
   });
-  return { headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: rows };
+  return { headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: rows, excluded: excluded };
 }
 
 // Tulis salinan Plan satu tanggal ke sheet "Plan Harian" (mengganti baris tanggal itu). rows = 10 kolom (KIKC .. CELUP).
@@ -937,7 +965,7 @@ function getPlanSource(iso, mode) {
   const built = planSnapshotBuild_(buildList_('plan'), iso);
   const ex = getPlanHari(iso);
   return {
-    success: true, date: iso, headers: built.headers, rows: built.rows, total: built.rows.length,
+    success: true, date: iso, headers: built.headers, rows: built.rows, total: built.rows.length, excluded: built.excluded || 0,
     exists: (ex && ex.rows) ? ex.rows.length : 0, savedAt: (ex && ex.savedAt) || ''
   };
 }
@@ -949,9 +977,9 @@ function savePlanTanggal(iso, mode) {
   iso = planIsoOk_(iso);
   if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
   const built = planSnapshotBuild_(buildList_('plan'), iso);
-  if (!built.rows.length) throw new Error('Sheet Plan kosong (mis. IMPORTRANGE belum terisi). Plan tidak disimpan agar salinan lama aman.');
+  if (!built.rows.length) throw new Error(built.excluded ? 'Semua lot di sheet Plan sudah ada di tab Celup, jadi tidak ada yang bisa diplan. Plan tidak disimpan.' : 'Sheet Plan kosong (mis. IMPORTRANGE belum terisi). Plan tidak disimpan agar salinan lama aman.');
   const r = writePlanHarian_(iso, built.rows);
-  return { success: true, saved: r.saved, date: iso };
+  return { success: true, saved: r.saved, date: iso, excluded: built.excluded || 0 };
 }
 
 // Daftar tanggal yang punya riwayat, format yyyy-mm-dd, urut naik.
@@ -985,7 +1013,7 @@ function getPlanHari(iso, fb) {
       if (prev) { shown = prev; fell = true; }
     }
     const want = shown.split('-').reverse().join('/');
-    const out = { success: true, date: shown, requested: iso, fallback: fell, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: dates, sisaFrom: {} };
+    const out = { success: true, date: shown, requested: iso, fallback: fell, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: dates, sisaFrom: {}, celupPlan: {} };
     const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
     if (!sh || sh.getLastRow() < 2) return out;
     const last = sh.getLastRow();
@@ -996,12 +1024,17 @@ function getPlanHari(iso, fb) {
     const rng = sh.getRange(2 + lo, 1, hi - lo + 1, PLAN_HARIAN_HEAD.length);
     const block = rng.getDisplayValues(), raw = rng.getValues();
     let carry = null;
+    const cm = celupPlanMap_();   // KIKC -> tanggal Plan terbaru yang sudah disusul input data
+    const clpd = clpDateMap_();   // KIKC -> tanggal tab Celup (CLP): prioritas utama
     block.forEach(function (r, i) {
       if (str_(r[0]).trim() !== want) return;
       const row = r.slice(1, 11).map(function (x) { return str_(x).trim(); });
       const kg = raw[i][7], cone = raw[i][8];   // KG angka desimal (koma), CONE angka bulat; sel lama berisi teks dipakai apa adanya
       if (typeof kg === 'number') row[6] = String(Math.round(kg * 100) / 100).replace('.', ',');
       if (typeof cone === 'number') row[7] = String(Math.round(cone));
+      const kc = normKikc_(row[0]);
+      if (kc && clpd[kc]) row[9] = clpd[kc];   // 1) tanggal tab Celup (CLP) = master data produksi
+      else if (kc && cm[kc]) { row[9] = cm[kc]; out.celupPlan[kc] = cm[kc]; }   // 2) tanggal Plan bila lot sudah terinput setelah Plan itu (bukan Sisa Order)
       out.rows.push(row);
       if (!out.savedAt) out.savedAt = str_(r[11]).trim();
       if (/^sisa\s*order$/i.test(row[9])) {   // CELUP = "Sisa Order": cari Plan asalnya
@@ -1014,6 +1047,47 @@ function getPlanHari(iso, fb) {
   } catch (e) {
     return { error: e.message };
   }
+}
+
+// Tanggal tab Celup (sheet CLP) per KIKC (baris pertama = terbaru).
+function clpDateMap_() {
+  const out = Object.create(null);
+  try {
+    const clp = getList('clp', false);
+    if (clp && !clp.error && clp.rows) {
+      const ck = clp.headers.indexOf('KIKC'), ct = clp.headers.indexOf('TANGGAL');
+      if (ck >= 0 && ct >= 0) clp.rows.forEach(function (r) {
+        const k = normKikc_(r[ck]), t = str_(r[ct]).trim();
+        if (k && t && !out[k]) out[k] = t;
+      });
+    }
+  } catch (e) { /* tanpa peta CLP: aturan lain berlaku */ }
+  return out;
+}
+
+// Tanggal Celup menurut Plan. Untuk tiap KIKC: tanggal Plan Harian TERBARU (P) yang sudah disusul input data di sheet Jawaban pada tanggal SETELAH P.
+// Contoh: lot ada di Plan 19/10, diinput 20/10 -> CELUP = 19/10. Lot Sisa Order dari Plan 16/10 yang dibuat lagi di Plan 19/10 lalu diinput 20/10 -> CELUP = 19/10 (Plan terbaru).
+// Lot yang belum terinput setelah Plan-nya tidak masuk peta ini (tetap memakai isi lama: tanggal tab Celup / "Sisa Order").
+function celupPlanMap_() {
+  const out = Object.create(null);
+  try {
+    const ph = findSheet_(ss_(), SHEET_PLAN_HARIAN), jw = getJawabanSheet_(false);
+    if (!ph || ph.getLastRow() < 2 || !jw || jw.getLastRow() < 2) return out;
+    const tz = planTz_(), n = jw.getLastRow() - 1;
+    const ts = jw.getRange(2, 1, n, 1).getValues(), kk = jw.getRange(2, 3, n, 1).getDisplayValues();
+    const inp = Object.create(null);   // KIKC -> tanggal input terakhir (yyyy-MM-dd)
+    for (let i = 0; i < n; i++) {
+      const d = dateKey_(ts[i][0], tz), k = normKikc_(kk[i][0]);
+      if (d && k && (!inp[k] || d > inp[k])) inp[k] = d;
+    }
+    const best = Object.create(null);   // KIKC -> Plan terbaru (yyyy-MM-dd) yang tanggalnya sebelum input terakhir
+    ph.getRange(2, 1, ph.getLastRow() - 1, 2).getDisplayValues().forEach(function (c) {
+      const d = planIso_(str_(c[0]).trim()), k = normKikc_(c[1]);
+      if (d && k && inp[k] && d < inp[k] && (!best[k] || d > best[k])) best[k] = d;
+    });
+    Object.keys(best).forEach(function (k) { out[k] = best[k].split('-').reverse().join('/'); });
+  } catch (e) { /* tanpa peta: tampilan lama berlaku */ }
+  return out;
 }
 
 // Penyimpanan otomatis harian sudah diganti dengan Create > Get Plan > Save. Pemicu lama (jika pernah dipasang) menghapus dirinya sendiri
@@ -1069,6 +1143,174 @@ function migrasiAlokasiLama() {
   return pairs.length + ' alokasi disalin ke sheet Alokasi.';
 }
 
+// ================= 2c. Tanggal Pack (sheet PACK) dan lot Terlewat =================
+// Tanggal Pack = kolom A sheet "PACK", dicocokkan dengan KIKC (judul "KIKC" di baris 1 sheet PACK; jika tidak ada: kolom B).
+// Lot yang sudah punya Tanggal Pack dianggap FINISH, jadi tidak perlu dilacak lagi di tab Data / Terlewat.
+// Peta {KIKC: 'dd/MM/yyyy'} disimpan di CacheService (PACK_TTL). Jika satu KIKC muncul beberapa kali di PACK, tanggal TERBARU yang dipakai.
+// Lot yang sudah ada di sheet PACK (Tanggal Pack terisi) tidak boleh diinput lagi.
+function assertNotPacked_(kikc) {
+  const pk = getPackMap_(false);
+  const d = (!pk.missing && pk.map[normKikc_(kikc)]) || '';
+  if (d) throw new Error('KIKC ' + kikc + ' sudah ada di sheet PACK (Tanggal Pack ' + d + '), jadi tidak bisa diinput lagi.');
+}
+
+function dmyToDate_(dmy) {
+  const x = parseDmy_(dmy, false);
+  return x ? new Date(x.y, x.m - 1, x.d) : '';
+}
+
+function getPackMap_(force, cacheOnly) {
+  if (!force) {
+    const hit = listCacheGet_('packmap');
+    if (hit && hit.map) return hit;
+  }
+  if (cacheOnly) return null;
+  const sh = findSheet_(ss_(), SHEET_PACK);
+  if (!sh) return { map: {}, missing: true, n: 0 };
+  const last = sh.getLastRow();
+  const res = { map: {}, missing: false, n: 0 };
+  if (last < 2) { listCachePut_('packmap', res, PACK_TTL); return res; }
+  const nHead = Math.max(1, Math.min(sh.getMaxColumns(), 30));
+  const head = sh.getRange(1, 1, 1, nHead).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); });
+  let kc = head.indexOf('KIKC') + 1;
+  if (kc < 1) kc = PACK_KIKC_DEFAULT;
+  const width = Math.max(PACK_DATE_COL, kc);
+  const disp = sh.getRange(2, 1, last - 1, width).getDisplayValues();
+  const raw = sh.getRange(2, PACK_DATE_COL, last - 1, 1).getValues();
+  const tz = sh.getParent().getSpreadsheetTimeZone(), mdy = !!DATE_TEXT_MDY.pack;
+  const best = {};
+  for (let i = 0; i < disp.length; i++) {
+    const k = normKikc_(disp[i][kc - 1]);
+    if (!k || k === 'KIKC') continue;
+    const key = sortKey_(raw[i][0], disp[i][PACK_DATE_COL - 1], mdy);
+    if (!key) continue;   // tanggal kosong / bukan tanggal: belum dianggap Pack
+    if (best[k] === undefined || key > best[k]) { best[k] = key; res.map[k] = fmtDmy_(raw[i][0], disp[i][PACK_DATE_COL - 1], tz, mdy); }
+  }
+  res.n = Object.keys(res.map).length;
+  listCachePut_('packmap', res, PACK_TTL);
+  return res;
+}
+
+function isoShift_(iso, d) {
+  const p = iso.split('-');
+  return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + d)).toISOString().slice(0, 10);
+}
+const POSISI_URUT = ['CELUP', 'HDX', 'RF', 'WIP', 'KELOS', 'PACK'];
+
+// Lot yang terdata pada tanggal (iso - 1) tetapi TIDAK terdata pada tanggal iso, kecuali lot yang sudah punya Tanggal Pack.
+// Lot dianggap sudah punya Tanggal Pack bila KIKC ada di sheet PACK (tanggal terisi) atau kolom P di sheet Jawaban terisi.
+function getTerlewat(iso, force) {
+  try {
+    iso = planIsoOk_(iso);
+    const prevIso = isoShift_(iso, -1);
+    const out = { success: true, date: iso, prev: prevIso, rows: [], warn: '', counts: { prev: 0, today: 0, packed: 0, missing: 0 } };
+    const sheet = getJawabanSheet_(false);
+    if (!sheet || sheet.getLastRow() < 2) return out;
+    const pack = getPackMap_(!!force);
+    if (pack.missing) out.warn = 'Sheet "' + SHEET_PACK + '" tidak ditemukan, jadi hanya kolom Tanggal Pack di sheet Jawaban yang dipakai.';
+    const tz = sheet.getParent().getSpreadsheetTimeZone();
+    const last = sheet.getLastRow();
+    const tsCol = sheet.getRange(2, 1, last - 1, 1).getValues();
+    const keys = tsCol.map(function (r) { return dateKey_(r[0], tz); });
+    let lo = -1, hi = -1;
+    for (let i = 0; i < keys.length; i++) {
+      if (keys[i] === prevIso || keys[i] === iso) { if (lo < 0) lo = i; hi = i; }
+    }
+    if (lo < 0) return out;
+    const nCols = Math.min(TOTAL_COLS, sheet.getMaxColumns());
+    const block = sheet.getRange(2 + lo, 1, hi - lo + 1, nCols).getDisplayValues();
+    const prev = {}, today = {};
+    for (let i = lo; i <= hi; i++) {
+      const r = padRow_(block[i - lo], TOTAL_COLS), k = normKikc_(r[2]);
+      if (!k || !str_(r[1]).trim()) continue;
+      if (keys[i] === iso) today[k] = 1;
+      else if (keys[i] === prevIso) prev[k] = { r: r, ts: fmtTs_(tsCol[i][0], r[0], tz) };   // baris paling bawah = input terakhir kemarin
+    }
+    const refs = refMaps_();
+    const list = [];
+    Object.keys(prev).forEach(function (k) {
+      out.counts.prev++;
+      if (today[k]) { out.counts.today++; return; }
+      const r = prev[k].r, stored = fmtDmy_(r[COL_PACK - 1], r[COL_PACK - 1], tz, false);
+      if (pack.map[k] || stored) { out.counts.packed++; return; }
+      const cl = refs.clp[k] || {}, pl = refs.plan[k] || {};
+      const pick = function (f, own) { return cl[f] || pl[f] || own; };
+      list.push({
+        kikc: str_(r[2]).trim(), noBenang: pick('noBenang', r[3]), warna: pick('warna', r[4]), mesin: pick('mesin', r[5]),
+        kg: pick('kg', r[6]), cone: pick('cone', r[7]), shift: pick('shift', r[8]), grup: pick('grup', r[9]),
+        posisi: stripNum_(r[10]), qc: stripNum_(r[11]), keterangan: str_(r[13]).trim(), waktu: prev[k].ts,
+        tglCelup: cl.tanggal || ''
+      });
+    });
+    const rank = function (p) { const x = POSISI_URUT.indexOf(p); return x < 0 ? 99 : x; };
+    list.sort(function (a, b) { return (rank(a.posisi) - rank(b.posisi)) || a.kikc.localeCompare(b.kikc); });
+    out.rows = list;
+    out.counts.missing = list.length;
+    return out;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// Mengisi kolom P (Tanggal Pack) di sheet Jawaban dari sheet PACK. Hanya MENGISI / MEMPERBARUI bila PACK punya tanggal; isi lama tidak pernah dihapus.
+// Jika kolom P berisi rumus sheet, tidak ditulis (rumus dibiarkan).
+function syncTanggalPack(mode) {
+  needAdmin_(mode);
+  return syncPack_();
+}
+function syncPack_() {
+  const lock = lock_();
+  try {
+    const sheet = getJawabanSheet_(false);
+    if (!sheet || sheet.getLastRow() < 2) return { filled: 0, updated: 0, total: 0, formula: false };
+    ensureColumns_(sheet);
+    const pack = getPackMap_(true);
+    if (pack.missing) throw new Error('Sheet "' + SHEET_PACK + '" tidak ditemukan di spreadsheet.');
+    const n = sheet.getLastRow() - 1;
+    const rng = sheet.getRange(2, COL_PACK, n, 1);
+    if (rng.getFormulas().some(function (r) { return r[0]; })) return { filled: 0, updated: 0, total: n, formula: true };
+    const kk = sheet.getRange(2, 3, n, 1).getDisplayValues();
+    const raw = rng.getValues(), disp = rng.getDisplayValues();
+    const tz = sheet.getParent().getSpreadsheetTimeZone();
+    let filled = 0, updated = 0;
+    const out = raw.map(function (c, i) {
+      const k = normKikc_(kk[i][0]), want = k ? pack.map[k] : '';
+      if (!want) return [c[0]];
+      const cur = fmtDmy_(c[0], disp[i][0], tz, false);
+      if (cur === want) return [c[0]];
+      if (cur) updated++; else filled++;
+      return [dmyToDate_(want)];
+    });
+    if (filled || updated) {
+      rng.setNumberFormat('dd/MM/yyyy');
+      rng.setValues(out);
+      SpreadsheetApp.flush();
+    }
+    return { filled: filled, updated: updated, total: n, formula: false };
+  } finally {
+    unlock_(lock);
+  }
+}
+
+// Opsional, jalankan SEKALI dari editor Apps Script: pemicu otomatis tiap jam untuk menyinkronkan kolom P (Tanggal Pack).
+function pasangPemicuTanggalPack() {
+  hapusPemicuTanggalPack();
+  ScriptApp.newTrigger('sinkronTanggalPackOtomatis').timeBased().everyHours(1).create();
+  return 'Pemicu sinkron Tanggal Pack dipasang (tiap 1 jam).';
+}
+function hapusPemicuTanggalPack() {
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'sinkronTanggalPackOtomatis') { ScriptApp.deleteTrigger(t); n++; } });
+  return n + ' pemicu dihapus.';
+}
+function sinkronTanggalPackOtomatis() { return syncPack_(); }
+// Uji dari editor: melihat hasil baca sheet PACK tanpa menulis apa pun.
+function tesPack() {
+  const r = getPackMap_(true);
+  Logger.log(r.missing ? 'Sheet PACK tidak ditemukan.' : 'KIKC dengan Tanggal Pack: ' + r.n);
+  Logger.log('Contoh: ' + JSON.stringify(Object.keys(r.map).slice(0, 5).map(function (k) { return [k, r.map[k]]; })));
+}
+
 // ================= 3. Simpan data baru =================
 // Pencarian KIKC dipercepat (TextFinder), spreadsheet dibuka sekali, pengecekan header dilewati, format sel digabung.
 // Kunci hanya dipegang saat menulis ke sheet (pencarian KIKC dilakukan SEBELUM kunci), jadi antrean pengguna lain lebih pendek.
@@ -1078,6 +1320,7 @@ function saveData(p) {
   need_(p.kikc, 'KIKC');
   need_(p.posisi, 'Posisi');
   p.kikc = str_(p.kikc).replace(/\s+/g, ' ').trim();
+  assertNotPacked_(p.kikc);
 
   let ref = lookupKikc_(p.kikc);
   if (!ref) {
@@ -1101,13 +1344,19 @@ function saveData(p) {
     const ts = new Date();
     const row = sheet.getLastRow() + 1;
 
-    sheet.getRange(row, 1, 1, TOTAL_COLS).setValues([[
+    const vals = [
       ts, newId_(ts),
       ref.kikc, ref.noBenang, ref.warna, mesin, ref.kg, ref.cone,
       str_(p.shift), str_(p.grup), posisi, qc,
       str_(p.noteQc), ket,
       ref.ketKikc
-    ]]);
+    ];
+    // Tanggal Pack: dari cache peta PACK (tanpa membuka sheet PACK agar simpan tetap cepat); jika belum ada di cache, diisi saat sinkron
+    if (PropertiesService.getScriptProperties().getProperty('packFormula') !== '1') {
+      const pk = getPackMap_(false, true);
+      vals.push(pk && pk.map[normKikc_(ref.kikc)] ? dmyToDate_(pk.map[normKikc_(ref.kikc)]) : '');
+    }
+    sheet.getRange(row, 1, 1, vals.length).setValues([vals]);
 
     if (cid) { try { CacheService.getScriptCache().put('cid_' + cid, '1', 21600); } catch (e) { /* abaikan */ } }
     return 'Data tersimpan.';
@@ -1182,6 +1431,7 @@ function getData(dateStr) {
     const values = sheet.getRange(start, 1, end - start + 1, nCols).getDisplayValues();
     const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
     const refs = refMaps_();   // referensi per KIKC: Celup, lalu Plan (Mesin: Alokasi dulu)
+    let packMap = {}; try { packMap = getPackMap_(false).map || {}; } catch (ePk) { packMap = {}; }   // Tanggal Pack dari sheet PACK (kosong bila sheet tidak ada)
     const kemarin = Utilities.formatDate(new Date(Date.now() - 86400000), tz, 'dd/MM/yyyy');   // TODAY()-1, dipakai untuk tanggal dari kolom Celup tab Plan
     const out = [];
     for (let i = 0; i < values.length; i++) {
@@ -1200,6 +1450,7 @@ function getData(dateStr) {
         kg: pick('kg', r[6]), cone: pick('cone', r[7]),
         shift: pick('shift', r[8]), grup: pick('grup', r[9]),
         tglCelup: cl.tanggal || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : ''),   // kolom virtual (tidak ada di sheet): tanggal dari tab Celup; jika tidak ada dan Plan berisi tanggal Celup, memakai TODAY()-1 seperti kolom Celup tab Plan ("SISA ORDER" dikosongkan)
+        tglPack: packMap[k] || fmtDmy_(r[COL_PACK - 1], r[COL_PACK - 1], tz, false),   // ada Tanggal Pack = lot Finish (kolom P di sheet sebagai cadangan)
         shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah agar sheet tidak tertimpa nilai dari Celup/Plan)
         posisi: stripNum_(r[10]),   // data lama "1. CELUP" tampil sebagai "CELUP"
         qc: stripNum_(r[11]),
@@ -1258,6 +1509,7 @@ function updateRowData(p) {
     const cur = sheet.getRange(row, 1, 1, TOTAL_COLS).getDisplayValues()[0];
     const want = {};
     if (newKikc !== str_(cur[2]).trim()) {
+      assertNotPacked_(newKikc);
       let ref = lookupKikc_(newKikc);
       if (!ref) {
         if (p.baru !== true) throw new Error('KIKC "' + newKikc + '" tidak ditemukan di sheet WOD maupun GRM. Gunakan "Tambah KIKC baru" untuk mengisi manual.');
@@ -1265,6 +1517,7 @@ function updateRowData(p) {
       }
       want[3] = ref.kikc; want[4] = ref.noBenang; want[5] = ref.warna; want[7] = ref.kg; want[8] = ref.cone;
       want[COL_KET_KIKC] = ref.ketKikc;
+      if (PropertiesService.getScriptProperties().getProperty('packFormula') !== '1') want[COL_PACK] = '';   // KIKC diganti: Tanggal Pack lama dikosongkan, diisi ulang saat sinkron
     } else if (!str_(cur[COL_KET_KIKC - 1]).trim()) {
       try { const ref0 = lookupKikc_(newKikc); if (ref0 && ref0.ketKikc) want[COL_KET_KIKC] = ref0.ketKikc; } catch (e) { /* abaikan */ }
     }
@@ -1291,7 +1544,7 @@ function updateRowData(p) {
       try {
         const rng = sheet.getRange(row, c1, 1, n);
         for (let c = c1; c < c1 + n; c++) {
-          if (c === 7 || c === 8) continue;
+          if (c === 7 || c === 8 || c === COL_PACK) continue;
           try { sheet.getRange(row, c).setNumberFormat('@'); } catch (e) { /* abaikan */ }
         }
         rng.setValues([vals]);

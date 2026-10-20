@@ -416,7 +416,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .mnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
 
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(8,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
   .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.7)}
@@ -534,7 +534,13 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   html[data-mode="admin"] .topbar{border-bottom-color:rgba(var(--a-rgb),.55)}
   .modebtn{display:none !important}
   html[data-mode="viewer"] .admin-only{display:none !important}
-  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(6,1fr)}
+  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(7,1fr)}
+  @media(max-width:430px){.tab{font-size:11px;gap:3px}.tab svg{width:22px;height:22px}}
+  .tag.fin{color:var(--lime);border-color:rgba(var(--g-rgb),.65);background:rgba(var(--g-rgb),.1)}
+  .fsep{flex:none;width:1px;margin:4px 2px;background:var(--edge-strong)}
+  .fchip.pk{border-style:dashed}
+  #viewMiss .stat small{font-size:12px}
+  tbody tr.finrow td.c-kikc{color:var(--lime)}
   html[data-mode="viewer"] .c-kikc{left:0}
   .mswitch.ro{cursor:default;pointer-events:none}
   @media(max-width:430px){.modebtn{padding:0;width:44px;justify-content:center}.modebtn span{display:none}}
@@ -712,6 +718,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
               <th>Shift</th>
               <th>Grup</th>
               <th>Tgl Celup</th>
+              <th>Tgl Pack</th>
               <th>Posisi</th>
               <th>QC</th>
               <th>Keterangan</th>
@@ -870,6 +877,44 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     </section>
 
     <!-- ============ CELUP ============ -->
+    <!-- ============ TERLEWAT ============ -->
+    <section id="viewMiss" class="view list" aria-label="Lot terlewat">
+      <div class="daterow">
+        <button type="button" class="icon-btn" id="missPrev" aria-label="Hari sebelumnya">
+          <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <input class="input" id="missDate" type="date" aria-label="Pilih tanggal pemeriksaan">
+        <button type="button" class="icon-btn" id="missNext" aria-label="Hari berikutnya">
+          <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button type="button" class="btn-today active" id="missToday">Hari ini</button>
+      </div>
+      <div class="stats s4" aria-live="polite">
+        <div class="stat"><small id="msPrevL">Lot kemarin</small><b id="msPrev">-</b></div>
+        <div class="stat g"><small>Terdata hari ini</small><b id="msToday">-</b></div>
+        <div class="stat a"><small>Sudah Pack (Finish)</small><b id="msPack">-</b></div>
+        <div class="stat r"><small>Terlewat</small><b id="msMiss">-</b></div>
+      </div>
+      <p class="sumnote" id="msNote"></p>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qMiss" type="search" placeholder="Cari KIKC, warna, mesin, atau posisi" autocomplete="off" enterkeyhint="search" aria-label="Cari lot terlewat">
+      </div>
+      <div class="dtools">
+        <button type="button" class="btn-sm admin-only" id="btnSyncPack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg><span>Sinkron Tgl Pack</span></button>
+        <button type="button" class="btn-sm" id="btnCsvMiss" aria-label="Unduh daftar lot terlewat sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh CSV</span></button>
+      </div>
+      <div class="lstate" id="sMiss"></div>
+      <div class="table-wrap hidden" id="wMiss">
+        <table>
+          <thead><tr>
+            <th class="l-s l-s0 l-last">KIKC</th><th>No benang</th><th>Warna</th><th>Mesin</th><th>Kg</th><th>Cone</th><th>Shift</th><th>Grup</th><th>Tgl Celup</th><th>Posisi terakhir</th><th>QC</th><th>Keterangan</th><th>Input terakhir</th>
+          </tr></thead>
+          <tbody id="bMiss"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="viewClp" class="view list" aria-label="Daftar Celup">
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -914,6 +959,10 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     <button type="button" class="tab" id="tabData" data-view="data" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
       Data
+    </button>
+    <button type="button" class="tab" id="tabMiss" data-view="miss" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      Terlewat
     </button>
     <button type="button" class="tab" id="tabMesin" data-view="mesin" aria-selected="false">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12" r="1.5"/></svg>
@@ -1273,7 +1322,7 @@ var Code128 = (function () {
   var state = {
     view: 'form',
     mode: document.documentElement.getAttribute('data-mode') === 'admin' ? 'admin' : 'viewer',
-    kikc: [], rows: [], total: 0, filterPos: '', query: '',
+    kikc: [], rows: [], total: 0, filterPos: '', filterPack: '', query: '',
     date: todayStr(), followToday: true,
     saving: false, savingEdit: false, loadingKikc: false,
     pendingDelete: null
@@ -1916,7 +1965,7 @@ var Code128 = (function () {
       setTimeout(function () { closeScanner(); if (cb) cb(item, text); }, 350);
     } else if (text !== scan.lastMiss) {
       scan.lastMiss = text;
-      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD dan GRM). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
+      setScanMsg('Terbaca "' + shortText(text) + '", tetapi tidak ada di daftar KIKC (sheet WOD dan GRM, atau sudah ada di sheet PACK). Arahkan ke barcode lain, atau tutup lalu ketik manual.', true);
     }
   }
 
@@ -2103,7 +2152,7 @@ var Code128 = (function () {
       inCombo.setEnabled(true, 'Ketik untuk cari KIKC');
       edCombo.setEnabled(true, 'Ketik untuk cari KIKC');
       var cn = r.counts;
-      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia' + (cn ? ' (WOD ' + cn.wod + ', GRM ' + cn.grm + ')' : '') + '. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.' + (r.warn ? ' Catatan: ' + r.warn : ''));
+      setKikcStatus('ready', state.kikc.length + ' KIKC tersedia' + (cn ? ' (WOD ' + cn.wod + ', GRM ' + cn.grm + (cn.packed ? '; ' + cn.packed + ' lot sudah Pack disembunyikan' : '') + ')' : '') + '. Ketik sebagian kode, atau ketuk ikon pindai untuk barcode dan QR.' + (r.warn ? ' Catatan: ' + r.warn : ''));
     }).catch(function (e) {
       if (state.kikc.length) {   // masih ada daftar tersimpan: tetap bisa dipakai
         setKikcStatus('ready', state.kikc.length + ' KIKC (daftar tersimpan). Gagal memperbarui: ' + errMsg(e));
@@ -2265,7 +2314,10 @@ var Code128 = (function () {
   function celupEff(headers, r) {
     var ik = headers.indexOf('KIKC'), c = headers.indexOf('CELUP');
     var ci = ik >= 0 ? clpInfo(r[ik]) : null;
-    if (ci && ci.tgl) return { fin: true, date: ci.tgl, src: 'CLP' };
+    if (ci && ci.tgl) return { fin: true, date: ci.tgl, src: 'CLP' };   // 1) tab Celup (CLP) = master data produksi, prioritas utama
+    // 2) tanggal Plan terbaru yang sudah disusul input data (dihitung server, lihat celupPlanMap_ di Kode.gs)
+    var kp = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '', cpm = lst.plan.celupPlan;
+    if (kp && cpm && cpm[kp]) return { fin: true, date: cpm[kp], src: 'PLAN' };
     var v = c >= 0 ? String(r[c] === undefined || r[c] === null ? '' : r[c]).trim() : '';
     if (v && !/^sisa\s*order$/i.test(v)) return { fin: true, date: /^\d{2}\/\d{2}\/\d{4}$/.test(v) ? v : kemarin(), src: 'DATA' };   // tanggal tersimpan di Plan Harian dipakai apa adanya
     return { fin: false, date: '', src: '' };
@@ -2435,7 +2487,7 @@ var Code128 = (function () {
   function loadPlanDay(force) {
     var m = lst.plan, dt = planCur();
     if (!force && m.reqDate === dt && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
-    if (m.reqDate !== dt) { m.headers = []; m.rows = []; m.sig = ''; m.rowNos = null; m.savedAt = ''; m.date = ''; m.sisaFrom = {}; }   // jangan tampilkan Plan tanggal lain
+    if (m.reqDate !== dt) { m.headers = []; m.rows = []; m.sig = ''; m.rowNos = null; m.savedAt = ''; m.date = ''; m.sisaFrom = {}; m.celupPlan = {}; }   // jangan tampilkan Plan tanggal lain
     m.loading = true; m.error = '';
     if (state.view === 'plan' || state.view === 'mesin') $('#btnRefresh').classList.add('spin');
     renderList('plan');
@@ -2445,7 +2497,7 @@ var Code128 = (function () {
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
       var sp = sortPlan(r.headers || [], (r.rows || []).slice(), null);
-      m.headers = r.headers || []; m.rows = sp.rows; m.rowNos = null; m.reqDate = dt; m.date = r.date || dt; m.savedAt = r.savedAt || ''; m.sisaFrom = r.sisaFrom || {};
+      m.headers = r.headers || []; m.rows = sp.rows; m.rowNos = null; m.reqDate = dt; m.date = r.date || dt; m.savedAt = r.savedAt || ''; m.sisaFrom = r.sisaFrom || {}; m.celupPlan = r.celupPlan || {};
       m.sig = hashStr(m.date + '|' + JSON.stringify(m.rows) + '|' + JSON.stringify(m.sisaFrom)); m.at = Date.now(); m.error = '';
       if (r.dates) { planDates = r.dates; planDatesAt = Date.now(); }
     }).catch(function (e) {
@@ -2477,7 +2529,7 @@ var Code128 = (function () {
   // Create: 1) tentukan tanggal  2) Get Plan (baca sheet Plan)  3) Save (simpan ke sheet Plan Harian)
   var pc = { rows: null, headers: null, date: '', exists: 0, savedAt: '' };
   function pcReset() {
-    pc.rows = null; pc.headers = null; pc.date = ''; pc.exists = 0; pc.savedAt = '';
+    pc.rows = null; pc.headers = null; pc.date = ''; pc.exists = 0; pc.savedAt = ''; pc.excluded = 0;
     $('#pcPreview').hidden = true; $('#pcPreview').innerHTML = '';
     $('#pcWarn').hidden = true; $('#pcMsg').textContent = '';
     $('#pcSave').disabled = true; $('#pcSave span').textContent = 'Save';
@@ -2487,7 +2539,7 @@ var Code128 = (function () {
     var lots = {}, kg = 0, cone = 0;
     rows.forEach(function (r) { var k = String(r[ik] || '').trim().toUpperCase(); if (k) lots[k] = 1; kg += ikg >= 0 ? parseNum(r[ikg]) : 0; cone += ic >= 0 ? parseNum(r[ic]) : 0; });
     var pd = pc.date.split('-').reverse().join('/');
-    $('#pcMsg').textContent = rows.length ? 'Plan dari sheet Plan: ' + rows.length + ' baris · ' + Object.keys(lots).length + ' lot · ' + fmtNum(kg) + ' Kg · ' + fmtNum(cone) + ' Cone. Ketuk Save untuk menyimpan ke tanggal ' + pd + '.' : 'Sheet Plan kosong. Tidak ada yang bisa disimpan.';
+    $('#pcMsg').textContent = rows.length ? 'Plan dari sheet Plan: ' + rows.length + ' baris · ' + Object.keys(lots).length + ' lot · ' + fmtNum(kg) + ' Kg · ' + fmtNum(cone) + ' Cone. Ketuk Save untuk menyimpan ke tanggal ' + pd + '.' + (pc.excluded ? ' ' + pc.excluded + ' lot tidak ikut karena sudah ada di tab Celup.' : '') : (pc.excluded ? 'Semua lot di sheet Plan sudah ada di tab Celup (' + pc.excluded + ' lot). Tidak ada yang bisa diplan.' : 'Sheet Plan kosong. Tidak ada yang bisa disimpan.');
     var w = $('#pcWarn');
     if (pc.exists) { w.hidden = false; w.textContent = 'Tanggal ' + pd + ' sudah punya Plan (' + pc.exists + ' baris' + (pc.savedAt ? ', disimpan ' + pc.savedAt : '') + '). Save akan menggantikannya; alokasi mesin yang sudah diisi tetap dipertahankan.'; }
     else w.hidden = true;
@@ -2519,7 +2571,7 @@ var Code128 = (function () {
     gs('getPlanSource', dt, state.mode).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       if ($('#pcDate').value !== dt) return;   // tanggal diganti selama menunggu
-      pc.rows = r.rows || []; pc.headers = r.headers || []; pc.date = dt; pc.exists = r.exists || 0; pc.savedAt = r.savedAt || '';
+      pc.rows = r.rows || []; pc.headers = r.headers || []; pc.date = dt; pc.exists = r.exists || 0; pc.savedAt = r.savedAt || ''; pc.excluded = r.excluded || 0;
       pcPreview();
     }).catch(function (e) {
       pcReset(); toast('Get Plan gagal. ' + errMsg(e), 'err', 7000);
@@ -2901,23 +2953,142 @@ var Code128 = (function () {
     if (mqWide.addEventListener) mqWide.addEventListener('change', onWide); else if (mqWide.addListener) mqWide.addListener(onWide);
   }
 
+  /* ---------- Tab Terlewat: lot yang terdata kemarin tetapi tidak terdata hari ini ----------
+     Lot yang sudah punya Tanggal Pack (sheet PACK kolom A menurut KIKC) dianggap Finish dan dikecualikan.
+     Perhitungan dilakukan di server (getTerlewat): data Jawaban tanggal H-1 dibandingkan dengan tanggal terpilih. */
+  var MS = { date: todayStr(), follow: true, data: null, loading: false, error: '', query: '', seq: 0, at: 0, sig: '' };
+  function missSync() {
+    var t = todayStr(), isT = MS.date === t;
+    $('#missDate').max = t; $('#missDate').value = MS.date;
+    $('#missNext').disabled = MS.date >= t;
+    $('#missToday').classList.toggle('active', isT);
+    $('#msPrevL').textContent = isT ? 'Lot kemarin' : 'Lot H-1';
+    if (state.view === 'miss') $('#subtitle').textContent = 'Terlewat · ' + dateLabel(MS.date) + ' vs ' + dateLabel(shiftDate(MS.date, -1));
+  }
+  function setMissDate(s) {
+    var t = todayStr();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) { missSync(); return; }
+    if (s > t) s = t;
+    MS.follow = (s === t); MS.date = s; MS.data = null; MS.sig = '';
+    missSync(); renderMiss(); loadMiss(true);
+  }
+  $('#missDate').addEventListener('change', function () { setMissDate(this.value); });
+  $('#missPrev').addEventListener('click', function () { setMissDate(shiftDate(MS.date, -1)); });
+  $('#missNext').addEventListener('click', function () { setMissDate(shiftDate(MS.date, 1)); });
+  $('#missToday').addEventListener('click', function () { setMissDate(todayStr()); });
+  var tMiss = null;
+  $('#qMiss').addEventListener('input', function () {
+    var v = this.value; clearTimeout(tMiss);
+    tMiss = setTimeout(function () { MS.query = v; renderMiss(); }, 150);
+  });
+  function missState(html) { var el = $('#sMiss'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
+  function missFiltered() {
+    var q = nq(MS.query.trim()), d = MS.data;
+    return (d && d.rows ? d.rows : []).filter(function (r) {
+      return !q || nq([r.kikc, r.noBenang, r.warna, r.mesin, r.posisi, r.qc, r.keterangan].join(' ')).indexOf(q) >= 0;
+    });
+  }
+  function renderMiss() {
+    var d = MS.data, wrap = $('#wMiss'), ids = ['#msPrev', '#msToday', '#msPack', '#msMiss'];
+    if (!d) {
+      ids.forEach(function (id) { $(id).textContent = '-'; });
+      $('#msNote').textContent = '';
+      wrap.classList.add('hidden');
+      if (MS.loading) missState('<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      else if (MS.error) missState('<div class="alert"><b>Data belum bisa dimuat.</b><br>' + esc(MS.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
+      else missState('');
+      return;
+    }
+    var c = d.counts;
+    setStat('#msPrev', fmtNum(c.prev)); setStat('#msToday', fmtNum(c.today)); setStat('#msPack', fmtNum(c.packed)); setStat('#msMiss', fmtNum(c.missing));
+    var pl = dateLabel(d.prev), tl = dateLabel(d.date);
+    $('#msNote').textContent = 'Lot yang terdata ' + (d.prev === todayStr() ? 'hari ini' : pl) + ' tetapi belum terdata ' + (d.date === todayStr() ? 'hari ini' : tl) + ', di luar lot yang sudah punya Tanggal Pack.' + (d.warn ? ' ' + d.warn : '');
+    var rows = missFiltered();
+    if (!d.rows.length) {
+      wrap.classList.add('hidden');
+      missState('<div class="state">' + (c.prev === 0
+        ? 'Tidak ada data pada ' + esc(pl) + ', jadi belum ada yang bisa dibandingkan.'
+        : 'Tidak ada lot terlewat. Semua lot ' + esc(pl) + ' sudah terdata di ' + esc(tl) + ' atau sudah Pack.') + '</div>');
+      return;
+    }
+    if (!rows.length) { wrap.classList.add('hidden'); missState('<div class="state">Tidak ada lot yang cocok dengan pencarian.</div>'); return; }
+    missState('');
+    $('#bMiss').innerHTML = rows.map(function (r) {
+      var qc = qcClass(r.qc);
+      return '<tr><td class="l-s l-s0 l-last">' + esc(r.kikc) + '</td>' +
+        '<td>' + esc(r.noBenang) + '</td><td>' + esc(r.warna) + '</td><td>' + esc(r.mesin) + '</td>' +
+        '<td class="num">' + esc(r.kg) + '</td><td class="num">' + esc(r.cone) + '</td>' +
+        '<td>' + esc(shiftLabel(r.shift)) + '</td><td>' + esc(r.grup) + '</td>' +
+        '<td class="date">' + esc(r.tglCelup) + '</td>' +
+        '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
+        '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
+        '<td class="wrap">' + esc(r.keterangan) + '</td>' +
+        '<td class="dim">' + esc(r.waktu) + '</td></tr>';
+    }).join('');
+    wrap.classList.remove('hidden');
+  }
+  function loadMiss(force) {
+    if (!force && MS.data && MS.at && Date.now() - MS.at < LIST_FRESH && MS.dataDate === MS.date) return Promise.resolve();
+    var my = ++MS.seq, dt = MS.date;
+    MS.loading = true; MS.error = '';
+    if (state.view === 'miss') $('#btnRefresh').classList.add('spin');
+    if (!MS.data) renderMiss();
+    return gs('getTerlewat', dt, !!force).then(function (r) {
+      if (my !== MS.seq) return;
+      if (!r) throw new Error('Server tidak mengembalikan data.');
+      if (r.error) throw new Error(r.error);
+      MS.data = r; MS.dataDate = dt; MS.at = Date.now();
+    }).catch(function (e) {
+      if (my !== MS.seq) return;
+      MS.error = errMsg(e);
+      if (MS.data) toast('Gagal memperbarui. ' + errMsg(e), 'err', 6000);
+    }).then(function () {
+      if (my !== MS.seq) return;
+      MS.loading = false; stopSpin(); renderMiss();
+    });
+  }
+  $('#sMiss').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-retry]')) loadMiss(true); });
+  $('#btnSyncPack').addEventListener('click', function () {
+    if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
+    var b = this, lab = b.querySelector('span'); b.disabled = true; lab.textContent = 'Menyinkron...';
+    gs('syncTanggalPack', state.mode).then(function (r) {
+      if (r && r.error) throw new Error(r.error);
+      if (r && r.formula) toast('Kolom P (Tanggal Pack) berisi rumus sheet, jadi tidak ditimpa. Tab Data tetap membaca sheet PACK.', 'warn', 7000);
+      else toast('Tanggal Pack: ' + (r ? r.filled : 0) + ' baris terisi, ' + (r ? r.updated : 0) + ' diperbarui.', 'ok', 5000);
+      return loadMiss(true);
+    }).catch(function (e) { toast('Sinkron gagal. ' + errMsg(e), 'err', 7000); })
+      .then(function () { b.disabled = false; lab.textContent = 'Sinkron Tgl Pack'; });
+  });
+  $('#btnCsvMiss').addEventListener('click', function () {
+    var rows = missFiltered();
+    if (!rows.length) { toast('Tidak ada lot terlewat untuk diunduh.', 'warn'); return; }
+    var hd = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'INPUT TERAKHIR'];
+    var cell = function (v) { v = v === undefined || v === null ? '' : String(v); if (/^[=+@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+    var lines = [hd.map(cell).join(';')];
+    rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.waktu].map(cell).join(';')); });
+    var name = 'Lot_Terlewat_' + MS.date.replace(/-/g, '') + '.csv';
+    downloadBlob(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
+    toast(rows.length + ' baris diunduh: ' + name, 'ok');
+  });
+
   /* ---------- Tab ---------- */
   function showView(name) {
     if (name === 'form' && !isAdmin()) name = 'data';   // tab Input hanya untuk mode Admin
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
+    $('#viewMiss').classList.toggle('active', name === 'miss');
     $('#viewForm').classList.toggle('active', name === 'form');
     $('#viewData').classList.toggle('active', name === 'data');
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
-    $('#main').classList.toggle('is-data', name === 'data' || isList || isMesin);
+    $('#main').classList.toggle('is-data', name === 'data' || isList || isMesin || name === 'miss');
     $$('.tab').forEach(function (b) {
       var on = b.getAttribute('data-view') === name;
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', on);
     });
     $('#btnRefresh').setAttribute('aria-label', name === 'form' ? 'Muat ulang daftar KIKC' : 'Muat ulang data');
-    $('#subtitle').textContent = isList ? LISTS[name].sub : (isMesin ? 'Alokasi mesin · kartu lot' : name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang');
+    $('#subtitle').textContent = isList ? LISTS[name].sub : (isMesin ? 'Alokasi mesin · kartu lot' : name === 'miss' ? 'Lot terdata kemarin, belum terdata hari ini' : name === 'data' ? 'Rekap data yang sudah tersimpan' : 'Catat posisi dan QC benang');
     $('#main').scrollTop = 0;
     if (name === 'data') {
       // Jika aplikasi dibiarkan terbuka sampai ganti hari, "hari ini" ikut diperbarui
@@ -2931,6 +3102,9 @@ var Code128 = (function () {
       renderList(name);          // langsung tampil dari memori, tanpa menunggu server
       loadList(name, false);     // diperbarui di belakang layar hanya jika sudah kedaluwarsa
       if (name === 'plan') { loadList('clp', false); planSyncUi(); loadPlanDates(false); }
+    } else if (name === 'miss') {
+      if (MS.follow && MS.date !== todayStr()) { MS.date = todayStr(); MS.data = null; }
+      missSync(); renderMiss(); loadMiss(false);
     } else if (isMesin) {
       restoreList('plan'); restoreList('wod'); restoreList('clp');
       mesinQ.key = ''; renderMesin(); loadMesinStop(false);   // dari data Plan di memori
@@ -2952,7 +3126,8 @@ var Code128 = (function () {
     b.addEventListener('click', function () { showView(b.getAttribute('data-view')); });
   });
   $('#btnRefresh').addEventListener('click', function () {
-    if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
+    if (state.view === 'miss') loadMiss(true);
+    else if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
     else if (LISTS[state.view]) { loadList(state.view, true); if (state.view === 'plan') { loadList('clp', true); loadPlanDates(true); } }
     else if (state.view === 'data') loadData(); else loadKikc();
   });
@@ -2978,6 +3153,7 @@ var Code128 = (function () {
       loadKikc();                                       // Viewer tidak memuat daftar KIKC; dimuat saat masuk Admin
     }
     if (state.view === 'data') renderRows();
+    else if (state.view === 'miss') renderMiss();
     else if (LISTS[state.view]) renderList(state.view);
     else if (state.view === 'mesin') renderMesin();
   }
@@ -3097,8 +3273,11 @@ var Code128 = (function () {
 
   function renderFilters() {
     var items = [{ v: '', t: 'Semua' }].concat(POSISI.map(function (p) { return { v: p, t: p }; }));
+    var pk = [{ v: 'open', t: 'Belum Pack' }, { v: 'fin', t: 'Finish (Pack)' }];
     $('#filters').innerHTML = items.map(function (it) {
       return '<button type="button" class="fchip' + (state.filterPos === it.v ? ' active' : '') + '" data-pos="' + esc(it.v) + '">' + esc(it.t) + '</button>';
+    }).join('') + '<span class="fsep" aria-hidden="true"></span>' + pk.map(function (it) {
+      return '<button type="button" class="fchip pk' + (state.filterPack === it.v ? ' active' : '') + '" data-pack="' + it.v + '">' + esc(it.t) + '</button>';
     }).join('');
   }
 
@@ -3177,11 +3356,14 @@ var Code128 = (function () {
     });
     kg = Math.round(kg * 100) / 100;
     setStat('#sLot', fmtNum(lots)); setStat('#sKg', fmtNum(kg)); setStat('#sCone', fmtNum(cone));
-    var scope = dateLabel(state.date) + (state.filterPos ? ', posisi ' + state.filterPos : ', semua posisi') + (state.query.trim() ? ', sesuai pencarian' : '');
+    var scope = dateLabel(state.date) + (state.filterPos ? ', posisi ' + state.filterPos : ', semua posisi') + (state.filterPack === 'open' ? ', belum Pack' : state.filterPack === 'fin' ? ', sudah Pack' : '') + (state.query.trim() ? ', sesuai pencarian' : '');
+    var finLots = 0, finSeen = {};
+    rows.forEach(function (r) { if (r.kikc && r.tglPack && !finSeen[r.kikc]) { finSeen[r.kikc] = 1; finLots++; } });
     var dupN = 0, dupKeys = {};
     rows.forEach(function (r) { var dk = r.kikc + '|' + r.posisi; if (r.kikc && dupInfo.kp[dk] > 1 && !dupKeys[dk]) { dupKeys[dk] = 1; dupN++; } });
     $('#sumNote').textContent = rows.length
       ? scope + ': ' + rows.length + ' input, ' + lots + ' lot KIKC' + (rows.length > lots ? ' (KIKC sama beda posisi dihitung satu lot).' : '.') +
+        (finLots ? ' ' + finLots + ' lot sudah ada Tgl Pack (Finish).' : '') +
         (dupN ? ' ' + dupN + ' data ganda (KIKC dan posisi sama) disorot merah.' : '')
       : scope + ': belum ada input.';
   }
@@ -3214,6 +3396,8 @@ var Code128 = (function () {
     var q = nq(state.query.trim());
     var rows = state.rows.filter(function (r) {
       if (state.filterPos && r.posisi !== state.filterPos) return false;
+      if (state.filterPack === 'open' && r.tglPack) return false;
+      if (state.filterPack === 'fin' && !r.tglPack) return false;
       if (!q) return true;
       return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, (isAdmin() ? r.noteQc : ''), r.keterangan].join(' ')).indexOf(q) >= 0;
     });
@@ -3236,6 +3420,7 @@ var Code128 = (function () {
     $('#tbody').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
       var n = dupInfo.kp[r.kikc + '|' + r.posisi] || 0, cls = n > 1 ? 'dup dup2' : '';
+      if (r.tglPack) cls = (cls ? cls + ' ' : '') + 'finrow';
       return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
         (!isAdmin() ? '' : '<td class="sticky c-act"><div class="row-actions">' +
           '<button type="button" class="icon-btn sm" data-act="edit" data-row="' + r.rowIndex + '" aria-label="Ubah ' + esc(r.kikc) + '" title="Ubah">' + ICON_EDIT + '</button>' +
@@ -3251,6 +3436,7 @@ var Code128 = (function () {
         '<td>' + esc(shiftLabel(r.shift)) + '</td>' +
         '<td>' + esc(r.grup) + '</td>' +
         '<td class="date">' + esc(r.tglCelup) + '</td>' +
+        '<td>' + (r.tglPack ? '<span class="tag fin" title="Sudah ada Tanggal Pack: lot Finish">' + esc(r.tglPack) + '</span>' : '') + '</td>' +
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
@@ -4152,7 +4338,8 @@ var Code128 = (function () {
 
   $('#filters').addEventListener('click', function (e) {
     var b = e.target.closest('.fchip'); if (!b) return;
-    state.filterPos = b.getAttribute('data-pos');
+    if (b.hasAttribute('data-pack')) { var pv = b.getAttribute('data-pack'); state.filterPack = state.filterPack === pv ? '' : pv; }
+    else state.filterPos = b.getAttribute('data-pos');
     renderFilters(); renderRows();
   });
   $('#searchBox').addEventListener('input', function () { state.query = this.value; renderRows(); });
