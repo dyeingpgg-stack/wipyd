@@ -3934,7 +3934,7 @@ var Code128 = (function () {
   }
 
   function dailyBuild(Doc, rep, extra) {
-    var W = 1200, M = 30, IW = W - 2 * M, MGAP = 4, GH = 24, CHH = 26, SUBH = 22, GGAP = 14;
+    var W = 1200, M = 30, IW = W - 2 * M, MGAP = 4, GH = 24, CHH = 26, GGAP = 14;
     var colDef = [
       { k: 'mc', a: 'c', t: ['MC'] }, { k: 'no', a: 'c', t: ['NO'] }, { k: 'warna', a: 'l', t: ['WARNA'] },
       { k: 'kikc', a: 'l', t: ['KIKC'] }, { k: 'nb', a: 'l', t: ['NO. BENANG'] }, { k: 'sup', a: 'c', t: ['SUPPLIER'] },
@@ -3963,7 +3963,7 @@ var Code128 = (function () {
     // jenis huruf tiap kolom: [tebal, selisih ukuran terhadap FS]
     var fnt = { no: [false, -0.8], warna: [true, 0], kikc: [true, 0], nb: [false, 0], sup: [true, -0.4], qty: [true, 0.2], cone: [false, 0.2], std: [false, -0.2], kon: [false, -0.2], sh: [true, 0], gr: [true, 0], real: [true, 0.2] };
     var calcWidths = function (FS) {
-      var HS = Math.max(6.8, FS - 1.6), ws = [], sum = 0;
+      var HS = Math.min(8.2, Math.max(6.8, FS - 1.6)), ws = [], sum = 0;
       colDef.forEach(function (c) {
         var w = 0, pad = c.a === 'c' ? 12 : 14;
         c.t.forEach(function (ln) { w = Math.max(w, tw(ln, true, HS)); });   // judul kolom
@@ -3974,30 +3974,30 @@ var Code128 = (function () {
           if (c.k === 'no') w = Math.max(w, tw(dataStr.no()[0], f[0], sz));
           else allLots.forEach(function (r) { var s = dataStr[c.k](r); if (s) w = Math.max(w, tw(s, f[0], sz)); });
         }
-        w = Math.ceil(w + pad); c.need = w;
-        if (c.k !== 'ket') sum += w;
-        ws.push(w);
+        ws.push(Math.ceil(w + pad));
       });
+      var kk = Math.max(ws[CI.kon], ws[CI.ket]); ws[CI.kon] = kk; ws[CI.ket] = kk;   // KETERANGAN selebar KONSUMSI
+      ws.forEach(function (w) { sum += w; });
       return { ws: ws, sum: sum, HS: HS };
     };
-    var FS = 9, cw0 = calcWidths(FS), KET_MIN = colDef[CI.ket].need || 110;
-    while (FS > 7.6 && cw0.sum + Math.max(cw0.ws[CI.ket], 110) > IW) { FS = Math.round((FS - 0.2) * 10) / 10; cw0 = calcWidths(FS); }
-    var cols = colDef.map(function (c, i) { return { k: c.k, a: c.a, t: c.t, w: cw0.ws[i] }; });
-    var usedW = 0; cols.forEach(function (c, i) { if (i < cols.length - 1) usedW += c.w; });
-    cols[cols.length - 1].w = Math.max(cols[cols.length - 1].w, IW - usedW);   // KETERANGAN menampung sisa lebar halaman
-    if (usedW + cols[cols.length - 1].w > IW + 0.5) { var shr = IW / (usedW + cols[cols.length - 1].w); cols.forEach(function (c) { c.w = c.w * shr; }); }   // pengaman: bila tetap melebar, semua kolom dirapatkan
+    // huruf lot dibuat sebesar mungkin (maks. 11 pt) selama seluruh kolom masih muat selebar halaman; sisa lebar dibagi rata ke semua kolom
+    var FS = 11, cw0 = calcWidths(FS);
+    while (FS > 7.6 && cw0.sum > IW) { FS = Math.round((FS - 0.2) * 10) / 10; cw0 = calcWidths(FS); }
+    var fscale = IW / cw0.sum;
+    var cols = colDef.map(function (c, i) { return { k: c.k, a: c.a, t: c.t, w: cw0.ws[i] * fscale }; });
     var HS = cw0.HS, RH = Math.round(FS * 2.2);
     var xs = [], ax = M; cols.forEach(function (c) { xs.push(ax); ax += c.w; });
 
     var now = new Date(), P2 = function (n) { return (n < 10 ? '0' : '') + n; };
     var HARI_P = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    // Tanggal pada judul = hari order celup (tanggal yang dipilih / hari ini). Tanggal Plan yang dipakai alokasi mesin ditulis terpisah, karena bisa lebih lama (Plan terakhir yang tersimpan).
+    // Tanggal pada judul = hari order celup (tanggal yang dipilih / hari ini). Tanggal order (Plan) yang dipakai alokasi mesin ditulis terpisah, karena bisa lebih lama (Plan terakhir yang tersimpan).
     var rdt = (function () { var q = planCur().split('-'); return new Date(+q[0], +q[1] - 1, +q[2]); })();
     var dateTxt = HARI_P[rdt.getDay()] + ', ' + rdt.getDate() + ' ' + BULAN_PNJ[rdt.getMonth()] + ' ' + rdt.getFullYear();
-    var planTxt = 'PLAN TANGGAL ' + fmtDMY(planShown());
+    var planTxt = 'ORDER TANGGAL ' + fmtDMY(planShown());
     var stamp = P2(now.getDate()) + '/' + P2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + P2(now.getHours()) + ':' + P2(now.getMinutes());
 
     // ---- ukur tinggi
+    var SUBH = Math.round(FS * 2.4), SF = Math.min(10.5, FS - 0.4);
     var HEAD_H = 60, KPI_Y = HEAD_H + 14, KPI_H = 46, y0 = KPI_Y + KPI_H + 16;
     var gh = rep.groups.map(function (g) {
       var h = GH + CHH;
@@ -4006,8 +4006,8 @@ var Code128 = (function () {
     });
     var y = y0; gh.forEach(function (h) { y += h; });
     var SUM_Y = y + 2, SUM_H = 62, LEG_Y = SUM_Y + SUM_H + 12;
-    var NOTE_Y = LEG_Y + 30, NR = 14, nRows = Math.max(rep.notes.length, 8);
-    var NOTE_H = 20 + nRows * NR + 22;
+    var NF = Math.min(11, FS), NR = Math.round(NF * 2.1), NHH = Math.round(NF * 2.3), NTH = Math.round(NF * 2.6), NOTE_Y = LEG_Y + 30, nRows = Math.max(rep.notes.length, 8);
+    var NOTE_H = NHH + nRows * NR + NTH;
     var FOOT_Y = NOTE_Y + NOTE_H + 18, H = FOOT_Y + 30;
 
     var o = { unit: 'pt', format: [W, H], orientation: 'p', compress: true };
@@ -4140,11 +4140,11 @@ var Code128 = (function () {
       // subtotal
       hex('#e6f4d6', 'f'); doc.rect(M, ry, IW, SUBH, 'F');
       line(M, ry, M + IW, ry, C.cyan, 1.2);
-      var sty = ry + SUBH / 2 + 3;
-      font(true, 8.4, C.ink); spaced('SUBTOTAL', M + 8, sty, 1.4);
+      var sty = ry + SUBH / 2 + SF * 0.34;
+      font(true, SF, C.ink); spaced('SUBTOTAL', M + 8, sty, 1.4);
       T(f2(g.kg), xs[CI.qty] + cols[CI.qty].w - 6, sty, 'right');
       T(fmtNum(round2(g.cone)), xs[CI.cone] + cols[CI.cone].w - 6, sty, 'right');
-      font(true, 8.4, C.green); T(f2(g.real), xs[CI.real] + cols[CI.real].w - 6, sty, 'right');
+      font(true, SF, C.green); T(f2(g.real), xs[CI.real] + cols[CI.real].w - 6, sty, 'right');
       gy += gh[gi2];
     });
 
@@ -4190,41 +4190,41 @@ var Code128 = (function () {
       font(true, 7.2, C.ink); T(l[2], lx + 29, LEG_Y + 8.6); lx += 29 + doc.getTextWidth(l[2]) + 22;
     });
 
-    // ---- notes per no benang + catatan
-    var nx = M, nw = 500;
+    // ---- notes per no benang + catatan (huruf mengikuti ukuran huruf lot)
+    var nx = M, nw = 560;
     font(true, 6.8, C.dim); spaced('NOTES', nx, NOTE_Y - 5, 2);
-    hex('#0b2412', 'f'); doc.rect(nx, NOTE_Y, nw, 20, 'F');
-    var nc = [['NO.', 36, 'c'], ['NO. BENANG', 216, 'l'], ['STD', 100, 'r'], ['QTY (KG)', 148, 'r']], ncx = [nx];
+    hex('#0b2412', 'f'); doc.rect(nx, NOTE_Y, nw, NHH, 'F');
+    var nc = [['NO.', 44, 'c'], ['NO. BENANG', 250, 'l'], ['STD', 100, 'r'], ['QTY (KG)', 166, 'r']], ncx = [nx], nhs = Math.min(9, NF - 0.6);
     nc.forEach(function (c, i) { ncx.push(ncx[i] + c[1]); });
     nc.forEach(function (c, i) {
-      font(true, 6.8, '#d9ffc0');
-      T(c[0], c[2] === 'c' ? ncx[i] + c[1] / 2 : (c[2] === 'r' ? ncx[i] + c[1] - 10 : ncx[i] + 10), NOTE_Y + 13.5, c[2] === 'c' ? 'center' : (c[2] === 'r' ? 'right' : undefined));
+      font(true, nhs, '#d9ffc0');
+      T(c[0], c[2] === 'c' ? ncx[i] + c[1] / 2 : (c[2] === 'r' ? ncx[i] + c[1] - 10 : ncx[i] + 10), NOTE_Y + NHH / 2 + nhs * 0.34, c[2] === 'c' ? 'center' : (c[2] === 'r' ? 'right' : undefined));
     });
     for (var ni = 0; ni < nRows; ni++) {
-      var nyy = NOTE_Y + 20 + ni * NR, nt = rep.notes[ni];
+      var nyy = NOTE_Y + NHH + ni * NR, nt = rep.notes[ni], nby = nyy + NR / 2 + NF * 0.34;
       hex(ni % 2 ? C.band : '#ffffff', 'f'); doc.rect(nx, nyy, nw, NR, 'F');
       line(nx, nyy + NR, nx + nw, nyy + NR, C.grid, 0.5);
       if (nt) {
-        font(false, 7.2, C.dim); T(String(ni + 1), ncx[0] + 18, nyy + 10, 'center');
-        font(true, 7.2, C.ink); T(fit(nt.name, 200), ncx[1] + 10, nyy + 10);
-        font(false, 7.2, C.dim); T(nt.cone > 0 ? fmt2(nt.kg / nt.cone) : '-', ncx[2] + 90, nyy + 10, 'right');
-        font(true, 7.2, C.ink); T(f2(nt.kg), ncx[3] + 138, nyy + 10, 'right');
+        font(false, NF - 0.6, C.dim); T(String(ni + 1), ncx[0] + 22, nby, 'center');
+        font(true, NF, C.ink); T(fit(nt.name, 232), ncx[1] + 10, nby);
+        font(false, NF - 0.2, C.dim); T(nt.cone > 0 ? fmt2(nt.kg / nt.cone) : '-', ncx[2] + 90, nby, 'right');
+        font(true, NF, C.ink); T(f2(nt.kg), ncx[3] + 156, nby, 'right');
       }
     }
-    var nty = NOTE_Y + 20 + nRows * NR;
-    hex('#e6f4d6', 'f'); doc.rect(nx, nty, nw, 22, 'F'); line(nx, nty, nx + nw, nty, C.cyan, 1.2);
-    font(true, 11, C.ink); T(f2(TT.kg) + ' Kg', nx + nw / 2, nty + 15, 'center');
-    outline(nx, NOTE_Y, nw, 20 + nRows * NR + 22, 4, '#7fae6e', 0.9);
+    var nty = NOTE_Y + NHH + nRows * NR, ntf = Math.min(13, NF + 2);
+    hex('#e6f4d6', 'f'); doc.rect(nx, nty, nw, NTH, 'F'); line(nx, nty, nx + nw, nty, C.cyan, 1.2);
+    font(true, ntf, C.ink); T(f2(TT.kg) + ' Kg', nx + nw / 2, nty + NTH / 2 + ntf * 0.34, 'center');
+    outline(nx, NOTE_Y, nw, NHH + nRows * NR + NTH, 4, '#7fae6e', 0.9);
     // CATATAN
-    var cx0 = M + 520, cwc = IW - 520;
-    hex('#0b2412', 'f'); doc.rect(cx0, NOTE_Y, cwc, 20, 'F');
-    font(true, 6.8, '#d9ffc0'); T('CATATAN', cx0 + cwc / 2, NOTE_Y + 13.5, 'center');
+    var cx0 = M + 580, cwc = IW - 580;
+    hex('#0b2412', 'f'); doc.rect(cx0, NOTE_Y, cwc, NHH, 'F');
+    font(true, nhs, '#d9ffc0'); T('CATATAN', cx0 + cwc / 2, NOTE_Y + NHH / 2 + nhs * 0.34, 'center');
     for (var li = 0; li < nRows + 1; li++) {
-      var lyy = NOTE_Y + 20 + li * NR;
-      if (lyy + NR > NOTE_Y + 20 + nRows * NR + 22) break;
+      var lyy = NOTE_Y + NHH + li * NR;
+      if (lyy + NR > NOTE_Y + NHH + nRows * NR + NTH) break;
       hex('#ffffff', 'f'); doc.rect(cx0, lyy, cwc, NR, 'F'); line(cx0, lyy + NR, cx0 + cwc, lyy + NR, C.grid, 0.5);
     }
-    outline(cx0, NOTE_Y, cwc, 20 + nRows * NR + 22, 4, '#7fae6e', 0.9);
+    outline(cx0, NOTE_Y, cwc, NHH + nRows * NR + NTH, 4, '#7fae6e', 0.9);
 
     // ---- footer
     grad(M, FOOT_Y, IW, 2, '#c6ff00', '#00e589');
