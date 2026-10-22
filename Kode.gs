@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -808,6 +808,15 @@ function planHarianSheet_() {
 }
 
 function planTz_() { return ss_().getSpreadsheetTimeZone(); }
+// Batas Sisa Order: lot yang CELUP-nya masih kosong dianggap "Sisa Order" bila sampai pukul 09:00 (SISA_JAM) hari SESUDAH tanggal Plan belum ada tanggal Celup / input data.
+const SISA_JAM = 9;
+function planSisaLewat_(iso) {
+  try {
+    if (!planIsoOk_(iso)) return false;
+    const t = Utilities.parseDate(iso + ' ' + (SISA_JAM < 10 ? '0' : '') + SISA_JAM + ':00', planTz_(), 'yyyy-MM-dd HH:mm').getTime() + 86400000;
+    return Date.now() >= t;
+  } catch (e) { return false; }
+}
 function planIso_(dmy) { const p = str_(dmy).split('/'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : ''; }
 function planIsoOk_(iso) {
   iso = str_(iso).trim();
@@ -896,10 +905,10 @@ function planSnapshotBuild_(plan, iso) {
     if (v && !/^sisa\s*order$/i.test(v)) return kemarin;   // tanggal dari kolom Celup sheet Plan = TODAY()-1 (aturan tab Plan)
     return '';
   });
-  const has = eff.some(function (x) { return x; });
+  const lewat = planSisaLewat_(iso);   // sudah lewat pukul 09:00 hari sesudah tanggal Plan
   const rows = src.map(function (r, i) {
-    // "Sisa Order" = belum celup DAN (ada baris Plan lain yang sudah bertanggal Celup, ATAU lot ini sisa dari Plan hari sebelumnya)
-    const sisa = has || !!carry[normKikc_(r[iK])];
+    // "Sisa Order" = belum celup DAN (batas pukul 09:00 hari sesudah tanggal Plan sudah lewat, ATAU lot ini sisa dari Plan hari sebelumnya)
+    const sisa = lewat || !!carry[normKikc_(r[iK])];
     return cols.map(function (c) { return c >= 0 ? str_(r[c]).trim() : ''; }).concat([eff[i] || (sisa ? 'Sisa Order' : '')]);
   });
   return { headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: rows, excluded: excluded };
@@ -1036,6 +1045,16 @@ function getPlanHari(iso, fb) {
         if (k && !out.sisaFrom[k]) out.sisaFrom[k] = carry[k] || shown;
       }
     });
+    // Baris CELUP masih kosong setelah pukul 09:00 hari sesudah tanggal Plan = "Sisa Order"
+    if (planSisaLewat_(shown)) {
+      out.rows.forEach(function (r) {
+        if (r[9]) return;
+        r[9] = 'Sisa Order';
+        if (!carry) carry = planCarry_(shown);
+        const k = normKikc_(r[0]);
+        if (k && !out.sisaFrom[k]) out.sisaFrom[k] = carry[k] || shown;
+      });
+    }
     return out;
   } catch (e) {
     return { error: e.message };

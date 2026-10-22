@@ -2276,6 +2276,7 @@ var Code128 = (function () {
       else listState(k, '');
       return;
     }
+    if (isPlan) planFillSisa(m);   // CELUP kosong lewat pukul 09:00 hari sesudah tanggal Plan = "Sisa Order"
     var ps = pageSize();
     var rk = m.sig + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
@@ -2336,6 +2337,18 @@ var Code128 = (function () {
   // Kolom CELUP tab Plan: "Sisa Order" hanya muncul bila minimal satu baris berisi tanggal. Jika semua baris kosong (atau hanya "SISA ORDER"), kolom dibiarkan kosong.
   // Teks CELUP "Sisa Order" (huruf besar/kecil dan spasi diabaikan)
   function isSisaTxt(v) { return /^sisa\s*order$/i.test(String(v === undefined || v === null ? '' : v).trim()); }
+  // Batas Sisa Order: CELUP masih kosong setelah pukul 09:00 (SISA_JAM) hari SESUDAH tanggal Plan = "Sisa Order" (waktu Indonesia Barat, UTC+7).
+  var SISA_JAM = 9;
+  function planSisaLewat(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return false;
+    var t = Date.parse(iso + 'T' + (SISA_JAM < 10 ? '0' : '') + SISA_JAM + ':00:00+07:00');
+    return !isNaN(t) && Date.now() >= t + 86400000;
+  }
+  function planFillSisa(m) {
+    var iz = m.headers.indexOf('CELUP');
+    if (iz < 0 || !planSisaLewat(m.date)) return;
+    m.rows.forEach(function (r) { if (String(r[iz] === undefined || r[iz] === null ? '' : r[iz]).trim() === '') r[iz] = 'Sisa Order'; });
+  }
   function planHasCelup(m) {
     return m.rows.some(function (r) { return celupEff(m.headers, r).fin; });
   }
@@ -2771,7 +2784,7 @@ var Code128 = (function () {
     var ix = {};
     headers.forEach(function (h, i) { ix[String(h).toUpperCase()] = i; });
     var items = [];
-    var hasCelup = planHasCelup(lst.plan);   // aturan lama: belum celup dan minimal satu baris Plan berisi tanggal Celup = Sisa Order
+    var hasCelup = planSisaLewat(lst.plan.date);   // batas pukul 09:00 hari sesudah tanggal Plan: yang belum celup = Sisa Order
     var iCel = ix['CELUP'];   // label "Sisa Order" tersimpan di Plan Harian (termasuk lot sisa dari Plan hari sebelumnya) ikut menentukan, sama dengan tab Plan
     rows.forEach(function (r, i) {
       var eff = celupEff(headers, r);   // Finish = ada tanggal di tab Celup (CLP), atau (aturan lama) kolom CELUP Plan berisi tanggal
