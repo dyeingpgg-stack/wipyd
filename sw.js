@@ -1,6 +1,6 @@
 /* Service worker WIP YD: cangkang aplikasi tersimpan agar cepat dibuka. Data selalu dari server. */
-const VER = 'wipyd-v55';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
+const VER = 'wipyd-v56';
+const SHELL = ['./', 'index.html', 'page2.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VER).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -21,12 +21,13 @@ self.addEventListener('fetch', (e) => {
 
   // Halaman: ambil terbaru dulu, jika offline pakai salinan
   if (req.mode === 'navigate') {
+    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : 'index.html';   // halaman 1 dan halaman 2 disimpan terpisah
     e.respondWith(
       fetch(req).then((res) => {
         const copy = res.clone();
-        caches.open(VER).then((c) => c.put('index.html', copy));
+        caches.open(VER).then((c) => c.put(key, copy));
         return res;
-      }).catch(() => caches.match('index.html').then((r) => r || caches.match('./')))
+      }).catch(() => caches.match(key).then((r) => r || caches.match('./')))
     );
     return;
   }
