@@ -604,7 +604,37 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     .sheet-backdrop{align-items:center;justify-content:center;padding:8px}
     .sheet{max-height:94%}
   }
+  /* HP: bingkai aplikasi dikunci ke tepi layar (bukan 100dvh) agar menu tab di bawah selalu terlihat, tidak terpotong oleh bilah sistem / perbedaan tinggi layar */
+  @media (max-width:599px),(max-height:480px) and (orientation:landscape){
+    html,body{height:100%;overscroll-behavior:none}
+    .app{position:fixed;top:0;left:0;right:0;bottom:auto;width:100%;max-width:none;height:var(--app-h,100%);max-height:none}
+  }
+  /* HP potret: menu tab selalu terlihat penuh. Tab berbagi lebar rata; bila layar terlalu sempit (mis. 8 tab di layar 320-360 px) menu bisa digeser mendatar dan tab aktif otomatis di tengah */
+  @media (max-width:599px) and (min-height:481px){
+    .tabbar{display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-left:var(--safe-left,0px);padding-right:var(--safe-right,0px)}
+    .tabbar::-webkit-scrollbar{display:none}
+    .tab{flex:1 0 auto;min-width:40px;padding:0 3px;min-height:58px;font-size:10.5px}
+  }
+  @media (max-width:599px) and (min-height:481px) and (max-height:640px){.tab{min-height:52px}.tab svg{width:20px;height:20px}}
+  @media (max-width:359px) and (min-height:481px){.tab{font-size:10px;min-width:36px;padding:0 2px}}
 </style>
+<script>
+/* Tinggi bingkai aplikasi = tinggi layar yang benar-benar terlihat (terkecil dari innerHeight / clientHeight / visualViewport), bukan 100vh yang bisa lebih tinggi dari layar di sebagian peramban HP */
+(function () {
+  var d = document.documentElement, vv = window.visualViewport;
+  function fit() {
+    var a = [window.innerHeight, d.clientHeight];
+    if (vv && vv.scale <= 1.01) a.push(vv.height);
+    a = a.filter(function (x) { return x > 200; });
+    if (a.length) d.style.setProperty('--app-h', Math.floor(Math.min.apply(null, a)) + 'px');
+  }
+  fit();
+  ['resize', 'orientationchange', 'pageshow', 'focus'].forEach(function (e) { window.addEventListener(e, function () { fit(); setTimeout(fit, 250); }); });
+  if (vv) vv.addEventListener('resize', fit);
+  document.addEventListener('visibilitychange', fit);
+  [300, 900, 2000].forEach(function (t) { setTimeout(fit, t); });
+})();
+</script>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -4875,6 +4905,21 @@ var Code128 = (function () {
   }
   setTimeout(function () { loadMiss(false); }, 2500);   // cek lot terlewat di latar belakang untuk notifikasi
   if (qLen()) flushQueue();
+})();
+</script>
+<script>
+/* Menu tab: tab aktif otomatis berada di area terlihat saat menu bisa digeser mendatar */
+(function () {
+  var bar = document.querySelector('.tabbar');
+  if (!bar) return;
+  function center() {
+    var t = bar.querySelector('.tab.active');
+    if (!t || bar.scrollWidth <= bar.clientWidth + 1) return;
+    bar.scrollTo ? bar.scrollTo({ left: t.offsetLeft - (bar.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' }) : (bar.scrollLeft = t.offsetLeft - (bar.clientWidth - t.offsetWidth) / 2);
+  }
+  new MutationObserver(center).observe(bar, { attributes: true, attributeFilter: ['class'], subtree: true });
+  window.addEventListener('resize', center);
+  setTimeout(center, 400);
 })();
 </script>
 </body>
