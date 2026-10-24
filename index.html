@@ -643,7 +643,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <svg class="m-admin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         <span id="modeLabel">Viewer</span>
       </button>
-      <button type="button" class="icon-btn" id="btnPage2" aria-label="Halaman 2: Pack dan RPH" title="Halaman 2: Pack dan RPH">
+      <button type="button" class="icon-btn" id="btnPage2" aria-label="page 2: Pack dan RPH" title="page 2: Pack dan RPH">
         <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M2 13l10 5 10-5"/><path d="M2 17.5l10 5 10-5"/></svg>
       </button>
       <button type="button" class="icon-btn" id="btnTheme" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap">
@@ -4791,12 +4791,12 @@ var Code128 = (function () {
   // Default tema = mode malam (tidak lagi mengikuti pengaturan perangkat); pilihan pengguna lewat tombol tema tetap tersimpan.
   applyTheme(curTheme(), false);
 
-  /* ---------- Halaman 2 (tab Pack dan RPH) ---------- */
+  /* ---------- page 2 (tab Pack dan RPH) ---------- */
   $('#btnPage2').addEventListener('click', function () {
-    if (IN_GAS) {   // di Apps Script: alamat halaman 2 diminta ke server
+    if (IN_GAS) {   // di Apps Script: alamat page 2 diminta ke server
       gs('getPageUrl', 2, state.mode).then(function (u) {
-        if (u) window.open(u, '_top'); else toast('Alamat halaman 2 tidak ditemukan. Buka aplikasi lewat alamat aslinya.', 'warn', 6000);
-      }).catch(function (e) { toast('Halaman 2 gagal dibuka. ' + errMsg(e), 'err', 6000); });
+        if (u) window.open(u, '_top'); else toast('Alamat page 2 tidak ditemukan. Buka aplikasi lewat alamat aslinya.', 'warn', 6000);
+      }).catch(function (e) { toast('page 2 gagal dibuka. ' + errMsg(e), 'err', 6000); });
       return;
     }
     location.href = 'page2.html' + (state.mode === 'viewer' ? '?mode=viewer' : '');
