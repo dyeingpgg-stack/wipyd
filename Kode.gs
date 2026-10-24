@@ -1,5 +1,5 @@
 /**
- * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di halaman 2; v29: halaman 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); halaman 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di page 2; v29: page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -52,7 +52,7 @@ const SHEET_PLAN = 'Plan';
 const SHEET_PLAN_HARIAN = 'Plan Harian';   // riwayat Plan per hari (salinan tampilan tab Plan, termasuk alokasi dan Celup / Sisa Order)
 const SHEET_ALOKASI = 'Alokasi';   // penyimpanan alokasi mesin per KIKC (tidak terpengaruh perubahan sheet Plan)
 const SHEET_JAWABAN = 'WIP YD (Jawaban)';
-const SHEET_RPH = 'RPH';           // halaman 2: tab RPH (isi sheet ditampilkan apa adanya menurut judul kolom baris 1)
+const SHEET_RPH = 'RPH';           // page 2: tab RPH (isi sheet ditampilkan apa adanya menurut judul kolom baris 1)
 const SHEET_PACK = 'PACK';         // sumber Tanggal Pack: kolom A = Tanggal Pack, kolom KIKC dicari menurut judul baris 1 (jika tidak ada: kolom B)
 const PACK_DATE_COL = 1;           // kolom A = Tanggal Pack
 const PACK_KIKC_DEFAULT = 2;       // kolom B = KIKC bila judul "KIKC" tidak ditemukan di baris 1 sheet PACK
@@ -89,7 +89,7 @@ const COL_PACK = 16;             // kolom P = Tanggal Pack (diisi dari sheet PAC
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.fn === 'ping') return json_({ ok: true, result: 'pong' });
-  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : 'Index');   // ?page=2 = halaman 2 (Pack, RPH)
+  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : 'Index');   // ?page=2 = page 2 (Pack, RPH)
   // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
   // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
   const want = str_(p.mode).toLowerCase();
@@ -1341,7 +1341,7 @@ function tesPack() {
   Logger.log('Contoh: ' + JSON.stringify(Object.keys(r.map).slice(0, 5).map(function (k) { return [k, r.map[k]]; })));
 }
 
-// ================= 2d. Halaman 2: tab Pack (sheet PACK) dan RPH (sheet RPH) =================
+// ================= 2d. page 2: tab Pack (sheet PACK) dan RPH (sheet RPH) =================
 // Isi sheet ditampilkan apa adanya menurut judul kolom baris 1 (maks. 40 kolom). Kolom tanggal (judul berisi TANGGAL/TGL/DATE, atau kolom A bila isinya tanggal)
 // diformat DD/MM/YYYY dan dipakai mengurutkan dari terbaru; tanpa kolom tanggal, baris paling bawah di sheet tampil paling atas.
 const SHEET_LIST2 = { pack: SHEET_PACK, rph: SHEET_RPH };
@@ -1405,7 +1405,7 @@ function getSheetList(which, force, from, to, query) {
   }
 }
 
-// ================= 2e. Halaman 2: tab Delivery (lama proses Celup -> Pack) =================
+// ================= 2e. page 2: tab Delivery (lama proses Celup -> Pack) =================
 // Lama proses = Tanggal Pack (sheet PACK, kolom A) dikurangi Tanggal Celup (tab Celup / sheet CLP), dalam hari kalender (celup dan pack di hari yang sama = 0 hari).
 //   Lama <= DELIVERY_BATAS_HARI                              -> TEPAT WAKTU
 //   Lama > DELIVERY_BATAS_HARI dan <= DELIVERY_TELAT_HARI    -> TOLERANSI (lewat batas, belum dianggap telat)
