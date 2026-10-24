@@ -595,38 +595,18 @@
   }
 
   /* ---------- Halaman 2: tiga tab (Pack, RPH, Halaman 1) ---------- */
-  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(3,1fr)}
+  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(2,1fr)}
+  .daterow.period{flex-wrap:wrap}
+  .daterow.period .input{flex:1 1 128px;font-size:15px}
+  .period-sep{align-self:center;color:var(--dim);font-weight:600}
+  .daterow.period.off{opacity:.45}
+  @media(min-width:900px){.daterow.period{max-width:620px}}
   /* HP: bingkai aplikasi dikunci ke tepi layar (bukan 100dvh) agar menu tab di bawah selalu terlihat, tidak terpotong oleh bilah sistem / perbedaan tinggi layar */
   @media (max-width:599px),(max-height:480px) and (orientation:landscape){
     html,body{height:100%;overscroll-behavior:none}
-    .app{position:fixed;top:0;left:0;right:0;bottom:auto;width:100%;max-width:none;height:var(--app-h,100%);max-height:none}
+    .app{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;max-width:none;height:auto;max-height:none}
   }
-  /* HP potret: menu tab selalu terlihat penuh. Tab berbagi lebar rata; bila layar terlalu sempit (mis. 8 tab di layar 320-360 px) menu bisa digeser mendatar dan tab aktif otomatis di tengah */
-  @media (max-width:599px) and (min-height:481px){
-    .tabbar{display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-left:var(--safe-left,0px);padding-right:var(--safe-right,0px)}
-    .tabbar::-webkit-scrollbar{display:none}
-    .tab{flex:1 0 auto;min-width:40px;padding:0 3px;min-height:58px;font-size:10.5px}
-  }
-  @media (max-width:599px) and (min-height:481px) and (max-height:640px){.tab{min-height:52px}.tab svg{width:20px;height:20px}}
-  @media (max-width:359px) and (min-height:481px){.tab{font-size:10px;min-width:36px;padding:0 2px}}
 </style>
-<script>
-/* Tinggi bingkai aplikasi = tinggi layar yang benar-benar terlihat (terkecil dari innerHeight / clientHeight / visualViewport), bukan 100vh yang bisa lebih tinggi dari layar di sebagian peramban HP */
-(function () {
-  var d = document.documentElement, vv = window.visualViewport;
-  function fit() {
-    var a = [window.innerHeight, d.clientHeight];
-    if (vv && vv.scale <= 1.01) a.push(vv.height);
-    a = a.filter(function (x) { return x > 200; });
-    if (a.length) d.style.setProperty('--app-h', Math.floor(Math.min.apply(null, a)) + 'px');
-  }
-  fit();
-  ['resize', 'orientationchange', 'pageshow', 'focus'].forEach(function (e) { window.addEventListener(e, function () { fit(); setTimeout(fit, 250); }); });
-  if (vv) vv.addEventListener('resize', fit);
-  document.addEventListener('visibilitychange', fit);
-  [300, 900, 2000].forEach(function (t) { setTimeout(fit, t); });
-})();
-</script>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -640,7 +620,7 @@
       </svg>
       <div>
         <h1>WIP Yarn Dyeing</h1>
-        <p id="subtitle">Halaman 2 · Pack</p>
+        <p id="subtitle">Halaman 2 · RPH</p>
       </div>
     </div>
     <div class="top-actions">
@@ -659,6 +639,12 @@
 
   <main id="main" class="is-data">
     <section id="viewPack" class="view list" aria-label="Daftar Pack">
+      <div class="daterow period" id="perPack">
+        <input class="input" id="fPack" type="date" aria-label="Tanggal awal periode Pack">
+        <span class="period-sep">s/d</span>
+        <input class="input" id="tPack" type="date" aria-label="Tanggal akhir periode Pack">
+        <button type="button" class="btn-today active" id="mPack">Bulan ini</button>
+      </div>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPack" type="search" placeholder="Cari di daftar Pack (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Pack">
@@ -680,6 +666,12 @@
       </div>
     </section>
     <section id="viewRph" class="view list" aria-label="Daftar RPH">
+      <div class="daterow period" id="perRph">
+        <input class="input" id="fRph" type="date" aria-label="Tanggal awal periode RPH">
+        <span class="period-sep">s/d</span>
+        <input class="input" id="tRph" type="date" aria-label="Tanggal akhir periode RPH">
+        <button type="button" class="btn-today active" id="mRph">Bulan ini</button>
+      </div>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qRph" type="search" placeholder="Cari di daftar RPH (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar RPH">
@@ -703,17 +695,13 @@
   </main>
 
   <nav class="tabbar" aria-label="Menu halaman 2">
-    <button type="button" class="tab active" id="tabPack" data-view="pack" aria-selected="true">
-      <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
-      Pack
-    </button>
-    <button type="button" class="tab" id="tabRph" data-view="rph" aria-selected="false">
+    <button type="button" class="tab active" id="tabRph" data-view="rph" aria-selected="true">
       <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
       RPH
     </button>
-    <button type="button" class="tab" id="tabHome" data-view="home" aria-selected="false">
-      <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg>
-      Halaman 1
+    <button type="button" class="tab" id="tabPack" data-view="pack" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+      Pack
     </button>
   </nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -816,43 +804,57 @@
     location.href = 'index.html' + (MODE === 'viewer' ? '?mode=viewer' : '');
   }
   $('#btnHome').addEventListener('click', goHome);
-  $('#tabHome').addEventListener('click', goHome);
 
-  /* ---------- Daftar Pack dan RPH (isi sheet apa adanya, urut tanggal terbaru bila ada kolom tanggal) ---------- */
-  var LISTS = { pack: { id: 'Pack', label: 'Pack' }, rph: { id: 'Rph', label: 'RPH' } };
+  /* ---------- Daftar RPH dan Pack (isi sheet menurut judul kolom baris 1; KIKC dipindah ke kolom pertama) ----------
+     Periode (tanggal awal s/d akhir, default bulan berjalan) menyaring menurut kolom tanggal sheet. Kata kunci pencarian menelusuri SEMUA tanggal (periode diabaikan). */
+  var LISTS = { rph: { id: 'Rph', label: 'RPH' }, pack: { id: 'Pack', label: 'Pack' } };
   var LIST_FRESH = 60000;
-  var lst = {}, view = 'pack';
-  Object.keys(LISTS).forEach(function (k) { lst[k] = { headers: [], rows: [], sig: '', at: 0, loading: false, query: '', error: '', page: 1, rk: '' }; });
+  var lst = {}, view = 'rph';
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function todayIso() { return isoOf(new Date()); }
+  function monthStartIso() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-01'; }
+  function fmtDMY(iso) { return String(iso || '').split('-').reverse().join('/'); }
+  Object.keys(LISTS).forEach(function (k) {
+    lst[k] = { headers: [], rows: [], sig: '', at: 0, loading: false, query: '', shownQuery: '', error: '', page: 1, rk: '', from: monthStartIso(), to: todayIso(), dateCol: -1, all: 0, trunc: false, reqKey: '', seq: 0 };
+  });
   var mqWide = window.matchMedia ? window.matchMedia('(min-width:900px)') : null;
   function pageSize() { return mqWide && mqWide.matches ? 100 : 50; }
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
   function listState(k, html) { var el = $('#s' + LISTS[k].id); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
+  function colOrder(hd) {   // KIKC selalu paling kiri (kolom beku), kolom lain tetap berurutan
+    var ik = -1, o = hd.map(function (_, i) { return i; });
+    hd.forEach(function (h, i) { if (ik < 0 && /^kikc$/i.test(h)) ik = i; });
+    if (ik > 0) { o.splice(ik, 1); o.unshift(ik); }
+    return o;
+  }
+  function syncPeriod(k) {
+    var d = LISTS[k], m = lst[k];
+    $('#f' + d.id).value = m.from; $('#t' + d.id).value = m.to;
+    $('#m' + d.id).classList.toggle('active', m.from === monthStartIso() && m.to === todayIso());
+    $('#per' + d.id).classList.toggle('off', !!m.query.trim());   // sedang mencari: periode tidak dipakai
+  }
 
   function renderList(k) {
-    var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
+    var d = LISTS[k], m = lst[k], q = m.shownQuery.trim();
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
-      m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
-      if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true;
+      note.textContent = m.loading ? 'Memuat...' : '';
+      if (m.loading && !m.at) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
-      else if (m.at) listState(k, '<div class="state">Sheet ' + esc(d.label) + ' belum berisi data.</div>');
+      else if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      else if (m.at) listState(k, '<div class="state">' + (q ? 'Tidak ada baris yang cocok dengan pencarian di semua tanggal.' : 'Tidak ada data ' + esc(d.label) + ' pada periode ' + esc(fmtDMY(m.from)) + ' - ' + esc(fmtDMY(m.to)) + '.') + '</div>');
       else listState(k, '');
       return;
     }
-    var ps = pageSize(), rk = m.sig + '|' + q + '|' + m.page + '|' + ps;
-    if (rk === m.rk) return;
-    var rows = m.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
-    if (!rows.length) {
-      m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true;
-      note.textContent = '0 dari ' + m.rows.length + ' baris';
-      listState(k, '<div class="state">Tidak ada baris yang cocok dengan pencarian.</div>');
-      return;
-    }
+    var ps = pageSize(), rk = m.sig + '|' + m.page + '|' + ps;
+    if (rk === m.rk) { note.textContent = noteText(m, q); return; }
     listState(k, '');
-    var pages = Math.max(1, Math.ceil(rows.length / ps));
+    var rows = m.rows, pages = Math.max(1, Math.ceil(rows.length / ps));
     if (m.page > pages) m.page = pages;
     if (m.page < 1) m.page = 1;
-    var start = (m.page - 1) * ps, shown = rows.slice(start, start + ps), hd = m.headers;
+    var start = (m.page - 1) * ps, shown = rows.slice(start, start + ps), hd = m.headers, order = colOrder(hd);
     var cc = hd.map(function (h) {
       var c = [];
       if (/tanggal|tgl|date/i.test(h)) c.push('date');
@@ -860,18 +862,18 @@
       if (/^(kg|cone|qty|jumlah|berat)\b/i.test(h)) c.push('num');
       return c;
     });
-    $('#h' + d.id).innerHTML = hd.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(h) + '</th>'; }).join('');
+    $('#h' + d.id).innerHTML = order.map(function (j, p) { return '<th' + (p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(hd[j]) + '</th>'; }).join('');
     $('#b' + d.id).innerHTML = shown.map(function (r) {
-      return '<tr>' + hd.map(function (h, i) {
-        var c = cc[i].slice(); if (i === 0) c.push('l-s', 'l-s0', 'l-last');
-        var v = r[i] === undefined || r[i] === null ? '' : r[i];
+      return '<tr>' + order.map(function (j, p) {
+        var c = cc[j].slice(); if (p === 0) c.push('l-s', 'l-s0', 'l-last');
+        var v = r[j] === undefined || r[j] === null ? '' : r[j];
         return '<td' + (c.length ? ' class="' + c.join(' ') + '"' : '') + '>' + (v === '' ? '<span class="dim">-</span>' : esc(v)) + '</td>';
       }).join('') + '</tr>';
     }).join('');
     wrap.classList.remove('hidden');
-    var sp = q + '|' + m.page;
+    var sp = m.reqKey + '|' + m.page;
     if (sp !== m.sp) { wrap.scrollTop = 0; m.sp = sp; }
-    note.textContent = (q ? rows.length + ' dari ' + m.rows.length : m.rows.length) + ' baris';
+    note.textContent = noteText(m, q);
     pager.hidden = pages <= 1;
     $('#pi' + d.id).innerHTML = 'Halaman <b>' + m.page + '</b> dari ' + pages + '<small>baris ' + (start + 1) + '–' + (start + shown.length) + ' dari ' + rows.length + '</small>';
     $$('#p' + d.id + ' [data-pg]').forEach(function (b) {
@@ -880,39 +882,61 @@
     });
     m.rk = rk;
   }
+  function noteText(m, q) {
+    var pre = m.loading ? 'Memuat... · ' : '';
+    if (q) return pre + 'Pencarian semua tanggal · ' + m.rows.length + ' baris' + (m.trunc ? ' (2.000 pertama)' : '');
+    if (m.dateCol >= 0) return pre + 'Periode ' + fmtDMY(m.from) + ' - ' + fmtDMY(m.to) + ' · ' + m.rows.length + ' dari ' + m.all + ' baris';
+    return pre + m.rows.length + ' baris (sheet tanpa kolom tanggal: periode tidak dipakai)';
+  }
   function stopSpin() { if (!Object.keys(lst).some(function (k) { return lst[k].loading; })) $('#btnRefresh').classList.remove('spin'); }
-  function loadList(k, force) {
-    var m = lst[k];
-    if (m.loading) return Promise.resolve();
-    if (!force && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
+  // opts.force = abaikan data yang masih segar; opts.reread = server membaca ulang sheet (lewati cache)
+  function loadList(k, opts) {
+    opts = opts || {};
+    var m = lst[k], q = m.query.trim(), key = m.from + '|' + m.to + '|' + q;
+    if (!opts.force && !opts.reread && m.reqKey === key && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
+    var my = ++m.seq;
     m.loading = true; m.error = '';
     if (view === k) $('#btnRefresh').classList.add('spin');
-    renderList(k);
-    return gs('getSheetList', k, !!force).then(function (r) {
+    syncPeriod(k); renderList(k);
+    return gs('getSheetList', k, !!opts.reread, m.from, m.to, q).then(function (r) {
+      if (my !== m.seq) return;
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
-      var sig = hashStr(JSON.stringify(r.rows || []) + JSON.stringify(r.headers || []));
-      m.at = Date.now(); m.error = '';
-      if (sig !== m.sig || !m.rows.length) { m.headers = r.headers || []; m.rows = r.rows || []; m.sig = sig; }
+      m.headers = r.headers || []; m.rows = r.rows || []; m.dateCol = r.dateCol === undefined ? -1 : r.dateCol; m.all = r.all || 0; m.trunc = !!r.truncated;
+      m.shownQuery = q; m.reqKey = key; m.at = Date.now();
+      m.sig = hashStr(key + '|' + m.rows.length + '|' + JSON.stringify(m.rows)); m.rk = ''; m.error = '';
     }).catch(function (e) {
+      if (my !== m.seq) return;
       m.error = 'Gagal memuat data. ' + errMsg(e);
       if (m.rows.length) toast('Gagal memperbarui, menampilkan data sebelumnya. ' + errMsg(e), 'err', 6000);
-    }).then(function () { m.loading = false; stopSpin(); renderList(k); });
+    }).then(function () {
+      if (my !== m.seq) return;
+      m.loading = false; stopSpin(); renderList(k);
+    });
   }
   Object.keys(LISTS).forEach(function (k) {
-    var d = LISTS[k], t = null;
+    var d = LISTS[k], t = null, m = lst[k];
     $('#q' + d.id).addEventListener('input', function () {
       var v = this.value; clearTimeout(t);
-      t = setTimeout(function () { lst[k].query = v; lst[k].page = 1; renderList(k); }, 150);
+      t = setTimeout(function () { m.query = v; m.page = 1; syncPeriod(k); loadList(k, { force: true }); }, 350);
     });
+    function setPeriod(from, to) {
+      if (from && to && from > to) { var x = from; from = to; to = x; }
+      m.from = from || m.from; m.to = to || m.to; m.page = 1;
+      syncPeriod(k); loadList(k, { force: true });
+    }
+    $('#f' + d.id).addEventListener('change', function () { setPeriod(this.value, m.to); });
+    $('#t' + d.id).addEventListener('change', function () { setPeriod(m.from, this.value); });
+    $('#m' + d.id).addEventListener('click', function () { setPeriod(monthStartIso(), todayIso()); });
     $('#p' + d.id).addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-pg]') : null;
       if (!b || b.disabled) return;
-      var g = b.getAttribute('data-pg'), m = lst[k];
+      var g = b.getAttribute('data-pg');
       if (g === 'first') m.page = 1; else if (g === 'prev') m.page -= 1; else if (g === 'next') m.page += 1; else m.page = 1e9;
       renderList(k);
     });
-    $('#s' + d.id).addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-retry]')) loadList(k, true); });
+    $('#s' + d.id).addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-retry]')) loadList(k, { force: true, reread: true }); });
+    syncPeriod(k);
   });
   if (mqWide) {
     var onWide = function () { Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; }); renderList(view); };
@@ -928,37 +952,22 @@
     });
     $('#subtitle').textContent = 'Halaman 2 · ' + LISTS[name].label + ' · terbaru di atas';
     renderList(name);
-    loadList(name, false);
+    loadList(name);
   }
-  $('#tabPack').addEventListener('click', function () { showView('pack'); });
   $('#tabRph').addEventListener('click', function () { showView('rph'); });
-  $('#btnRefresh').addEventListener('click', function () { loadList(view, true); });
+  $('#tabPack').addEventListener('click', function () { showView('pack'); });
+  $('#btnRefresh').addEventListener('click', function () { loadList(view, { force: true, reread: true }); });
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
     if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
-    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); loadList(view, true); }
+    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); loadList(view, { force: true, reread: true }); }
   });
   window.addEventListener('offline', function () { toast('Tidak ada koneksi internet.', 'err', 6000); });
   if (!IN_GAS && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
-  showView('pack');
-  setTimeout(function () { loadList('rph', false); }, 1200);   // RPH disiapkan di latar belakang
-})();
-</script>
-<script>
-/* Menu tab: tab aktif otomatis berada di area terlihat saat menu bisa digeser mendatar */
-(function () {
-  var bar = document.querySelector('.tabbar');
-  if (!bar) return;
-  function center() {
-    var t = bar.querySelector('.tab.active');
-    if (!t || bar.scrollWidth <= bar.clientWidth + 1) return;
-    bar.scrollTo ? bar.scrollTo({ left: t.offsetLeft - (bar.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' }) : (bar.scrollLeft = t.offsetLeft - (bar.clientWidth - t.offsetWidth) / 2);
-  }
-  new MutationObserver(center).observe(bar, { attributes: true, attributeFilter: ['class'], subtree: true });
-  window.addEventListener('resize', center);
-  setTimeout(center, 400);
+  showView('rph');
+  setTimeout(function () { loadList('pack'); }, 1200);   // Pack disiapkan di latar belakang
 })();
 </script>
 </body>

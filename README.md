@@ -138,3 +138,11 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Tema default = mode malam** (tidak lagi mengikuti pengaturan perangkat). Pilihan lewat tombol tema tetap tersimpan.
 - **Halaman 2** (tombol lapisan di kanan atas): tab **Pack** (sheet PACK) dan **RPH** (sheet RPH), isi ditampilkan sesuai judul kolom baris 1, tanggal DD/MM/YYYY, terbaru di atas, cari di semua baris. PWA: `page2.html`; Apps Script: file HTML bernama `Page2` (isi sama dengan `page2.html`), dibuka lewat `?page=2`.
 - Pasang: `Kode.gs` (Deploy versi baru), `index.html`, `page2.html`, `sw.js` (cache v56). Di Apps Script tambahkan file HTML `Page2` selain `Index`.
+
+## Perbaikan menu tab terpotong di HP (v29)
+- Pada layar HP, bingkai aplikasi dikunci ke tepi layar (`position:fixed`) menggantikan tinggi 100dvh, sehingga menu tab di bawah tidak lagi terpotong. Hanya `index.html`, `page2.html`, dan `sw.js` (cache v57) yang berubah.
+
+## Pembaruan v30
+- **Tab Data:** pencarian menelusuri semua tanggal. Selama mencari, tabel tidak lagi menampilkan data satu hari sebagai hasil; tekan Enter untuk mencari segera. Bila `Kode.gs` di server belum versi terbaru, pencarian memakai 300 data terakhir dan muncul pesan agar `Kode.gs` di-deploy ulang.
+- **Halaman 2:** urutan tab RPH lalu Pack (tab Halaman 1 dihapus; kembali lewat ikon rumah). Kolom KIKC dipindah ke posisi pertama (kolom beku). Tiap tab punya **Periode** (tanggal awal s/d akhir menurut kolom tanggal sheet, default tanggal 1 bulan berjalan s/d hari ini, tombol "Bulan ini"). Kata kunci pencarian menelusuri semua tanggal dan mengabaikan periode (maks. 2.000 hasil).
+- Perbarui `Kode.gs` (Deploy versi baru), `index.html`, `page2.html`, `sw.js` (cache v58).

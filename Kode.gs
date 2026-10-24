@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); halaman 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * WIP Yarn Dyeing - Kode.gs  (v29: halaman 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); halaman 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -118,7 +118,7 @@ const API_FUNCS = {
   getPlanHari: function (a) { return getPlanHari(a[0], a[1], a[2]); },
   cariData: function (a) { return cariData(a[0], a[1]); },
   cariPlan: function (a) { return cariPlan(a[0]); },
-  getSheetList: function (a) { return getSheetList(a[0], a[1]); },
+  getSheetList: function (a) { return getSheetList(a[0], a[1], a[2], a[3], a[4]); },
   getPageUrl: function (a) { return getPageUrl(a[0], a[1]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
   getTerlewat: function (a) { return getTerlewat(a[0], a[1], a[2]); },
@@ -1376,17 +1376,29 @@ function buildSheetList_(name) {
     items.push({ row: row, key: key, i: i });
   }
   items.sort(function (a, b) { return (b.key - a.key) || (b.i - a.i); });
-  return { success: true, headers: head, rows: items.map(function (x) { return x.row; }), total: items.length, name: name };
+  return { success: true, headers: head, rows: items.map(function (x) { return x.row; }), total: items.length, name: name, dc: dc };
 }
-function getSheetList(which, force) {
+// from/to (yyyy-MM-dd) = periode menurut kolom tanggal (dikosongkan = semua). query tidak kosong = cari di SEMUA tanggal (periode diabaikan), maks. 2000 hasil.
+function getSheetList(which, force, from, to, query) {
   try {
     which = str_(which).toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(SHEET_LIST2, which)) throw new Error('Daftar tidak dikenal: ' + which);
     const ck = 'shl_' + which;
-    if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
-    const res = buildSheetList_(SHEET_LIST2[which]);
-    listCachePut_(ck, res);
-    return res;
+    let full = force ? null : listCacheGet_(ck);
+    if (!full) { full = buildSheetList_(SHEET_LIST2[which]); listCachePut_(ck, full); }
+    const dc = (full.dc === undefined || full.dc === null) ? -1 : full.dc, qn = normQ_(query).trim();
+    const f = str_(from).trim(), t = str_(to).trim();
+    let rows = full.rows || [], truncated = false;
+    if (qn) {
+      rows = rows.filter(function (r) { return normQ_(r.join(' ')).indexOf(qn) >= 0; });
+      if (rows.length > 2000) { rows = rows.slice(0, 2000); truncated = true; }
+    } else if (dc >= 0 && (f || t)) {
+      rows = rows.filter(function (r) {
+        const iso = planIso_(str_(r[dc]).slice(0, 10));
+        return iso && (!f || iso >= f) && (!t || iso <= t);
+      });
+    }
+    return { success: true, headers: full.headers, rows: rows, total: rows.length, all: full.total, dateCol: dc, name: full.name, truncated: truncated, from: f, to: t };
   } catch (e) {
     return { error: e.message };
   }
