@@ -3856,7 +3856,7 @@ var Code128 = (function () {
       var y = top;
       if (pi === 0) {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(22); hex(doc, '#111111', 't');
-        doc.text('WIP YARN DYEING', M, M + 20);
+        doc.text('DyePocket', M, M + 20);
         var p = date.split('-'), lbl = parseInt(p[2], 10) + ' ' + BULAN[parseInt(p[1], 10) - 1] + ' ' + p[0];
         doc.setFontSize(8.5);
         var lw = doc.getTextWidth(lbl) + 16;
@@ -4199,7 +4199,7 @@ var Code128 = (function () {
     hex(C.neon, 'd'); doc.setLineWidth(2.2); doc.circle(M + 20, 33, 14, 'S');
     doc.setLineWidth(1.6); doc.circle(M + 20, 33, 8, 'S');
     hex(C.neon, 'f'); doc.circle(M + 20, 33, 2.6, 'F');
-    font(true, 8, C.neon); spaced('WIP YARN DYEING  ·  DAILY DYEING ORDER', M + 48, 22, 2.2);
+    font(true, 8, C.neon); spaced('DyePocket  ·  DAILY DYEING ORDER', M + 48, 22, 2.2);
     font(true, 30, '#ffffff'); T('ORDER CELUP HARIAN', M + 48, 55);
     var pw = 262;
     box(W - M - pw, 7, pw, 28, 14, '#0a2410', C.neon, 1.1);
