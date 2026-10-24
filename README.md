@@ -130,13 +130,13 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **PDF/PNG Order Celup Harian, ukuran huruf dimaksimalkan**: kolom Keterangan disamakan lebarnya dengan kolom Konsumsi, lalu huruf baris lot dibuat sebesar mungkin (hingga 11 pt) selama semua kolom masih muat selebar halaman; sisa lebar dibagi rata ke semua kolom. Resume No. Benang (Notes) memakai ukuran huruf dan tinggi baris yang mengikuti huruf lot.
 - **PDF/PNG Order Celup Harian, huruf judul dan kartu mengisi bentuknya**: judul (hingga 30 pt), kartu ringkasan atas (angka hingga 24 pt), serta kartu Grand Total, Realisasi, dan Shift Group di bawah dibuat dengan huruf yang lebih besar sehingga tidak ada ruang kosong. Angka besar otomatis mengecil bila terlalu lebar untuk kartunya.
 
-## Pembaruan v28 (Plan terbaca ulang, pencarian semua tanggal, Mesin, halaman 2)
+## Pembaruan v28 (Plan terbaca ulang, pencarian semua tanggal, Mesin, Page 2)
 - **Plan membaca ulang isian yang kosong.** Isian kosong di salinan "Plan Harian" (No Benang, Supplier, Warna, Mesin, Kg, Cone, Keterangan) dilengkapi otomatis saat tab Plan dibuka dari sheet "Plan" yang terbaru, lalu dari tab WOD. Isian yang sudah terisi tidak diganti, dan sheet "Plan Harian" tidak ditulis ulang. Tombol muat ulang membaca sheet "Plan" langsung (tanpa cache 90 detik).
 - **Pencarian menelusuri semua tanggal**: tab Data (seluruh sheet Jawaban, 500 hasil terbaru), tab Plan (seluruh Plan Harian, kolom TANGGAL ikut tampil), tab Mesin (hasil berupa kartu lot lintas tanggal Plan). Tab WOD, GRM, dan Celup memang sudah mencari di seluruh daftar. Tab Terlewat tetap per tanggal pemeriksaan.
 - **Ubah Mesin di tab Data** kini dicatat sebagai alokasi mesin lot itu (sheet "Alokasi" dan kolom ALOKASI pada Plan Harian terbaru yang memuat lot): tab Mesin dan Plan ikut berubah, dan tidak ada dua sumber yang bentrok. Kolom Mesin di tab Data menampilkan alokasi lebih dulu, lalu tab Celup, Plan, dan isian sheet.
 - **Tampilan HP potret:** tombol Create, Resume, Reset Alokasi, dan Unduh CSV tidak lagi tertutup keterangan "Plan ...".
 - **Tema default = mode malam** (tidak lagi mengikuti pengaturan perangkat). Pilihan lewat tombol tema tetap tersimpan.
-- **Halaman 2** (tombol lapisan di kanan atas): tab **Pack** (sheet PACK) dan **RPH** (sheet RPH), isi ditampilkan sesuai judul kolom baris 1, tanggal DD/MM/YYYY, terbaru di atas, cari di semua baris. PWA: `page2.html`; Apps Script: file HTML bernama `Page2` (isi sama dengan `page2.html`), dibuka lewat `?page=2`.
+- **Page 2** (tombol lapisan di kanan atas): tab **Pack** (sheet PACK) dan **RPH** (sheet RPH), isi ditampilkan sesuai judul kolom baris 1, tanggal DD/MM/YYYY, terbaru di atas, cari di semua baris. PWA: `page2.html`; Apps Script: file HTML bernama `Page2` (isi sama dengan `page2.html`), dibuka lewat `?page=2`.
 - Pasang: `Kode.gs` (Deploy versi baru), `index.html`, `page2.html`, `sw.js` (cache v56). Di Apps Script tambahkan file HTML `Page2` selain `Index`.
 
 ## Perbaikan menu tab terpotong di HP (v29)
@@ -144,16 +144,16 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 
 ## Pembaruan v30
 - **Tab Data:** pencarian menelusuri semua tanggal. Selama mencari, tabel tidak lagi menampilkan data satu hari sebagai hasil; tekan Enter untuk mencari segera. Bila `Kode.gs` di server belum versi terbaru, pencarian memakai 300 data terakhir dan muncul pesan agar `Kode.gs` di-deploy ulang.
-- **Halaman 2:** urutan tab RPH lalu Pack (tab Halaman 1 dihapus; kembali lewat ikon rumah). Kolom KIKC dipindah ke posisi pertama (kolom beku). Tiap tab punya **Periode** (tanggal awal s/d akhir menurut kolom tanggal sheet, default tanggal 1 bulan berjalan s/d hari ini, tombol "Bulan ini"). Kata kunci pencarian menelusuri semua tanggal dan mengabaikan periode (maks. 2.000 hasil).
+- **Page 2:** urutan tab RPH lalu Pack (tab Home dihapus; kembali lewat ikon rumah). Kolom KIKC dipindah ke posisi pertama (kolom beku). Tiap tab punya **Periode** (tanggal awal s/d akhir menurut kolom tanggal sheet, default tanggal 1 bulan berjalan s/d hari ini, tombol "Bulan ini"). Kata kunci pencarian menelusuri semua tanggal dan mengabaikan periode (maks. 2.000 hasil).
 - Perbarui `Kode.gs` (Deploy versi baru), `index.html`, `page2.html`, `sw.js` (cache v58).
 
 
 ## Perubahan terbaru: DyePocket, tab WIP, resume RPH, tab Delivery
 
 - Nama aplikasi sekarang **DyePocket**. Tab **Data** diganti nama menjadi **WIP** (isi tab tidak berubah).
-- **Halaman 2 > RPH**: tombol **Resume per No Benang** (di bawah kolom pencarian). Isinya JNS & NO BENANG, jumlah lot (KIKC), Qty (Kg), Cones, dan % Kg,
+- **Page 2 > RPH**: tombol **Resume per No Benang** (di bawah kolom pencarian). Isinya JNS & NO BENANG, jumlah lot (KIKC), Qty (Kg), Cones, dan % Kg,
   diurutkan dari Kg terbesar, dengan baris TOTAL. Resume mengikuti periode tanggal atau kata kunci pencarian yang sedang dipakai. Tombol **Daftar** kembali ke tabel biasa.
-- **Halaman 2 > Delivery** (baru, Admin dan Viewer): lama proses = **tanggal pack (sheet PACK) - tanggal celup (tab Celup / sheet CLP)**.
+- **Page 2 > Delivery** (baru, Admin dan Viewer): lama proses = **tanggal pack (sheet PACK) - tanggal celup (tab Celup / sheet CLP)**.
   - lama <= 5 hari: **Tepat waktu**; 6-7 hari: **Toleransi**; lebih dari 7 hari: **Terlambat**.
   - Persentase Ketepatan Delivery = lot tepat waktu / semua lot yang bisa dihitung (jumlah lot), ditambah persen dalam batas 7 hari, rata-rata lama, dan persen Kg tepat waktu.
   - Periode menurut **tanggal pack** (default bulan ini). Ada pencarian dan saringan status. Kolom LEWAT BATAS = berapa hari melewati batas 5 hari.

@@ -1,11 +1,12 @@
 /**
- * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di page 2; v29: page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
  *   Sheet "GRM": A = Tanggal Celup | B = KIKC | C = No Benang | D = Warna | E = Mesin | F = Kg | G = Cone | H = Keterangan KIKC
  *   Server selalu mengambil ulang data KIKC dari sheet (tidak percaya kiriman browser).
  *   Jika satu KIKC ada di WOD dan GRM, data WOD yang dipakai.
+ *   v31: tab Input juga mencari KIKC di sheet RPH (kolom menurut judul baris 1). Urutan prioritas: WOD, RPH, GRM.
  *
  * Tab daftar (hanya baca, ditampilkan di tab bawah aplikasi):
  *   Urutan kolom tampil (TANGGAL selalu setelah KIKC, format DD/MM/YYYY):
@@ -52,7 +53,7 @@ const SHEET_PLAN = 'Plan';
 const SHEET_PLAN_HARIAN = 'Plan Harian';   // riwayat Plan per hari (salinan tampilan tab Plan, termasuk alokasi dan Celup / Sisa Order)
 const SHEET_ALOKASI = 'Alokasi';   // penyimpanan alokasi mesin per KIKC (tidak terpengaruh perubahan sheet Plan)
 const SHEET_JAWABAN = 'WIP YD (Jawaban)';
-const SHEET_RPH = 'RPH';           // page 2: tab RPH (isi sheet ditampilkan apa adanya menurut judul kolom baris 1)
+const SHEET_RPH = 'RPH';           // Page 2: tab RPH (isi sheet ditampilkan apa adanya menurut judul kolom baris 1)
 const SHEET_PACK = 'PACK';         // sumber Tanggal Pack: kolom A = Tanggal Pack, kolom KIKC dicari menurut judul baris 1 (jika tidak ada: kolom B)
 const PACK_DATE_COL = 1;           // kolom A = Tanggal Pack
 const PACK_KIKC_DEFAULT = 2;       // kolom B = KIKC bila judul "KIKC" tidak ditemukan di baris 1 sheet PACK
@@ -89,7 +90,7 @@ const COL_PACK = 16;             // kolom P = Tanggal Pack (diisi dari sheet PAC
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.fn === 'ping') return json_({ ok: true, result: 'pong' });
-  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : 'Index');   // ?page=2 = page 2 (Pack, RPH)
+  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : 'Index');   // ?page=2 = Page 2 (Pack, RPH)
   // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
   // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
   const want = str_(p.mode).toLowerCase();
@@ -288,7 +289,33 @@ function findInSheet_(sheet, firstCol, width, mapFn, want) {
   return null;
 }
 
-// WOD dulu, jika tidak ada baru GRM.
+// ---- Sheet RPH sebagai sumber referensi KIKC (setelah WOD, sebelum GRM) ----
+// Kolom dicari menurut JUDUL di baris 1: KIKC | (JNS &) NO BENANG | WARNA | QTY (KG) | CONES | M/C | KETERANGAN. Jika satu KIKC tampil beberapa kali di RPH, baris paling BAWAH (terbaru) dipakai.
+function rphCols_(sh) {
+  const lastC = Math.min(sh.getLastColumn(), 40);
+  if (lastC < 1) return null;
+  const head = sh.getRange(1, 1, 1, lastC).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toLowerCase(); });
+  const find = function (re) { for (let i = 0; i < head.length; i++) { if (re.test(head[i])) return i; } return -1; };
+  const c = { kikc: find(/^kikc$/), noBenang: find(/benang/), warna: find(/^warna/), kg: find(/^(qty|kg|berat)\b/), cone: find(/^cones?\b/), mesin: find(/^(m\/c|mc|mesin)\b/), ket: find(/^(ket|keterangan|catatan|remark)/), n: lastC };
+  return c.kikc < 0 ? null : c;
+}
+function mapRph_(r, c) {
+  const g = function (i) { return i < 0 ? '' : str_(r[i]).trim(); };
+  return { kikc: g(c.kikc), noBenang: g(c.noBenang), warna: g(c.warna), kg: g(c.kg), cone: g(c.cone), mesin: g(c.mesin), ketKikc: g(c.ket) };
+}
+function findInRph_(want) {
+  const sh = findSheet_(ss_(), SHEET_RPH);
+  if (!sh || sh.getLastRow() < 2) return null;
+  const c = rphCols_(sh);
+  if (!c) return null;
+  const last = sh.getLastRow(), col = sh.getRange(2, c.kikc + 1, last - 1, 1).getDisplayValues();
+  for (let i = col.length - 1; i >= 0; i--) {
+    if (str_(col[i][0]).trim() === want) return mapRph_(sh.getRange(i + 2, 1, 1, c.n).getDisplayValues()[0], c);
+  }
+  return null;
+}
+
+// WOD dulu, lalu RPH, jika tidak ada baru GRM.
 function lookupKikc_(kikc) {
   const want = str_(kikc).trim();
   if (!want) return null;
@@ -296,6 +323,10 @@ function lookupKikc_(kikc) {
   if (cached) return cached;
   const fromWod = findInSheet_(getWodSheet_(), WOD_FIRST_COL, WOD_WIDTH, mapWod_, want);
   if (fromWod) { fromWod.src = 'WOD'; return fromWod; }
+  try {
+    const fromRph = findInRph_(want);
+    if (fromRph) { fromRph.src = 'RPH'; return fromRph; }
+  } catch (eR) { /* RPH gagal dibaca: lanjut ke GRM */ }
   const grm = getGrmSheet_();
   if (grm) {
     const fromGrm = findInSheet_(grm, GRM_FIRST_COL, GRM_WIDTH, mapGrm_, want);
@@ -399,7 +430,7 @@ function getKikcData() {
   try {
     const seen = {};
     const out = [];
-    let nWod = 0, nGrm = 0, warn = '';
+    let nWod = 0, nRph = 0, nGrm = 0, warn = '';
 
     const wod = getWodSheet_();
     const wLast = wod.getLastRow();
@@ -415,9 +446,31 @@ function getKikcData() {
     }
 
     try {
+      const rsh = findSheet_(ss_(), SHEET_RPH);
+      if (!rsh) {
+        warn = 'Sheet "' + SHEET_RPH + '" tidak ditemukan, KIKC dari RPH tidak dimuat.';
+      } else if (rsh.getLastRow() >= 2) {
+        const rc = rphCols_(rsh);
+        if (!rc) {
+          warn = 'Kolom "KIKC" tidak ditemukan di baris 1 sheet ' + SHEET_RPH + ', KIKC dari RPH tidak dimuat.';
+        } else {
+          const rv = rsh.getRange(2, 1, rsh.getLastRow() - 1, rc.n).getDisplayValues();
+          for (let i = rv.length - 1; i >= 0; i--) {   // dari baris paling bawah (terbaru); KIKC yang sudah ada di WOD dilewati
+            const item = mapRph_(rv[i], rc);
+            if (!item.kikc || item.kikc.toUpperCase() === 'KIKC' || seen[item.kikc]) continue;
+            seen[item.kikc] = true; nRph++;
+            out.push({ kikc: item.kikc, noBenang: item.noBenang, warna: item.warna, kg: item.kg, cone: item.cone, mesin: item.mesin, ketKikc: item.ketKikc, src: 'RPH' });
+          }
+        }
+      }
+    } catch (eR) {
+      warn = 'Sheet RPH gagal dibaca (' + eR.message + '), KIKC dari RPH tidak dimuat.';
+    }
+
+    try {
       const grm = getGrmSheet_();
       if (!grm) {
-        warn = 'Sheet "' + SHEET_GRM + '" tidak ditemukan, hanya KIKC dari WOD yang dimuat.';
+        warn = (warn ? warn + ' ' : '') + 'Sheet "' + SHEET_GRM + '" tidak ditemukan, KIKC dari GRM tidak dimuat.';
       } else {
         const gLast = grm.getLastRow();
         if (gLast >= 2) {
@@ -432,11 +485,11 @@ function getKikcData() {
         }
       }
     } catch (e2) {
-      warn = 'Sheet GRM gagal dibaca (' + e2.message + '), hanya KIKC dari WOD yang dimuat.';
+      warn = (warn ? warn + ' ' : '') + 'Sheet GRM gagal dibaca (' + e2.message + '), KIKC dari GRM tidak dimuat.';
     }
 
     idxPut_(out);
-    return { success: true, data: out, counts: { wod: nWod, grm: nGrm }, warn: warn };
+    return { success: true, data: out, counts: { wod: nWod, rph: nRph, grm: nGrm }, warn: warn };
   } catch (e) {
     return { error: e.message };
   }
@@ -1341,7 +1394,7 @@ function tesPack() {
   Logger.log('Contoh: ' + JSON.stringify(Object.keys(r.map).slice(0, 5).map(function (k) { return [k, r.map[k]]; })));
 }
 
-// ================= 2d. page 2: tab Pack (sheet PACK) dan RPH (sheet RPH) =================
+// ================= 2d. Page 2: tab Pack (sheet PACK) dan RPH (sheet RPH) =================
 // Isi sheet ditampilkan apa adanya menurut judul kolom baris 1 (maks. 40 kolom). Kolom tanggal (judul berisi TANGGAL/TGL/DATE, atau kolom A bila isinya tanggal)
 // diformat DD/MM/YYYY dan dipakai mengurutkan dari terbaru; tanpa kolom tanggal, baris paling bawah di sheet tampil paling atas.
 const SHEET_LIST2 = { pack: SHEET_PACK, rph: SHEET_RPH };
@@ -1405,7 +1458,7 @@ function getSheetList(which, force, from, to, query) {
   }
 }
 
-// ================= 2e. page 2: tab Delivery (lama proses Celup -> Pack) =================
+// ================= 2e. Page 2: tab Delivery (lama proses Celup -> Pack) =================
 // Lama proses = Tanggal Pack (sheet PACK, kolom A) dikurangi Tanggal Celup (tab Celup / sheet CLP), dalam hari kalender (celup dan pack di hari yang sama = 0 hari).
 //   Lama <= DELIVERY_BATAS_HARI                              -> TEPAT WAKTU
 //   Lama > DELIVERY_BATAS_HARI dan <= DELIVERY_TELAT_HARI    -> TOLERANSI (lewat batas, belum dianggap telat)
