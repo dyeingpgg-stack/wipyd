@@ -1,6 +1,6 @@
 {
-  "name": "WIP Yarn Dyeing (Viewer)",
-  "short_name": "WIP YD Viewer",
+  "name": "DyePocket (Viewer)",
+  "short_name": "DyePocket Viewer",
   "description": "Lihat posisi dan QC benang Yarn Dyeing per KIKC (hanya lihat)",
   "id": "./viewer",
   "start_url": "./index.html?mode=viewer",

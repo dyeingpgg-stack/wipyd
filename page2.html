@@ -26,14 +26,14 @@
   if (q === 'viewer') h.setAttribute('data-lock', '1');
 })();
 </script>
-<meta name="description" content="WIP Yarn Dyeing halaman 2: Pack dan RPH">
+<meta name="description" content="DyePocket halaman 2: RPH, Pack, dan Delivery">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="WIP YD">
+<meta name="apple-mobile-web-app-title" content="DyePocket">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>WIP Yarn Dyeing - Halaman 2</title>
+<title>DyePocket - Halaman 2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
@@ -595,7 +595,7 @@
   }
 
   /* ---------- Halaman 2: tiga tab (Pack, RPH, Halaman 1) ---------- */
-  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(2,1fr)}
+  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(3,1fr)}
   .daterow.period{flex-wrap:wrap}
   .daterow.period .input{flex:1 1 128px;font-size:15px}
   .period-sep{align-self:center;color:var(--dim);font-weight:600}
@@ -606,6 +606,42 @@
     html,body{height:100%;overscroll-behavior:none}
     .app{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;max-width:none;height:auto;max-height:none}
   }
+
+  /* ---------- Resume RPH per No Benang ---------- */
+  .seg{flex:none;display:inline-flex;gap:4px;margin:0 0 10px;padding:4px;border-radius:14px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);align-self:flex-start}
+  .seg button{min-height:38px;padding:0 14px;border-radius:10px;border:0;background:transparent;color:var(--soft);font:600 14px var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .seg button.active{color:var(--ink-c);background:linear-gradient(135deg,var(--cyan),var(--cyan-2));box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
+  .seg .nb{font:700 12px var(--body);padding:1px 7px;border-radius:999px;background:rgba(var(--w-rgb),.14)}
+  .seg button.active .nb{background:rgba(0,0,0,.18)}
+  td.rs-name{font:600 15px var(--display);color:var(--cyan)}
+  tr.rs-total td{position:sticky;bottom:0;z-index:2;font-weight:700;background:var(--surface-3);color:var(--text);border-top:1px solid var(--edge-strong);border-bottom:0}
+  .pbar{display:inline-block;vertical-align:middle;width:70px;height:7px;margin-right:8px;border-radius:99px;background:rgba(var(--w-rgb),.1);overflow:hidden}
+  .pbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--lime))}
+  th.r,td.r{text-align:right}
+
+  /* ---------- Tab Delivery ---------- */
+  .dsum{flex:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 12px}
+  .dcard{padding:12px 14px;border-radius:16px;border:1px solid var(--edge-strong);background:var(--surface-3)}
+  .dcard.main{grid-column:1/-1;border-color:rgba(var(--g-rgb),.45);background:linear-gradient(135deg,rgba(var(--g-rgb),.10),rgba(var(--c-rgb),.06)),var(--surface-3)}
+  .dcard.main.bad{border-color:rgba(var(--r-rgb),.5);background:linear-gradient(135deg,rgba(var(--r-rgb),.10),rgba(var(--a-rgb),.05)),var(--surface-3)}
+  .dcard.main.mid{border-color:rgba(var(--a-rgb),.5);background:linear-gradient(135deg,rgba(var(--a-rgb),.10),rgba(var(--c-rgb),.04)),var(--surface-3)}
+  .dlabel{font:600 12.5px var(--body);color:var(--dim)}
+  .dval{margin-top:2px;font:700 26px var(--display);color:var(--text);line-height:1.15;font-variant-numeric:tabular-nums}
+  .dcard.main .dval{font-size:40px;color:var(--lime)}
+  .dcard.main.mid .dval{color:var(--amber)}
+  .dcard.main.bad .dval{color:var(--rose)}
+  .dval small{font:600 14px var(--body);color:var(--dim)}
+  .dsub{margin-top:3px;font-size:12.5px;color:var(--dim)}
+  .dbar{height:9px;margin:8px 0 2px;border-radius:99px;background:rgba(var(--w-rgb),.1);overflow:hidden;display:flex}
+  .dbar i{display:block;height:100%}
+  .dbar .g{background:var(--lime)}.dbar .a{background:var(--amber)}.dbar .r{background:var(--rose)}
+  .dc-g .dval{color:var(--lime)}.dc-a .dval{color:var(--amber)}.dc-r .dval{color:var(--rose)}
+  .fchips{flex:none;display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+  .fchip{min-height:38px;padding:0 13px;border-radius:999px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 14px var(--body);cursor:pointer}
+  .fchip .nb{margin-left:6px;font-weight:700;color:var(--dim)}
+  .fchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 12px rgba(var(--c-rgb),.35)}
+  .fchip.active .nb{color:inherit}
+  .dnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--amber)}
 </style>
 </head>
 <body>
@@ -619,7 +655,7 @@
         <circle class="orb-dot" cx="20" cy="20" r="2.6"/>
       </svg>
       <div>
-        <h1>WIP Yarn Dyeing</h1>
+        <h1>DyePocket</h1>
         <p id="subtitle">Halaman 2 · RPH</p>
       </div>
     </div>
@@ -676,8 +712,18 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qRph" type="search" placeholder="Cari di daftar RPH (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar RPH">
       </div>
+      <div class="seg" id="segRph" role="tablist" aria-label="Tampilan RPH">
+        <button type="button" class="active" data-rmode="list" role="tab" aria-selected="true">Daftar</button>
+        <button type="button" data-rmode="res" role="tab" aria-selected="false">Resume per No Benang <span class="nb" id="nbRes">0</span></button>
+      </div>
       <p class="lcount" id="nRph" aria-live="polite"></p>
       <div class="lstate" id="sRph"></div>
+      <div class="table-wrap hidden" id="wRphRes">
+        <table>
+          <thead><tr id="hRphRes"></tr></thead>
+          <tbody id="bRphRes"></tbody>
+        </table>
+      </div>
       <div class="table-wrap hidden" id="wRph">
         <table>
           <thead><tr id="hRph"></tr></thead>
@@ -692,6 +738,37 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section id="viewDelivery" class="view list" aria-label="Delivery celup ke pack">
+      <div class="daterow period" id="perDlv">
+        <input class="input" id="fDlv" type="date" aria-label="Tanggal pack awal">
+        <span class="period-sep">s/d</span>
+        <input class="input" id="tDlv" type="date" aria-label="Tanggal pack akhir">
+        <button type="button" class="btn-today active" id="mDlv">Bulan ini</button>
+      </div>
+      <p class="hint-sm" id="dlvRule"></p>
+      <div class="dsum" id="dlvSum"></div>
+      <div class="fchips" id="dlvChips" role="tablist" aria-label="Saring status delivery"></div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qDlv" type="search" placeholder="Cari KIKC, no benang, warna, mesin" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Delivery">
+      </div>
+      <p class="lcount" id="nDlv" aria-live="polite"></p>
+      <div class="dnote" id="dlvWarn" hidden></div>
+      <div class="lstate" id="sDlv"></div>
+      <div class="table-wrap hidden" id="wDlv">
+        <table>
+          <thead><tr id="hDlv"></tr></thead>
+          <tbody id="bDlv"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pDlv" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piDlv" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
   </main>
 
   <nav class="tabbar" aria-label="Menu halaman 2">
@@ -702,6 +779,10 @@
     <button type="button" class="tab" id="tabPack" data-view="pack" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
       Pack
+    </button>
+    <button type="button" class="tab" id="tabDelivery" data-view="delivery" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>
+      Delivery
     </button>
   </nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -835,7 +916,8 @@
     $('#per' + d.id).classList.toggle('off', !!m.query.trim());   // sedang mencari: periode tidak dipakai
   }
 
-  function renderList(k) {
+  function renderList(k) { renderListBase(k); if (k === 'rph') applyRphMode(); }
+  function renderListBase(k) {
     var d = LISTS[k], m = lst[k], q = m.shownQuery.trim();
     var wrap = $('#w' + d.id), pager = $('#p' + d.id), note = $('#n' + d.id);
     if (!m.headers.length || !m.rows.length) {
@@ -888,7 +970,7 @@
     if (m.dateCol >= 0) return pre + 'Periode ' + fmtDMY(m.from) + ' - ' + fmtDMY(m.to) + ' · ' + m.rows.length + ' dari ' + m.all + ' baris';
     return pre + m.rows.length + ' baris (sheet tanpa kolom tanggal: periode tidak dipakai)';
   }
-  function stopSpin() { if (!Object.keys(lst).some(function (k) { return lst[k].loading; })) $('#btnRefresh').classList.remove('spin'); }
+  function stopSpin() { if (!Object.keys(lst).some(function (k) { return lst[k].loading; }) && !(window.__dvLoading)) $('#btnRefresh').classList.remove('spin'); }
   // opts.force = abaikan data yang masih segar; opts.reread = server membaca ulang sheet (lewati cache)
   function loadList(k, opts) {
     opts = opts || {};
@@ -939,28 +1021,254 @@
     syncPeriod(k);
   });
   if (mqWide) {
-    var onWide = function () { Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; }); renderList(view); };
+    var onWide = function () { Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; }); dv.page = 1; if (view === 'delivery') renderDelivery(); else renderList(view); };
     if (mqWide.addEventListener) mqWide.addEventListener('change', onWide); else if (mqWide.addListener) mqWide.addListener(onWide);
   }
+
+
+  /* ---------- Angka (format Indonesia: 181,5 = 181.5; 1.234,5 = 1234.5) ---------- */
+  function numId(v) {
+    var t = String(v === undefined || v === null ? '' : v).trim().replace(/[^\d.,\-]/g, '');
+    if (!t) return 0;
+    var c = t.lastIndexOf(','), d = t.lastIndexOf('.');
+    if (c >= 0 && d >= 0) t = c > d ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+    else if (c >= 0) t = t.replace(/\./g, '').replace(/,(?=.*,)/g, '').replace(',', '.');
+    else if (d >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+    var n = parseFloat(t);
+    return isNaN(n) ? 0 : n;
+  }
+  function fmtNum(n, dec) { return (+n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: dec === undefined ? 1 : dec }); }
+
+  /* ---------- Resume RPH per No Benang (mengikuti periode / pencarian yang sedang tampil) ---------- */
+  var rphMode = 'list';
+  function buildResume() {
+    var m = lst.rph, hd = m.headers, ci = { kikc: -1, benang: -1, qty: -1, cone: -1 };
+    hd.forEach(function (h, i) {
+      var t = String(h);
+      if (ci.kikc < 0 && /^kikc$/i.test(t)) ci.kikc = i;
+      if (ci.benang < 0 && /benang/i.test(t)) ci.benang = i;
+      if (ci.qty < 0 && /^(qty|kg|berat|jumlah)\b/i.test(t)) ci.qty = i;
+      if (ci.cone < 0 && /^cones?\b/i.test(t)) ci.cone = i;
+    });
+    var out = { ci: ci, groups: [], totKg: 0, totCone: 0, totLot: 0, ok: ci.benang >= 0 };
+    if (!out.ok) return out;
+    var map = {}, all = {};
+    m.rows.forEach(function (r, ri) {
+      var raw = String(r[ci.benang] === undefined || r[ci.benang] === null ? '' : r[ci.benang]).replace(/\s+/g, ' ').trim();
+      var key = raw.toUpperCase(), g = map[key];
+      if (!g) { g = map[key] = { name: raw || '(tanpa no benang)', kg: 0, cone: 0, lots: {} }; out.groups.push(g); }
+      var lot = ci.kikc >= 0 ? String(r[ci.kikc] || '').trim().toUpperCase() : '#' + ri;
+      if (!lot) lot = '#' + ri;
+      g.lots[lot] = 1; all[lot] = 1;
+      if (ci.qty >= 0) { var q = numId(r[ci.qty]); g.kg += q; out.totKg += q; }
+      if (ci.cone >= 0) { var c = numId(r[ci.cone]); g.cone += c; out.totCone += c; }
+    });
+    out.groups.forEach(function (g) { g.nLot = Object.keys(g.lots).length; });
+    out.groups.sort(function (a, b) { return (b.kg - a.kg) || (b.nLot - a.nLot) || (a.name < b.name ? -1 : 1); });
+    out.totLot = Object.keys(all).length;
+    return out;
+  }
+  function applyRphMode() {
+    var m = lst.rph, wrap = $('#wRphRes'), res = rphMode === 'res', has = m.headers.length && m.rows.length;
+    if (has && m.rsig !== m.sig) { m.rsv = buildResume(); m.rsig = m.sig; }
+    $('#nbRes').textContent = has && m.rsv && m.rsv.ok ? m.rsv.groups.length : 0;
+    if (!res) { wrap.classList.add('hidden'); return; }
+    $('#wRph').classList.add('hidden'); $('#pRph').hidden = true;
+    if (!has) { wrap.classList.add('hidden'); return; }
+    var r = m.rsv;
+    if (!r.ok) { wrap.classList.add('hidden'); listState('rph', '<div class="state">Kolom "No Benang" tidak ditemukan di sheet RPH, jadi resume belum bisa dibuat.</div>'); return; }
+    $('#hRphRes').innerHTML = '<th class="l-s l-s0 l-last">JNS &amp; NO BENANG</th><th class="r">LOT</th>' + (r.ci.qty >= 0 ? '<th class="r">QTY (KG)</th>' : '') + (r.ci.cone >= 0 ? '<th class="r">CONES</th>' : '') + (r.ci.qty >= 0 ? '<th>% KG</th>' : '');
+    var body = r.groups.map(function (g) {
+      var pct = r.totKg > 0 ? g.kg / r.totKg * 100 : 0;
+      return '<tr><td class="l-s l-s0 l-last rs-name">' + esc(g.name) + '</td><td class="r num">' + g.nLot + '</td>' +
+        (r.ci.qty >= 0 ? '<td class="r num">' + fmtNum(g.kg) + '</td>' : '') +
+        (r.ci.cone >= 0 ? '<td class="r num">' + fmtNum(g.cone, 0) + '</td>' : '') +
+        (r.ci.qty >= 0 ? '<td class="num"><span class="pbar"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></span>' + fmtNum(pct) + '%</td>' : '') + '</tr>';
+    }).join('');
+    body += '<tr class="rs-total"><td class="l-s l-s0 l-last">TOTAL (' + r.groups.length + ' no benang)</td><td class="r num">' + r.totLot + '</td>' +
+      (r.ci.qty >= 0 ? '<td class="r num">' + fmtNum(r.totKg) + '</td>' : '') + (r.ci.cone >= 0 ? '<td class="r num">' + fmtNum(r.totCone, 0) + '</td>' : '') + (r.ci.qty >= 0 ? '<td class="num">100%</td>' : '') + '</tr>';
+    $('#bRphRes').innerHTML = body;
+    wrap.classList.remove('hidden');
+    $('#nRph').textContent = 'Resume ' + r.groups.length + ' no benang · ' + r.totLot + ' lot · ' + (m.shownQuery.trim() ? 'hasil pencarian semua tanggal' : 'periode ' + fmtDMY(m.from) + ' - ' + fmtDMY(m.to));
+    if (m.rsScroll !== m.sig) { wrap.scrollTop = 0; m.rsScroll = m.sig; }
+  }
+  $('#segRph').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-rmode]') : null;
+    if (!b) return;
+    rphMode = b.getAttribute('data-rmode') === 'res' ? 'res' : 'list';
+    $$('#segRph button').forEach(function (x) { var on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', on); });
+    lst.rph.rk = '';
+    renderList('rph');
+  });
+
+  /* ---------- Tab Delivery: lama proses Celup -> Pack, ketepatan waktu ---------- */
+  var DV_LABEL = { tepat: 'Tepat waktu', toleransi: 'Toleransi', telat: 'Terlambat', cek: 'Cek data' };
+  var DV_TAG = { tepat: 'good', toleransi: 'warn', telat: 'bad', cek: '' };
+  var dv = { rows: [], at: 0, loading: false, error: '', from: monthStartIso(), to: todayIso(), status: 'all', query: '', page: 1, batas: 5, telat: 7, seq: 0, key: '', trunc: false, total: 0 };
+  function dvState(html) { var el = $('#sDlv'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
+  function dvLabel(r) { return r.status === 'cek' ? (r.celup ? 'Tanggal tidak wajar' : 'Tanpa tgl celup') : DV_LABEL[r.status]; }
+  function dvBase() {
+    var q = nq(dv.query).trim();
+    if (!q) return dv.rows;
+    return dv.rows.filter(function (r) { return nq([r.kikc, r.noBenang, r.warna, r.mesin, r.celup, r.pack].join(' ')).indexOf(q) >= 0; });
+  }
+  function dvStats(rows) {
+    var c = { tepat: 0, toleransi: 0, telat: 0, cek: 0 }, kg = { tepat: 0, toleransi: 0, telat: 0 }, n = 0, sum = 0, max = 0;
+    rows.forEach(function (r) {
+      c[r.status]++;
+      if (r.status === 'cek') return;
+      n++; sum += r.hari; if (r.hari > max) max = r.hari;
+      kg[r.status] += numId(r.kg);
+    });
+    var kgTot = kg.tepat + kg.toleransi + kg.telat;
+    return { c: c, n: n, avg: n ? sum / n : 0, max: max, kg: kg, kgTot: kgTot,
+      pct: n ? c.tepat / n * 100 : null, pct7: n ? (c.tepat + c.toleransi) / n * 100 : null, pctKg: kgTot ? kg.tepat / kgTot * 100 : null };
+  }
+  function renderDlvSummary(st) {
+    var el = $('#dlvSum');
+    if (!dv.at) { el.innerHTML = ''; return; }
+    if (!st.n) { el.innerHTML = '<div class="dcard main mid"><div class="dlabel">Ketepatan Delivery</div><div class="dval">-</div><div class="dsub">Belum ada lot yang bisa dihitung pada periode ini.</div></div>'; return; }
+    var cls = st.pct >= 90 ? '' : (st.pct >= 75 ? ' mid' : ' bad');
+    var w = function (x) { return (x / st.n * 100).toFixed(2) + '%'; };
+    el.innerHTML =
+      '<div class="dcard main' + cls + '"><div class="dlabel">Ketepatan Delivery (celup ke pack ≤ ' + dv.batas + ' hari)</div>' +
+        '<div class="dval">' + fmtNum(st.pct) + '%<small> &nbsp;' + st.c.tepat + ' dari ' + st.n + ' lot</small></div>' +
+        '<div class="dbar" aria-hidden="true"><i class="g" style="width:' + w(st.c.tepat) + '"></i><i class="a" style="width:' + w(st.c.toleransi) + '"></i><i class="r" style="width:' + w(st.c.telat) + '"></i></div>' +
+        '<div class="dsub">Tepat ' + st.c.tepat + ' · Toleransi ' + st.c.toleransi + ' (' + (dv.batas + 1) + '–' + dv.telat + ' hari) · Terlambat ' + st.c.telat + ' (&gt; ' + dv.telat + ' hari)</div></div>' +
+      '<div class="dcard"><div class="dlabel">Dalam batas ' + dv.telat + ' hari</div><div class="dval">' + fmtNum(st.pct7) + '%</div><div class="dsub">Tepat + toleransi</div></div>' +
+      '<div class="dcard"><div class="dlabel">Rata-rata lama</div><div class="dval">' + fmtNum(st.avg) + '<small> hari</small></div><div class="dsub">Terlama ' + st.max + ' hari</div></div>' +
+      '<div class="dcard"><div class="dlabel">Kg tepat waktu</div><div class="dval">' + (st.kgTot ? fmtNum(st.pctKg) + '%' : '-') + '</div><div class="dsub">' + fmtNum(st.kg.tepat, 0) + ' dari ' + fmtNum(st.kgTot, 0) + ' kg</div></div>' +
+      '<div class="dcard dc-r"><div class="dlabel">Terlambat</div><div class="dval">' + st.c.telat + '<small> lot</small></div><div class="dsub">' + fmtNum(st.kg.telat, 0) + ' kg · &gt; ' + dv.telat + ' hari</div></div>';
+  }
+  function renderDelivery() {
+    var wrap = $('#wDlv'), pager = $('#pDlv'), note = $('#nDlv'), warn = $('#dlvWarn');
+    $('#fDlv').value = dv.from; $('#tDlv').value = dv.to;
+    $('#mDlv').classList.toggle('active', dv.from === monthStartIso() && dv.to === todayIso());
+    $('#dlvRule').innerHTML = '<b>Aturan:</b> lama = tanggal pack &minus; tanggal celup &middot; &le; ' + dv.batas + ' hari tepat waktu &middot; ' + (dv.batas + 1) + '&ndash;' + dv.telat + ' hari toleransi &middot; &gt; ' + dv.telat + ' hari terlambat. Periode menurut tanggal pack.';
+    if (!dv.at) {   // belum ada data
+      $('#dlvChips').innerHTML = ''; renderDlvSummary({}); wrap.classList.add('hidden'); pager.hidden = true; warn.hidden = true;
+      note.textContent = dv.loading ? 'Memuat...' : '';
+      if (dv.error) dvState('<div class="state">' + esc(dv.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
+      else if (dv.loading) dvState('<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
+      else dvState('');
+      return;
+    }
+    var base = dvBase(), st = dvStats(base);
+    renderDlvSummary(st);
+    var chips = [['all', 'Semua', base.length], ['tepat', 'Tepat waktu', st.c.tepat], ['toleransi', 'Toleransi', st.c.toleransi], ['telat', 'Terlambat', st.c.telat]];
+    if (st.c.cek || dv.status === 'cek') chips.push(['cek', 'Cek data', st.c.cek]);
+    $('#dlvChips').innerHTML = chips.map(function (c) { return '<button type="button" class="fchip' + (dv.status === c[0] ? ' active' : '') + '" data-st="' + c[0] + '" role="tab" aria-selected="' + (dv.status === c[0]) + '">' + c[1] + '<span class="nb">' + c[2] + '</span></button>'; }).join('');
+    var msgs = [];
+    if (st.c.cek) msgs.push(st.c.cek + ' lot tidak ikut persentase (tanpa tanggal celup di tab Celup, atau tanggal pack lebih awal dari celup). Lihat filter "Cek data".');
+    if (dv.trunc) msgs.push('Hanya ' + fmtNum(dv.rows.length, 0) + ' lot terbaru dari ' + fmtNum(dv.total, 0) + ' yang dimuat. Persempit periode.');
+    warn.hidden = !msgs.length; warn.textContent = msgs.join(' ');
+    var list = dv.status === 'all' ? base : base.filter(function (r) { return r.status === dv.status; });
+    note.textContent = (dv.loading ? 'Memuat... · ' : '') + 'Periode pack ' + fmtDMY(dv.from) + ' - ' + fmtDMY(dv.to) + ' · ' + list.length + ' lot' + (dv.query.trim() ? ' (cocok pencarian)' : '');
+    if (!list.length) {
+      wrap.classList.add('hidden'); pager.hidden = true;
+      dvState('<div class="state">' + (dv.rows.length ? 'Tidak ada lot yang cocok dengan saringan.' : 'Tidak ada lot yang dipack pada periode ini.') + '</div>');
+      return;
+    }
+    dvState('');
+    var ps = pageSize(), pages = Math.max(1, Math.ceil(list.length / ps));
+    if (dv.page > pages) dv.page = pages;
+    if (dv.page < 1) dv.page = 1;
+    var start = (dv.page - 1) * ps, shown = list.slice(start, start + ps);
+    $('#hDlv').innerHTML = '<th class="l-s l-s0 l-last">KIKC</th><th>NO BENANG</th><th>WARNA</th><th>MESIN</th><th class="r">KG</th><th>TGL CELUP</th><th>TGL PACK</th><th class="r">LAMA (HARI)</th><th class="r">LEWAT BATAS</th><th>STATUS</th>';
+    $('#bDlv').innerHTML = shown.map(function (r) {
+      var dash = '<span class="dim">-</span>', over = r.status !== 'cek' && r.hari > dv.batas ? '+' + (r.hari - dv.batas) : '';
+      return '<tr><td class="l-s l-s0 l-last">' + esc(r.kikc) + '</td>' +
+        '<td>' + (r.noBenang ? esc(r.noBenang) : dash) + '</td><td>' + (r.warna ? esc(r.warna) : dash) + '</td><td>' + (r.mesin ? esc(r.mesin) : dash) + '</td>' +
+        '<td class="r num">' + (r.kg ? fmtNum(r.kg) : dash) + '</td>' +
+        '<td class="date">' + (r.celup ? esc(r.celup) : dash) + '</td><td class="date">' + esc(r.pack) + '</td>' +
+        '<td class="r num">' + (r.hari === null ? dash : r.hari) + '</td><td class="r num">' + (over || dash) + '</td>' +
+        '<td><span class="tag ' + DV_TAG[r.status] + '">' + esc(dvLabel(r)) + '</span></td></tr>';
+    }).join('');
+    wrap.classList.remove('hidden');
+    var sp = dv.key + '|' + dv.status + '|' + dv.query + '|' + dv.page;
+    if (sp !== dv.sp) { wrap.scrollTop = 0; dv.sp = sp; }
+    pager.hidden = pages <= 1;
+    $('#piDlv').innerHTML = 'Halaman <b>' + dv.page + '</b> dari ' + pages + '<small>baris ' + (start + 1) + '–' + (start + shown.length) + ' dari ' + list.length + '</small>';
+    $$('#pDlv [data-pg]').forEach(function (b) {
+      var g = b.getAttribute('data-pg');
+      b.disabled = (g === 'first' || g === 'prev') ? dv.page <= 1 : dv.page >= pages;
+    });
+  }
+  function loadDelivery(opts) {
+    opts = opts || {};
+    var key = dv.from + '|' + dv.to;
+    if (!opts.force && !opts.reread && dv.key === key && dv.at && Date.now() - dv.at < LIST_FRESH) return Promise.resolve();
+    var my = ++dv.seq;
+    dv.loading = true; dv.error = ''; window.__dvLoading = true;
+    if (view === 'delivery') $('#btnRefresh').classList.add('spin');
+    renderDelivery();
+    return gs('getDelivery', dv.from, dv.to, !!opts.reread).then(function (r) {
+      if (my !== dv.seq) return;
+      if (!r) throw new Error('Server tidak mengembalikan data.');
+      if (r.error) throw new Error(r.error);
+      dv.rows = r.rows || []; dv.batas = r.batas || 5; dv.telat = r.telat || 7; dv.trunc = !!r.truncated; dv.total = r.total || 0;
+      dv.key = key; dv.at = Date.now(); dv.error = ''; dv.page = 1;
+    }).catch(function (e) {
+      if (my !== dv.seq) return;
+      dv.error = 'Gagal memuat data. ' + errMsg(e);
+      if (dv.at) toast('Gagal memperbarui, menampilkan data sebelumnya. ' + errMsg(e), 'err', 6000);
+    }).then(function () {
+      if (my !== dv.seq) return;
+      dv.loading = false; window.__dvLoading = false; stopSpin(); renderDelivery();
+    });
+  }
+  (function () {
+    var t = null;
+    function setPeriod(from, to) {
+      if (from && to && from > to) { var x = from; from = to; to = x; }
+      dv.from = from || dv.from; dv.to = to || dv.to; dv.page = 1;
+      loadDelivery({ force: true });
+    }
+    $('#fDlv').addEventListener('change', function () { setPeriod(this.value, dv.to); });
+    $('#tDlv').addEventListener('change', function () { setPeriod(dv.from, this.value); });
+    $('#mDlv').addEventListener('click', function () { setPeriod(monthStartIso(), todayIso()); });
+    $('#qDlv').addEventListener('input', function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { dv.query = v; dv.page = 1; renderDelivery(); }, 200); });
+    $('#dlvChips').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-st]') : null;
+      if (!b) return;
+      dv.status = b.getAttribute('data-st'); dv.page = 1; renderDelivery();
+    });
+    $('#pDlv').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-pg]') : null;
+      if (!b || b.disabled) return;
+      var g = b.getAttribute('data-pg');
+      if (g === 'first') dv.page = 1; else if (g === 'prev') dv.page -= 1; else if (g === 'next') dv.page += 1; else dv.page = 1e9;
+      renderDelivery();
+    });
+    $('#sDlv').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-retry]')) loadDelivery({ force: true, reread: true }); });
+  })();
 
   function showView(name) {
     view = name;
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
+    $('#viewDelivery').classList.toggle('active', name === 'delivery');
     $$('.tab').forEach(function (b) {
       var on = b.getAttribute('data-view') === name;
       b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
     });
+    if (name === 'delivery') {
+      $('#subtitle').textContent = 'Halaman 2 · Delivery · celup ke pack';
+      renderDelivery();
+      loadDelivery();
+      return;
+    }
     $('#subtitle').textContent = 'Halaman 2 · ' + LISTS[name].label + ' · terbaru di atas';
     renderList(name);
     loadList(name);
   }
   $('#tabRph').addEventListener('click', function () { showView('rph'); });
   $('#tabPack').addEventListener('click', function () { showView('pack'); });
-  $('#btnRefresh').addEventListener('click', function () { loadList(view, { force: true, reread: true }); });
+  $('#tabDelivery').addEventListener('click', function () { showView('delivery'); });
+  $('#btnRefresh').addEventListener('click', function () { if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); });
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
     if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
-    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); loadList(view, { force: true, reread: true }); }
+    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); }
   });
   window.addEventListener('offline', function () { toast('Tidak ada koneksi internet.', 'err', 6000); });
   if (!IN_GAS && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

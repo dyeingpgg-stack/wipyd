@@ -1,5 +1,5 @@
 /**
- * WIP Yarn Dyeing - Kode.gs  (v29: halaman 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); halaman 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di halaman 2; v29: halaman 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); halaman 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -97,7 +97,7 @@ function doGet(e) {
     page = HtmlService.createHtmlOutput(page.getContent().replace('<head>', '<head><script>window.WIPYD_FORCE_MODE="' + want + '";</script>'));
   }
   return page
-    .setTitle('Sistem WIP YD')
+    .setTitle('DyePocket')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -119,6 +119,7 @@ const API_FUNCS = {
   cariData: function (a) { return cariData(a[0], a[1]); },
   cariPlan: function (a) { return cariPlan(a[0]); },
   getSheetList: function (a) { return getSheetList(a[0], a[1], a[2], a[3], a[4]); },
+  getDelivery: function (a) { return getDelivery(a[0], a[1], a[2]); },
   getPageUrl: function (a) { return getPageUrl(a[0], a[1]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
   getTerlewat: function (a) { return getTerlewat(a[0], a[1], a[2]); },
@@ -1399,6 +1400,73 @@ function getSheetList(which, force, from, to, query) {
       });
     }
     return { success: true, headers: full.headers, rows: rows, total: rows.length, all: full.total, dateCol: dc, name: full.name, truncated: truncated, from: f, to: t };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// ================= 2e. Halaman 2: tab Delivery (lama proses Celup -> Pack) =================
+// Lama proses = Tanggal Pack (sheet PACK, kolom A) dikurangi Tanggal Celup (tab Celup / sheet CLP), dalam hari kalender (celup dan pack di hari yang sama = 0 hari).
+//   Lama <= DELIVERY_BATAS_HARI                              -> TEPAT WAKTU
+//   Lama > DELIVERY_BATAS_HARI dan <= DELIVERY_TELAT_HARI    -> TOLERANSI (lewat batas, belum dianggap telat)
+//   Lama > DELIVERY_TELAT_HARI (lebih dari seminggu)         -> TERLAMBAT
+// Lot yang dihitung = lot yang Tanggal Pack-nya jatuh di dalam periode. Jika satu KIKC celup lebih dari sekali, tanggal celup PERTAMA dipakai (awal proses);
+// jika satu KIKC dipack beberapa kali, Tanggal Pack TERAKHIR yang dipakai (sama seperti peta PACK di tab WIP). Lot tanpa tanggal celup, atau pack lebih awal dari celup,
+// diberi status "cek" dan tidak ikut dihitung persentase. Persentase dan ringkasan dihitung di halaman (mengikuti pencarian), server hanya mengirim barisnya.
+const DELIVERY_BATAS_HARI = 5;
+const DELIVERY_TELAT_HARI = 7;
+const DELIVERY_MAX = 5000;
+function kgNum_(v) {
+  let s = str_(v).trim().replace(/[^\d.,\-]/g, '');
+  if (!s) return 0;
+  const c = s.lastIndexOf(','), d = s.lastIndexOf('.');
+  if (c >= 0 && d >= 0) s = c > d ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (c >= 0) s = s.replace(/\./g, '').replace(/,(?=.*,)/g, '').replace(',', '.');
+  else if (d >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function daysBetweenIso_(a, b) {
+  const pa = a.split('-'), pb = b.split('-');
+  return Math.round((Date.UTC(+pb[0], +pb[1] - 1, +pb[2]) - Date.UTC(+pa[0], +pa[1] - 1, +pa[2])) / 86400000);
+}
+function getDelivery(from, to, force) {
+  try {
+    const clp = getList('clp', !!force);
+    if (!clp || clp.error) throw new Error((clp && clp.error) || 'Tab Celup tidak bisa dibaca.');
+    const pack = getPackMap_(!!force);
+    if (pack.missing) throw new Error('Sheet "' + SHEET_PACK + '" tidak ditemukan di spreadsheet.');
+    const h = clp.headers, ix = function (n) { return h.indexOf(n); };
+    const iK = ix('KIKC'), iT = ix('TANGGAL'), iB = ix('NO BENANG'), iW = ix('WARNA'), iM = ix('MESIN'), iG = ix('KG');
+    if (iK < 0 || iT < 0) throw new Error('Kolom KIKC / TANGGAL tidak ditemukan di tab Celup.');
+    const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+    const first = Object.create(null);   // KIKC -> data celup paling awal
+    (clp.rows || []).forEach(function (r) {
+      const k = normKikc_(r[iK]), dmy = str_(r[iT]).trim(), iso = planIso_(dmy);
+      if (!k || !isoRe.test(iso)) return;
+      const cur = first[k];
+      if (!cur || iso < cur.iso) first[k] = { iso: iso, dmy: dmy, noBenang: str_(r[iB]).trim(), warna: str_(r[iW]).trim(), mesin: str_(r[iM]).trim(), kg: 0 };
+      if (first[k].iso === iso) first[k].kg += kgNum_(r[iG]);   // beberapa baris celup pada hari yang sama dijumlahkan
+    });
+    const f = str_(from).trim(), t = str_(to).trim();
+    const out = [];
+    Object.keys(pack.map || {}).forEach(function (k) {
+      const pdmy = pack.map[k], piso = planIso_(pdmy);
+      if (!isoRe.test(piso)) return;
+      if ((f && piso < f) || (t && piso > t)) return;
+      const c = first[k];
+      let hari = null, status = 'cek';
+      if (c) {
+        hari = daysBetweenIso_(c.iso, piso);
+        if (hari >= 0) status = hari <= DELIVERY_BATAS_HARI ? 'tepat' : (hari <= DELIVERY_TELAT_HARI ? 'toleransi' : 'telat');
+      }
+      out.push({ kikc: k, noBenang: c ? c.noBenang : '', warna: c ? c.warna : '', mesin: c ? c.mesin : '', kg: c ? Math.round(c.kg * 100) / 100 : 0,
+        celup: c ? c.dmy : '', pack: pdmy, packIso: piso, hari: hari, status: status });
+    });
+    out.sort(function (a, b) { return a.packIso < b.packIso ? 1 : (a.packIso > b.packIso ? -1 : (a.kikc < b.kikc ? -1 : 1)); });
+    const truncated = out.length > DELIVERY_MAX;
+    return { success: true, rows: truncated ? out.slice(0, DELIVERY_MAX) : out, total: out.length, truncated: truncated,
+      batas: DELIVERY_BATAS_HARI, telat: DELIVERY_TELAT_HARI, from: f, to: t };
   } catch (e) {
     return { error: e.message };
   }

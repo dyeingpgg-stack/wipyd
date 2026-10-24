@@ -1,5 +1,5 @@
-# wipyd
-cek wip dyeing
+# DyePocket
+(dulu "WIP Yarn Dyeing") cek wip dyeing
 
 ## Dua link: Admin dan Viewer (tanpa login)
 
@@ -9,7 +9,7 @@ cek wip dyeing
 | Dipakai oleh | pengelola data | siapa saja yang hanya perlu melihat |
 | Tab Input, Ubah/Hapus data | ada | tidak ada |
 | Alokasi mesin, Reset Alokasi, Ready/Stop mesin | bisa diubah | hanya terlihat |
-| Tab WOD, GRM, Plan, Data, Mesin, Celup | ada | ada |
+| Tab WOD, GRM, Plan, WIP, Mesin, Celup | ada | ada |
 | Tombol ganti mode | ada | tidak ada (terkunci) |
 
 - Di mode Admin ada tombol Bagikan (ikon tiga titik tersambung) di kanan atas, di sebelah tombol rotasi, mode terang/gelap, dan muat ulang. Ketuk untuk membagikan link Viewer lewat WhatsApp dan sejenisnya (atau otomatis disalin jika perangkat tidak mendukung berbagi).
@@ -146,3 +146,19 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Tab Data:** pencarian menelusuri semua tanggal. Selama mencari, tabel tidak lagi menampilkan data satu hari sebagai hasil; tekan Enter untuk mencari segera. Bila `Kode.gs` di server belum versi terbaru, pencarian memakai 300 data terakhir dan muncul pesan agar `Kode.gs` di-deploy ulang.
 - **Halaman 2:** urutan tab RPH lalu Pack (tab Halaman 1 dihapus; kembali lewat ikon rumah). Kolom KIKC dipindah ke posisi pertama (kolom beku). Tiap tab punya **Periode** (tanggal awal s/d akhir menurut kolom tanggal sheet, default tanggal 1 bulan berjalan s/d hari ini, tombol "Bulan ini"). Kata kunci pencarian menelusuri semua tanggal dan mengabaikan periode (maks. 2.000 hasil).
 - Perbarui `Kode.gs` (Deploy versi baru), `index.html`, `page2.html`, `sw.js` (cache v58).
+
+
+## Perubahan terbaru: DyePocket, tab WIP, resume RPH, tab Delivery
+
+- Nama aplikasi sekarang **DyePocket**. Tab **Data** diganti nama menjadi **WIP** (isi tab tidak berubah).
+- **Halaman 2 > RPH**: tombol **Resume per No Benang** (di bawah kolom pencarian). Isinya JNS & NO BENANG, jumlah lot (KIKC), Qty (Kg), Cones, dan % Kg,
+  diurutkan dari Kg terbesar, dengan baris TOTAL. Resume mengikuti periode tanggal atau kata kunci pencarian yang sedang dipakai. Tombol **Daftar** kembali ke tabel biasa.
+- **Halaman 2 > Delivery** (baru, Admin dan Viewer): lama proses = **tanggal pack (sheet PACK) - tanggal celup (tab Celup / sheet CLP)**.
+  - lama <= 5 hari: **Tepat waktu**; 6-7 hari: **Toleransi**; lebih dari 7 hari: **Terlambat**.
+  - Persentase Ketepatan Delivery = lot tepat waktu / semua lot yang bisa dihitung (jumlah lot), ditambah persen dalam batas 7 hari, rata-rata lama, dan persen Kg tepat waktu.
+  - Periode menurut **tanggal pack** (default bulan ini). Ada pencarian dan saringan status. Kolom LEWAT BATAS = berapa hari melewati batas 5 hari.
+  - Jika satu KIKC celup lebih dari sekali, tanggal celup PERTAMA dipakai; jika dipack beberapa kali, tanggal pack TERAKHIR dipakai.
+  - Lot tanpa tanggal celup di tab Celup, atau pack lebih awal dari celup, berstatus **Cek data** dan tidak ikut persentase.
+  - Batas hari diatur di `Kode.gs`: `DELIVERY_BATAS_HARI` (5) dan `DELIVERY_TELAT_HARI` (7).
+- Pemasangan: ganti isi `Kode.gs` di Apps Script lalu Deploy versi baru (ada fungsi baru `getDelivery`); unggah `index.html`, `page2.html`, `viewer.html`, `manifest*.webmanifest`, `sw.js`.
+  Nama sheet data "WIP YD (Jawaban)" sengaja TIDAK diganti agar data lama tetap terbaca.

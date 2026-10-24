@@ -1,6 +1,6 @@
 {
-  "name": "WIP Yarn Dyeing",
-  "short_name": "WIP YD",
+  "name": "DyePocket",
+  "short_name": "DyePocket",
   "description": "Catat posisi dan QC benang Yarn Dyeing per KIKC",
   "id": "./",
   "start_url": "./",
