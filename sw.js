@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
 
   // Halaman: ambil terbaru dulu, jika offline pakai salinan
   if (req.mode === 'navigate') {
-    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : 'index.html';   // halaman 1 dan halaman 2 disimpan terpisah
+    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : 'index.html';   // home dan page 2 disimpan terpisah
     e.respondWith(
       fetch(req).then((res) => {
         const copy = res.clone();
