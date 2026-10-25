@@ -173,10 +173,15 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Benang wajib dipilih dari daftar SUP. Berat wajib diisi jika ada cone. Cone harus bilangan bulat. Server menghitung ulang ∑ Cone dan ∑ Kg.
 - Pasang ulang `Kode.gs` (fungsi baru `getSoftRef`, `saveSoft`) dan `index.html`, lalu Deploy versi baru.
 
-## Page 2 > tab SOFT: laporan "STOCK WIP SOFT WINDING HARIAN"
+## Pembaruan v35: SOFT (input dan tab Page 2)
 
-- Tab **SOFT** di Page 2 (Admin dan Viewer) menampilkan lembar laporan: judul **STOCK WIP SOFT WINDING HARIAN**, **Hari/Tanggal** (contoh: Minggu, 25 Oktober 2026), lalu tabel
-  No | Benang | Supplier | Keterangan | Berat (Kg/Cone) | STOCK WIP (CONE): SSM, FADIS, TAIHE | ∑ Cone | ∑ Kg, dengan baris TOTAL.
-- Data dari sheet **SOFT** menurut tanggal yang dipilih (panah hari sebelumnya/berikutnya, kotak tanggal, tombol Hari ini). Jika tanggal itu diinput beberapa kali, semua barisnya tampil.
-- Tombol **Cetak / PDF** mencetak lembar A4 mendatar (pilih "Simpan sebagai PDF" di dialog cetak). Nama file bawaan: STOCK WIP SOFT WINDING HARIAN yyyy-mm-dd.
-- Pasang ulang `Kode.gs` (fungsi baru `getSoftHari`) dan `page2.html` / `Page2.html`.
+- **Input SOFT, Benang dan Supplier = kotak pilihan yang bisa diketik.** Daftar diambil dari sheet **SUP**: kolom A = Benang, kolom B = Supplier
+  (dua daftar terpisah, bukan pasangan per baris). Ketuk kolom lalu pilih dari daftar, atau ketik untuk menyaring.
+  Nama yang belum ada muncul sebagai pilihan **"+ Tambah benang/supplier baru"** (tanpa dialog peramban); hasilnya bertanda hijau "(baru)" dan
+  ditulis ke SUP (di bawah isi terakhir kolom itu) saat **Simpan SOFT**. Nama yang diketik tapi tidak dipilih/ditambah ditandai merah dan ditolak saat simpan.
+- Daftar SUP dibaca segar dari sheet setiap kali form SOFT dibuka (daftar tersimpan di HP tampil dulu); cache server diperpendek menjadi 60 detik (`SUP_TTL`).
+- **Page 2 > SOFT sekarang berupa tabel data** seperti Pack dan RPH: Periode (default bulan ini), pencarian semua tanggal, halaman 50/100 baris,
+  terbaru di atas, kolom BENANG beku di kiri; Timestamp dan ID UNIK di ujung kanan. Sumber: sheet **SOFT**.
+- Unduh **PDF/PNG laporan harian** (infografis STOCK WIP SOFT WINDING) tetap ada di bagian bawah tab SOFT, memakai tanggal laporan (bawaan = tanggal data terbaru).
+- Pasang: ganti `Kode.gs` (Deploy versi baru), `index.html`, `page2.html` (Apps Script: file HTML `Index` dan `Page2`), `sw.js` (cache v60).
+  `Kode.gs`, `index.html`, dan `page2.html` harus diperbarui bersamaan.

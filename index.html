@@ -633,6 +633,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .sf-in:focus{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 14px rgba(var(--c-rgb),.35)}
   .sf-in.bad{border-color:var(--rose);box-shadow:0 0 0 1px var(--rose),0 0 12px rgba(var(--r-rgb),.3)}
   select.sf-in{padding-right:4px}
+  .sf-in.is-new{border-color:var(--lime);box-shadow:0 0 0 1px var(--lime),0 0 12px rgba(var(--g-rgb),.28)}
   .sf-t .c-b{min-width:190px}.sf-t .c-s{min-width:140px}.sf-t .c-k{min-width:150px}.sf-t .c-n{width:92px;min-width:84px}
   .sf-num{text-align:right;font-variant-numeric:tabular-nums}
   .sf-out{text-align:right;white-space:nowrap;padding:6px 12px !important;font:700 15px var(--display);font-variant-numeric:tabular-nums;color:var(--lime)}
@@ -644,6 +645,20 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .sf-tools{display:flex;gap:10px;margin:12px 0 18px;flex-wrap:wrap}
   .sf-tools .btn-sm{margin:0}
   #softForm .actions{max-width:520px}
+  .sf-cb{position:relative}
+  .sf-cb .sf-in{padding-right:36px}
+  .sf-caret{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:30px;height:34px;border:0;border-radius:8px;background:transparent;color:var(--dim);display:grid;place-items:center;padding:0;cursor:pointer}
+  .sf-caret svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .sf-caret:hover{color:var(--cyan)}
+  .sf-pop{position:fixed;z-index:200;margin:0;padding:6px;list-style:none;overflow-y:auto;border-radius:14px;border:1px solid var(--edge-strong);background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 24px rgba(var(--c-rgb),.12);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .sf-pop[hidden]{display:none}
+  .sf-pop-i{padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px;color:var(--text);overflow-wrap:anywhere}
+  .sf-pop-i:hover,.sf-pop-i.act{background:rgba(var(--c-rgb),.14)}
+  .sf-pop-i.cur{color:var(--cyan);font-weight:700}
+  .sf-pop-i em{font-style:normal;color:var(--lime);font-size:13px}
+  .sf-pop-i.add{margin-top:4px;border:1px dashed rgba(var(--g-rgb),.55);color:var(--lime)}
+  .sf-pop-i.add b{color:var(--text)}
+  .sf-pop-empty{padding:12px;color:var(--dim);font-size:14px}
 </style>
 </head>
 <body>
@@ -788,7 +803,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
           <small>Timestamp dan ID Unik terisi otomatis saat disimpan (satu ID Unik per baris). Tanggal bawaan = hari ini, bisa diubah.</small>
         </div>
         <p class="sf-status" id="sfStatus">Memuat daftar benang dari sheet SUP...</p>
-        <datalist id="sfBenang"></datalist>
         <div class="sf-wrap">
           <table class="sf-t">
             <thead>
@@ -3298,7 +3312,7 @@ var Code128 = (function () {
 
 
   /* ---------- Input SOFT: stok WIP (cone) per benang di mesin SSM, FADIS, TAIHE ---------- */
-  var SF = { ref: null, byB: {}, sups: [], saving: false, cid: '', kind: 'wip' };
+  var SF = { ref: null, byB: {}, sups: [], pendB: {}, pendS: {}, saving: false, cid: '', kind: 'wip' };   // pendB/pendS = benang/supplier baru yang diketik tapi belum disimpan ke sheet SUP
   var SF_MACH = ['ssm', 'fadis', 'taihe'];
   function sfNum(v) {   // desimal: koma atau titik
     var t = String(v === undefined || v === null ? '' : v).trim().replace(',', '.');
@@ -3309,56 +3323,150 @@ var Code128 = (function () {
   function sfFmt(n, d) { return (+n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: d === undefined ? 2 : d }); }
   function sfKey(v) { return String(v || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
   function sfStatus(msg, err) { var el = $('#sfStatus'); el.textContent = msg; el.classList.toggle('err', !!err); }
-  function sfIndex(ref) {
-    SF.ref = ref; SF.byB = {}; SF.sups = [];
-    var seenS = {};
-    (ref.pairs || []).forEach(function (x) {
-      var k = sfKey(x[0]);
-      if (!SF.byB[k]) SF.byB[k] = { name: x[0], sups: [] };
-      if (x[1] && SF.byB[k].sups.indexOf(x[1]) < 0) SF.byB[k].sups.push(x[1]);
-      if (x[1] && !seenS[sfKey(x[1])]) { seenS[sfKey(x[1])] = 1; SF.sups.push(x[1]); }
+  function sfCmp(a, b) { return String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }); }
+  function sfRebuild() {   // sheet SUP: kolom A = daftar Benang, kolom B = daftar Supplier (dua daftar terpisah); ditambah entri baru yang belum disimpan
+    var ref = SF.ref || { benang: [], suppliers: [] }, seenS = {};
+    SF.byB = {}; SF.sups = [];
+    (ref.benang || []).forEach(function (n) { SF.byB[sfKey(n)] = { name: n, pending: false }; });
+    Object.keys(SF.pendB).forEach(function (k) { if (!SF.byB[k]) SF.byB[k] = { name: SF.pendB[k], pending: true }; });
+    (ref.suppliers || []).concat(Object.keys(SF.pendS).map(function (k) { return SF.pendS[k]; })).forEach(function (x) {
+      var k = sfKey(x); if (!seenS[k]) { seenS[k] = 1; SF.sups.push(x); }
     });
-    SF.sups.sort(); 
-    var names = Object.keys(SF.byB).map(function (k) { return SF.byB[k].name; }).sort();
-    $('#sfBenang').innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('');
-    $$('#sfBody tr').forEach(sfFillSup);
-    sfStatus(names.length + ' benang dan ' + SF.sups.length + ' supplier dari sheet SUP. Ketik atau pilih Benang; Supplier menyesuaikan.', false);
+    SF.sups.sort(sfCmp);
+    sfStatus(Object.keys(SF.byB).length + ' benang dan ' + SF.sups.length + ' supplier dari sheet SUP. Ketuk kolomnya lalu pilih dari daftar, atau ketik nama baru dan pilih "+ Tambah" (masuk ke SUP saat Simpan SOFT).', false);
   }
+  function sfIndex(ref) { SF.ref = ref; sfRebuild(); }
   function sfLoadRef(force) {
-    if (!SF.ref) { try { var c = JSON.parse(lsGet('wipyd_sup') || 'null'); if (c && c.pairs) sfIndex(c); } catch (e) { /* abaikan */ } }
+    if (!SF.ref) { try { var c = JSON.parse(lsGet('wipyd_sup2') || 'null'); if (c && c.benang) sfIndex(c); } catch (e) { /* abaikan */ } }
     return gs('getSoftRef', !!force).then(function (r) {
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
-      lsSet('wipyd_sup', JSON.stringify(r));
+      lsSet('wipyd_sup2', JSON.stringify(r));
+      SF.at = Date.now();
       sfIndex(r);
     }).catch(function (e) {
       sfStatus((SF.ref ? 'Gagal memperbarui daftar SUP (memakai daftar tersimpan). ' : 'Daftar benang belum termuat. ') + errMsg(e), true);
     });
   }
+  function sfCbHtml(cls, ph, label) {
+    return '<div class="sf-cb"><input class="sf-in ' + cls + '" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + ph + '" aria-label="' + label + '">' +
+      '<button type="button" class="sf-caret" tabindex="-1" aria-label="Buka daftar ' + label.toLowerCase() + '"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>';
+  }
   function sfRowEl() {
     var tr = document.createElement('tr');
     tr.innerHTML =
-      '<td class="c-b"><input class="sf-in f-benang" type="text" list="sfBenang" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Pilih / ketik benang" aria-label="Benang"></td>' +
-      '<td class="c-s"><select class="sf-in f-sup" aria-label="Supplier"></select></td>' +
+      '<td class="c-b">' + sfCbHtml('f-benang', 'Pilih / ketik benang', 'Benang') + '</td>' +
+      '<td class="c-s">' + sfCbHtml('f-sup', 'Pilih / ketik supplier', 'Supplier') + '</td>' +
       '<td class="c-k"><input class="sf-in f-ket" type="text" placeholder="Keterangan" aria-label="Keterangan"></td>' +
       '<td class="c-n"><input class="sf-in sf-num f-berat" type="text" inputmode="decimal" placeholder="0,00" aria-label="Berat Kg per Cone"></td>' +
       SF_MACH.map(function (m) { return '<td class="c-n"><input class="sf-in sf-num f-m" data-m="' + m + '" type="text" inputmode="numeric" placeholder="0" aria-label="Stock WIP ' + m.toUpperCase() + ' (cone)"></td>'; }).join('') +
       '<td class="sf-out cone o-cone">0</td><td class="sf-out o-kg">0</td>' +
       '<td><button type="button" class="sf-del" aria-label="Hapus baris" title="Hapus baris">&times;</button></td>';
-    sfFillSup(tr);
     return tr;
   }
   function sfCanon(tr) { var v = tr.querySelector('.f-benang').value; return v.trim() ? SF.byB[sfKey(v)] || null : null; }
-  function sfFillSup(tr) {   // pilihan Supplier: milik benang terpilih (dari SUP), atau semua supplier bila benang belum dipilih
-    var sel = tr.querySelector('.f-sup'), cur = sel.value, b = sfCanon(tr), list = b ? b.sups : SF.sups;
-    var html = (list.length === 1 && b) ? '' : '<option value="">- pilih -</option>';
-    html += list.map(function (x) { return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join('');
-    sel.innerHTML = html;
-    if (cur && list.indexOf(cur) >= 0) sel.value = cur;
-    else if (b && list.length === 1) sel.value = list[0];
+  function sfSupCanon(v) {   // nama supplier persis seperti di SUP (atau supplier baru yang sudah ditambahkan); '' bila belum ada
+    var k = sfKey(v);
+    for (var i = 0; i < SF.sups.length; i++) if (sfKey(SF.sups[i]) === k) return SF.sups[i];
+    return '';
+  }
+  function sfIsCb(el) { return !!(el && el.classList && (el.classList.contains('f-benang') || el.classList.contains('f-sup'))); }
+
+  /* Kotak pilihan Benang / Supplier: satu daftar mengambang dipakai bersama (tidak terpotong tabel), disaring saat mengetik. */
+  function sfEntries(all, typed, showAll) {   // daftar yang tampil; nama yang diketik tapi belum ada ditawarkan sebagai "+ Tambah"
+    var q = showAll ? '' : sfKey(typed), a = [], b = [];
+    all.forEach(function (x) {
+      if (!q) { a.push(x); return; }
+      var i = sfKey(x.name).indexOf(q);
+      if (i === 0) a.push(x); else if (i > 0) b.push(x);
+    });
+    var list = a.concat(b).slice(0, 100).map(function (x) { return { name: x.name, pending: !!x.pending }; });
+    var t = String(typed || '').replace(/\s+/g, ' ').trim(), k = sfKey(t);
+    var exact = !!k && all.some(function (x) { return sfKey(x.name) === k; });
+    if (t && !exact) list.push({ add: true, name: t });
+    return list;
+  }
+  var SFP = { el: null, inp: null, kind: '', ent: [], act: -1 };
+  function sfPop() {
+    if (SFP.el) return SFP.el;
+    var u = document.createElement('ul');
+    u.className = 'sf-pop'; u.setAttribute('role', 'listbox'); u.hidden = true;
+    u.addEventListener('mousedown', function (e) { e.preventDefault(); });   // fokus tetap di kolom isian
+    u.addEventListener('click', function (e) {
+      var li = e.target.closest ? e.target.closest('[data-i]') : null;
+      if (li) sfPick(parseInt(li.getAttribute('data-i'), 10));
+    });
+    document.body.appendChild(u);
+    SFP.el = u;
+    return u;
+  }
+  function sfAllFor(kind) {
+    if (kind === 'b') return Object.keys(SF.byB).map(function (k) { return SF.byB[k]; }).sort(function (a, b) { return sfCmp(a.name, b.name); });
+    return SF.sups.map(function (x) { return { name: x, pending: !!SF.pendS[sfKey(x)] }; });
+  }
+  function sfPlace() {
+    var u = SFP.el, inp = SFP.inp;
+    if (!u || u.hidden || !inp) return;
+    var b = inp.getBoundingClientRect(), vv = window.visualViewport;
+    var vh = vv ? vv.height + vv.offsetTop : (window.innerHeight || document.documentElement.clientHeight);
+    var vw = window.innerWidth || document.documentElement.clientWidth;
+    var below = vh - b.bottom - 8, above = b.top - 8, up = below < 170 && above > below;
+    u.style.maxHeight = Math.max(110, Math.min(280, up ? above : below)) + 'px';
+    var w = Math.max(b.width, 240);
+    u.style.width = w + 'px';
+    u.style.left = Math.max(8, Math.min(b.left, vw - w - 8)) + 'px';
+    if (up) { u.style.top = 'auto'; u.style.bottom = (vh - b.top + 4) + 'px'; }
+    else { u.style.bottom = 'auto'; u.style.top = (b.bottom + 4) + 'px'; }
+  }
+  function sfClose() {
+    if (SFP.inp) SFP.inp.setAttribute('aria-expanded', 'false');
+    if (SFP.el) SFP.el.hidden = true;
+    SFP.inp = null; SFP.act = -1;
+  }
+  function sfOpen(inp, showAll) {
+    var kind = inp.classList.contains('f-benang') ? 'b' : 's', noun = kind === 'b' ? 'benang' : 'supplier';
+    if (SFP.inp && SFP.inp !== inp) SFP.inp.setAttribute('aria-expanded', 'false');
+    var ent = sfEntries(sfAllFor(kind), inp.value, showAll);
+    SFP.inp = inp; SFP.kind = kind; SFP.ent = ent; SFP.act = -1;
+    inp.setAttribute('aria-expanded', 'true');
+    var u = sfPop();
+    if (!ent.length) u.innerHTML = '<li class="sf-pop-empty">' + (SF.ref ? 'Daftar ' + noun + ' di sheet SUP masih kosong. Ketik nama untuk menambah baru.' : 'Daftar ' + noun + ' belum termuat. Ketuk tombol muat ulang.') + '</li>';
+    else u.innerHTML = ent.map(function (x, i) {
+      if (x.add) return '<li class="sf-pop-i add" role="option" data-i="' + i + '">+ Tambah ' + noun + ' baru: <b>' + esc(x.name) + '</b></li>';
+      return '<li class="sf-pop-i' + (sfKey(x.name) === sfKey(inp.value) ? ' cur' : '') + '" role="option" data-i="' + i + '">' + esc(x.name) + (x.pending ? ' <em>(baru)</em>' : '') + '</li>';
+    }).join('');
+    u.scrollTop = 0;
+    u.hidden = false;
+    sfPlace();
+  }
+  function sfPick(i) {
+    var inp = SFP.inp, x = SFP.ent[i];
+    if (!inp || !x) return;
+    var kind = SFP.kind;
+    if (x.add) {
+      if (x.name.length > 60) { toast('Nama ' + (kind === 'b' ? 'benang' : 'supplier') + ' terlalu panjang (maksimal 60 huruf).', 'warn', 4000); return; }
+      if (kind === 'b') SF.pendB[sfKey(x.name)] = x.name; else SF.pendS[sfKey(x.name)] = x.name;
+      sfRebuild();
+      inp.value = x.name;
+    } else inp.value = x.name;
+    inp.classList.remove('bad');
+    sfClose();
+    sfCalc();
+    if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) inp.blur();   // di HP: tutup keyboard setelah memilih
+  }
+  function sfSettle(el) {   // selesai mengetik: samakan penulisan dengan SUP; nama yang belum ada ditandai merah sampai dipilih "+ Tambah"
+    var v = el.value.replace(/\s+/g, ' ').trim();
+    if (!v) { el.classList.remove('bad'); return; }
+    var isB = el.classList.contains('f-benang'), name = isB ? (SF.byB[sfKey(v)] ? SF.byB[sfKey(v)].name : '') : sfSupCanon(v);
+    if (name) { el.value = name; el.classList.remove('bad'); }
+    else {
+      el.classList.add('bad');
+      sfStatus((isB ? 'Benang' : 'Supplier') + ' "' + v + '" belum ada di SUP. Ketuk kolomnya lalu pilih "+ Tambah ' + (isB ? 'benang' : 'supplier') + ' baru" agar masuk ke SUP.', true);
+    }
+    sfCalc();
   }
   function sfRowData(tr) {
-    var o = { benang: tr.querySelector('.f-benang').value.trim(), supplier: tr.querySelector('.f-sup').value, keterangan: tr.querySelector('.f-ket').value.trim(), berat: sfNum(tr.querySelector('.f-berat').value) };
+    var o = { benang: tr.querySelector('.f-benang').value.trim(), supplier: tr.querySelector('.f-sup').value.replace(/\s+/g, ' ').trim(), keterangan: tr.querySelector('.f-ket').value.trim(), berat: sfNum(tr.querySelector('.f-berat').value) };
     SF_MACH.forEach(function (m) { o[m] = parseInt(tr.querySelector('[data-m="' + m + '"]').value || '0', 10) || 0; });
     o.cone = o.ssm + o.fadis + o.taihe;
     o.kg = isNaN(o.berat) ? 0 : Math.round(o.cone * o.berat * 100) / 100;
@@ -3374,6 +3482,9 @@ var Code128 = (function () {
       var o = sfRowData(tr);
       tr.querySelector('.o-cone').textContent = sfFmt(o.cone, 0);
       tr.querySelector('.o-kg').textContent = sfFmt(o.kg, 2);
+      var cb = sfCanon(tr);
+      tr.querySelector('.f-benang').classList.toggle('is-new', !!(cb && cb.pending));
+      tr.querySelector('.f-sup').classList.toggle('is-new', !!(o.supplier && SF.pendS[sfKey(o.supplier)]));
       SF_MACH.forEach(function (m) { t[m] += o[m]; });
       t.cone += o.cone; t.kg += o.kg;
     });
@@ -3382,28 +3493,68 @@ var Code128 = (function () {
   }
   function sfAddRow() { var tr = sfRowEl(); $('#sfBody').appendChild(tr); return tr; }
   function sfReset(keepDate) {
+    SF.pendB = {}; SF.pendS = {};
     $('#sfBody').innerHTML = '';
     for (var i = 0; i < 3; i++) sfAddRow();
     if (!keepDate) $('#sfTanggal').value = todayStr();
     SF.cid = '';
+    if (SF.ref) sfRebuild();
     sfCalc();
   }
   $('#sfBody').addEventListener('input', function (e) {
-    var el = e.target, tr = el.closest('tr');
+    var el = e.target;
     if (el.classList.contains('f-m')) { var c = el.value.replace(/\D/g, ''); if (c !== el.value) el.value = c; }
     if (el.classList.contains('f-berat')) { var b = el.value.replace(/[^\d.,]/g, ''); if (b !== el.value) el.value = b; }
     el.classList.remove('bad');
-    if (el.classList.contains('f-benang') && sfCanon(tr)) { tr.querySelector('.f-sup').classList.remove('bad'); sfFillSup(tr); }
+    if (sfIsCb(el)) sfOpen(el, false);   // mengetik: daftar disaring
     sfCalc();
   });
-  $('#sfBody').addEventListener('change', function (e) {
-    var el = e.target, tr = el.closest('tr');
-    if (el.classList.contains('f-benang')) {
-      var b = sfCanon(tr);
-      if (b) el.value = b.name;   // tulis ulang persis seperti di sheet SUP
-      sfFillSup(tr);
+  $('#sfBody').addEventListener('focusin', function (e) { if (sfIsCb(e.target)) sfOpen(e.target, true); });
+  $('#sfBody').addEventListener('focusout', function (e) {
+    var el = e.target;
+    if (!sfIsCb(el)) return;
+    setTimeout(function () { if (document.activeElement !== el) { if (SFP.inp === el) sfClose(); sfSettle(el); } }, 120);
+  });
+  $('#sfBody').addEventListener('keydown', function (e) {
+    var el = e.target;
+    if (!sfIsCb(el)) return;
+    var open = !!(SFP.el && !SFP.el.hidden && SFP.inp === el), n = SFP.ent.length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { sfOpen(el, true); return; }
+      if (!n) return;
+      SFP.act = e.key === 'ArrowDown' ? (SFP.act + 1) % n : (SFP.act <= 0 ? n - 1 : SFP.act - 1);
+      Array.prototype.forEach.call(SFP.el.children, function (li, i) { li.classList.toggle('act', i === SFP.act); });
+      var cur = SFP.el.children[SFP.act]; if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();   // Enter di kotak pilihan tidak mengirim form
+      if (!open) return;
+      var i = SFP.act;
+      if (i < 0) {   // belum menyorot: ambil yang namanya persis sama, kalau tidak ada pilih "+ Tambah"
+        var k = sfKey(el.value);
+        for (var j = 0; j < n; j++) if (!SFP.ent[j].add && sfKey(SFP.ent[j].name) === k) { i = j; break; }
+        if (i < 0) for (var j2 = 0; j2 < n; j2++) if (SFP.ent[j2].add) { i = j2; break; }
+        if (i < 0 && n === 1) i = 0;
+      }
+      if (i >= 0) sfPick(i);
+    } else if (e.key === 'Escape' && open) { e.stopPropagation(); sfClose(); }
+  });
+  $('#sfBody').addEventListener('click', function (e) {
+    var cb = e.target.closest ? e.target.closest('.sf-caret') : null;
+    if (cb) {   // tombol panah: buka (atau tutup) daftar lengkap
+      var inp = cb.parentNode.querySelector('.sf-in');
+      if (SFP.inp === inp && SFP.el && !SFP.el.hidden) { sfClose(); return; }
+      inp.focus(); sfOpen(inp, true);
+      return;
     }
-    sfCalc();
+    var t = e.target;
+    if (sfIsCb(t) && !(SFP.inp === t && SFP.el && !SFP.el.hidden)) sfOpen(t, true);
+  });
+  window.addEventListener('scroll', function (e) { if (SFP.el && !SFP.el.hidden && e.target !== SFP.el) sfPlace(); }, true);
+  window.addEventListener('resize', sfPlace);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', sfPlace);
+  document.addEventListener('mousedown', function (e) {   // klik di luar kotak pilihan menutup daftar
+    if (SFP.el && !SFP.el.hidden && !(e.target.closest && (e.target.closest('.sf-cb') || e.target.closest('.sf-pop')))) sfClose();
   });
   $('#sfBody').addEventListener('click', function (e) {
     var d = e.target.closest ? e.target.closest('.sf-del') : null;
@@ -3434,16 +3585,27 @@ var Code128 = (function () {
       var o = sfRowData(tr), ok = true;
       function mark(sel) { tr.querySelector(sel).classList.add('bad'); ok = false; if (!bad) bad = tr.querySelector(sel); }
       if (!sfCanon(tr)) mark('.f-benang');
+      var spc = o.supplier ? sfSupCanon(o.supplier) : '';
+      if (o.supplier && !spc) mark('.f-sup');
       if (isNaN(o.berat) || (o.cone > 0 && !(o.berat > 0))) mark('.f-berat');
-      if (ok) rows.push({ benang: sfCanon(tr).name, supplier: o.supplier, keterangan: o.keterangan, berat: o.berat, ssm: o.ssm, fadis: o.fadis, taihe: o.taihe });
+      if (ok) rows.push({ benang: sfCanon(tr).name, baruBenang: !!sfCanon(tr).pending, supplier: spc, baruSupplier: !!(spc && SF.pendS[sfKey(spc)]), keterangan: o.keterangan, berat: o.berat, ssm: o.ssm, fadis: o.fadis, taihe: o.taihe });
     });
-    if (bad) { toast('Periksa kolom yang bertanda merah: Benang harus dipilih dari daftar SUP, Berat wajib diisi jika ada cone.', 'warn', 5000); if (bad.scrollIntoView) bad.scrollIntoView({ block: 'center', inline: 'center' }); bad.focus(); return; }
+    if (bad) { toast('Periksa kolom yang bertanda merah: Benang dan Supplier harus dipilih dari daftar SUP atau ditambah lewat "+ Tambah"; Berat wajib diisi jika ada cone.', 'warn', 6000); if (bad.scrollIntoView) bad.scrollIntoView({ block: 'center', inline: 'center' }); bad.focus(); return; }
     if (!rows.length) { toast('Belum ada baris yang diisi.', 'warn'); return; }
     if (!SF.cid) SF.cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // cid sama dipakai saat coba ulang, supaya tidak tersimpan dobel
     SF.saving = true; sfRenderSave();
     gs('saveSoft', { mode: 'admin', tanggal: tgl, rows: rows, cid: SF.cid }).then(function (msg) {
-      toast(msg || 'Data SOFT tersimpan.', 'ok', 3000);
+      toast(msg || 'Data SOFT tersimpan.', 'ok', 4500);
+      var hadNew = rows.some(function (r) { return r.baruBenang || r.baruSupplier; });
+      if (hadNew && SF.ref) {   // masukkan dulu ke daftar lokal agar langsung bisa dipilih, lalu muat ulang dari SUP
+        rows.forEach(function (r) {
+          if (r.baruBenang && SF.ref.benang.indexOf(r.benang) < 0) SF.ref.benang.push(r.benang);
+          if (r.baruSupplier && SF.ref.suppliers.indexOf(r.supplier) < 0) SF.ref.suppliers.push(r.supplier);
+        });
+        lsSet('wipyd_sup2', JSON.stringify(SF.ref));
+      }
       sfReset(true);
+      if (hadNew) sfLoadRef(true);
     }).catch(function (err) {
       toast('SOFT gagal disimpan: ' + errMsg(err) + ' Data di form tetap ada, silakan coba lagi.', 'err', 9000);
     }).then(function () { SF.saving = false; sfRenderSave(); });
@@ -3453,7 +3615,8 @@ var Code128 = (function () {
     $$('#inputSwitch button').forEach(function (b) { var on = b.getAttribute('data-in') === SF.kind; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
     $('#wipForm').classList.toggle('is-off', SF.kind === 'soft');
     $('#softForm').classList.toggle('is-off', SF.kind !== 'soft');
-    if (SF.kind === 'soft') { if (!$('#sfBody').children.length) sfReset(false); sfLoadRef(false); }
+    sfClose();
+    if (SF.kind === 'soft') { if (!$('#sfBody').children.length) sfReset(false); if (!SF.ref || Date.now() - (SF.at || 0) > 20000) sfLoadRef(true); }   // daftar SUP dibaca segar dari sheet; daftar tersimpan tampil dulu
     $('#subtitle').textContent = SF.kind === 'soft' ? 'Input SOFT · stok WIP cone' : 'Catat posisi dan QC benang';
   }
   $('#inputSwitch').addEventListener('click', function (e) {
@@ -3463,6 +3626,7 @@ var Code128 = (function () {
 
   /* ---------- Tab ---------- */
   function showView(name) {
+    sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
     if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Terlewat hanya untuk mode Admin
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
