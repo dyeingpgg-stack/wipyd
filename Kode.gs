@@ -1,5 +1,5 @@
 /**
- * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v33: laporan STOCK WIP SOFT WINDING HARIAN di Page 2 (getSoftHari); v32: form Input SOFT (sheet SUP -> sheet SOFT); v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -121,6 +121,9 @@ const API_FUNCS = {
   cariPlan: function (a) { return cariPlan(a[0]); },
   getSheetList: function (a) { return getSheetList(a[0], a[1], a[2], a[3], a[4]); },
   getDelivery: function (a) { return getDelivery(a[0], a[1], a[2]); },
+  getSoftRef: function (a) { return getSoftRef(a[0]); },
+  saveSoft: function (a) { return saveSoft(a[0]); },
+  getSoftHari: function (a) { return getSoftHari(a[0]); },
   getPageUrl: function (a) { return getPageUrl(a[0], a[1]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
   getTerlewat: function (a) { return getTerlewat(a[0], a[1], a[2]); },
@@ -1520,6 +1523,135 @@ function getDelivery(from, to, force) {
     const truncated = out.length > DELIVERY_MAX;
     return { success: true, rows: truncated ? out.slice(0, DELIVERY_MAX) : out, total: out.length, truncated: truncated,
       batas: DELIVERY_BATAS_HARI, telat: DELIVERY_TELAT_HARI, from: f, to: t };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// ================= 2f. Input SOFT (stok WIP cone per benang di mesin SSM, FADIS, TAIHE) =================
+// Referensi: sheet "SUP" (kolom A = Benang, kolom B = Supplier, baris 1 = judul). Tujuan simpan: sheet "SOFT" (dibuat otomatis bila belum ada), SATU BARIS per baris isian:
+//   A Timestamp | B ID UNIK | C TANGGAL | D BENANG | E SUPPLIER | F KETERANGAN | G BERAT (KG/CONE) | H SSM | I FADIS | J TAIHE | K SUM CONE | L SUM KG
+// Timestamp sama untuk semua baris dalam satu pengiriman; ID UNIK berbeda per baris. SUM CONE = SSM + FADIS + TAIHE; SUM KG = SUM CONE x BERAT (dihitung ulang di server).
+const SHEET_SUP = 'SUP';
+const SHEET_SOFT = 'SOFT';
+const SOFT_HEADERS = ['Timestamp', 'ID UNIK', 'TANGGAL', 'BENANG', 'SUPPLIER', 'KETERANGAN', 'BERAT (KG/CONE)', 'SSM', 'FADIS', 'TAIHE', '∑ CONE', '∑ KG'];
+const SUP_TTL = 300;
+function getSoftRef(force) {
+  try {
+    if (!force) { const hit = listCacheGet_('sup'); if (hit && hit.pairs) return hit; }
+    const sh = findSheet_(ss_(), SHEET_SUP);
+    if (!sh) throw new Error('Tab "' + SHEET_SUP + '" tidak ditemukan di spreadsheet.');
+    const last = sh.getLastRow();
+    const pairs = [], seen = Object.create(null);
+    if (last >= 2) {
+      const v = sh.getRange(2, 1, last - 1, 2).getDisplayValues();
+      for (let i = 0; i < v.length; i++) {
+        const b = str_(v[i][0]).replace(/\s+/g, ' ').trim(), sp = str_(v[i][1]).replace(/\s+/g, ' ').trim();
+        if (!b || b.toUpperCase() === 'BENANG') continue;
+        const k = b.toLowerCase() + '|' + sp.toLowerCase();
+        if (seen[k]) continue;
+        seen[k] = true; pairs.push([b, sp]);
+      }
+    }
+    const res = { success: true, pairs: pairs };
+    listCachePut_('sup', res, SUP_TTL);
+    return res;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+function softNum_(v, label, int) {
+  const t = str_(v).trim().replace(',', '.');
+  if (!t) return 0;
+  const n = Number(t);
+  if (!isFinite(n) || n < 0) throw new Error(label + ' harus berupa angka 0 atau lebih.');
+  if (int && Math.floor(n) !== n) throw new Error(label + ' harus bilangan bulat.');
+  return n;
+}
+function saveSoft(p) {
+  p = p || {};
+  needAdmin_(p.mode);
+  const tg = str_(p.tanggal).trim(), m = tg.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) throw new Error('Tanggal tidak valid.');
+  const tanggal = new Date(+m[1], +m[2] - 1, +m[3]);
+  const inRows = Array.isArray(p.rows) ? p.rows : [];
+  if (!inRows.length) throw new Error('Belum ada baris yang diisi.');
+  if (inRows.length > 200) throw new Error('Terlalu banyak baris sekaligus (maksimal 200).');
+  const ref = getSoftRef(false);
+  if (ref.error) throw new Error(ref.error);
+  const known = Object.create(null);
+  ref.pairs.forEach(function (x) { known[x[0].toLowerCase()] = x[0]; });
+  const cid = str_(p.cid).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  const out = [];
+  inRows.forEach(function (r, i) {
+    const no = 'Baris ' + (i + 1) + ': ';
+    const b = str_(r.benang).replace(/\s+/g, ' ').trim(), canon = known[b.toLowerCase()];
+    if (!canon) throw new Error(no + 'Benang "' + b + '" tidak ada di sheet ' + SHEET_SUP + '.');
+    let berat, ssm, fadis, taihe;
+    try {
+      berat = softNum_(r.berat, 'Berat (Kg/Cone)', false);
+      ssm = softNum_(r.ssm, 'SSM', true); fadis = softNum_(r.fadis, 'FADIS', true); taihe = softNum_(r.taihe, 'TAIHE', true);
+    } catch (e) { throw new Error(no + e.message); }
+    const cone = ssm + fadis + taihe;
+    out.push({ benang: canon, supplier: str_(r.supplier).replace(/\s+/g, ' ').trim(), ket: str_(r.keterangan).trim(), berat: berat, ssm: ssm, fadis: fadis, taihe: taihe, cone: cone, kg: Math.round(cone * berat * 100) / 100 });
+  });
+  const lock = lock_();
+  try {
+    if (cid && CacheService.getScriptCache().get('sf_' + cid)) return 'Data SOFT tersimpan (' + out.length + ' baris).';   // kiriman ulang: jangan simpan dua kali
+    const ss = ss_();
+    let sh = findSheet_(ss, SHEET_SOFT);
+    if (!sh) sh = ss.insertSheet(SHEET_SOFT);
+    if (sh.getMaxColumns() < SOFT_HEADERS.length) sh.insertColumnsAfter(sh.getMaxColumns(), SOFT_HEADERS.length - sh.getMaxColumns());
+    if (!str_(sh.getRange(1, 1).getDisplayValue()).trim()) {
+      sh.getRange(1, 1, 1, SOFT_HEADERS.length).setValues([SOFT_HEADERS]).setFontWeight('bold').setBackground('#d9ead3');
+      sh.setFrozenRows(1);
+    }
+    const ts = new Date(), base = newId_(ts).replace(/^YD-/, 'SF-');
+    const vals = out.map(function (o, i) {
+      return [ts, base + '-' + ('0' + (i + 1)).slice(-2), tanggal, o.benang, o.supplier, o.ket, o.berat, o.ssm, o.fadis, o.taihe, o.cone, o.kg];
+    });
+    const row = Math.max(sh.getLastRow(), 1) + 1;
+    const rng = sh.getRange(row, 1, vals.length, SOFT_HEADERS.length);
+    rng.setValues(vals);
+    sh.getRange(row, 1, vals.length, 1).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+    sh.getRange(row, 3, vals.length, 1).setNumberFormat('dd/MM/yyyy');
+    sh.getRange(row, 4, vals.length, 3).setNumberFormat('@');
+    sh.getRange(row, 7, vals.length, 1).setNumberFormat('0.0###');
+    sh.getRange(row, 8, vals.length, 4).setNumberFormat('0');
+    sh.getRange(row, 12, vals.length, 1).setNumberFormat('0.00');
+    if (cid) { try { CacheService.getScriptCache().put('sf_' + cid, '1', 21600); } catch (e) { /* abaikan */ } }
+    return 'Data SOFT tersimpan (' + out.length + ' baris).';
+  } finally {
+    unlock_(lock);
+  }
+}
+
+// Laporan "STOCK WIP SOFT WINDING HARIAN" (Page 2 > tab SOFT): semua baris sheet SOFT yang TANGGAL-nya sama dengan iso (yyyy-MM-dd), urutan sesuai sheet.
+// Jika tanggal itu diinput dalam beberapa kali simpan, semua barisnya tampil. ∑ Cone dan ∑ Kg dihitung dari SSM+FADIS+TAIHE dan Berat. "latest" = tanggal terbaru yang ada isinya.
+function getSoftHari(iso) {
+  try {
+    const want = str_(iso).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(want)) throw new Error('Tanggal tidak valid.');
+    const sh = findSheet_(ss_(), SHEET_SOFT);
+    if (!sh) return { success: true, rows: [], latest: '', tanggal: want, missing: true };
+    if (sh.getLastRow() < 2) return { success: true, rows: [], latest: '', tanggal: want };
+    const nCols = Math.min(SOFT_HEADERS.length, sh.getMaxColumns());
+    const rng = sh.getRange(2, 1, sh.getLastRow() - 1, nCols), raw = rng.getValues(), disp = rng.getDisplayValues();
+    const tz = sh.getParent().getSpreadsheetTimeZone();
+    const num = function (x) { return typeof x === 'number' ? x : kgNum_(x); };
+    const rows = []; let latest = '';
+    for (let i = 0; i < raw.length; i++) {
+      const v = raw[i][2];
+      let d = '';
+      if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) d = Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+      else { const x = parseDmy_(disp[i][2], false); if (x) d = x.y + '-' + ('0' + x.m).slice(-2) + '-' + ('0' + x.d).slice(-2); }
+      if (!d) continue;
+      if (d > latest) latest = d;
+      if (d !== want) continue;
+      const berat = num(raw[i][6]), ssm = num(raw[i][7]), fadis = num(raw[i][8]), taihe = num(raw[i][9]), cone = ssm + fadis + taihe;
+      rows.push({ benang: str_(raw[i][3]).trim(), supplier: str_(raw[i][4]).trim(), ket: str_(raw[i][5]).trim(), berat: berat, ssm: ssm, fadis: fadis, taihe: taihe, cone: cone, kg: Math.round(cone * berat * 100) / 100 });
+    }
+    return { success: true, rows: rows, latest: latest, tanggal: want };
   } catch (e) {
     return { error: e.message };
   }

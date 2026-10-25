@@ -162,3 +162,21 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
   - Batas hari diatur di `Kode.gs`: `DELIVERY_BATAS_HARI` (5) dan `DELIVERY_TELAT_HARI` (7).
 - Pemasangan: ganti isi `Kode.gs` di Apps Script lalu Deploy versi baru (ada fungsi baru `getDelivery`); unggah `index.html`, `page2.html`, `viewer.html`, `manifest*.webmanifest`, `sw.js`.
   Nama sheet data "WIP YD (Jawaban)" sengaja TIDAK diganti agar data lama tetap terbaca.
+
+## Input SOFT (tab Input > tombol SOFT, hanya Admin)
+
+- Di tab **Input** ada pilihan **WIP | SOFT** di bagian atas. Form SOFT: banner **Tanggal** (bawaan hari ini), lalu tabel baris dengan kolom
+  Benang (dari sheet **SUP** kolom A), Supplier (dari SUP kolom B, menyesuaikan Benang), Keterangan, Berat (Kg/Cone), STOCK WIP (CONE) per mesin **SSM, FADIS, TAIHE**, **∑ Cone** (= SSM + FADIS + TAIHE) dan **∑ Kg** (= ∑ Cone x Berat).
+- Simpan ke sheet **SOFT** (dibuat otomatis bila belum ada), satu baris per baris isian, kolom:
+  `Timestamp | ID UNIK | TANGGAL | BENANG | SUPPLIER | KETERANGAN | BERAT (KG/CONE) | SSM | FADIS | TAIHE | ∑ CONE | ∑ KG`.
+  Timestamp sama untuk satu kali simpan; ID UNIK (awalan SF-) berbeda tiap baris. Baris kosong diabaikan.
+- Benang wajib dipilih dari daftar SUP. Berat wajib diisi jika ada cone. Cone harus bilangan bulat. Server menghitung ulang ∑ Cone dan ∑ Kg.
+- Pasang ulang `Kode.gs` (fungsi baru `getSoftRef`, `saveSoft`) dan `index.html`, lalu Deploy versi baru.
+
+## Page 2 > tab SOFT: laporan "STOCK WIP SOFT WINDING HARIAN"
+
+- Tab **SOFT** di Page 2 (Admin dan Viewer) menampilkan lembar laporan: judul **STOCK WIP SOFT WINDING HARIAN**, **Hari/Tanggal** (contoh: Minggu, 25 Oktober 2026), lalu tabel
+  No | Benang | Supplier | Keterangan | Berat (Kg/Cone) | STOCK WIP (CONE): SSM, FADIS, TAIHE | ∑ Cone | ∑ Kg, dengan baris TOTAL.
+- Data dari sheet **SOFT** menurut tanggal yang dipilih (panah hari sebelumnya/berikutnya, kotak tanggal, tombol Hari ini). Jika tanggal itu diinput beberapa kali, semua barisnya tampil.
+- Tombol **Cetak / PDF** mencetak lembar A4 mendatar (pilih "Simpan sebagai PDF" di dialog cetak). Nama file bawaan: STOCK WIP SOFT WINDING HARIAN yyyy-mm-dd.
+- Pasang ulang `Kode.gs` (fungsi baru `getSoftHari`) dan `page2.html` / `Page2.html`.

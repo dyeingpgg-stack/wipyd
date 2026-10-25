@@ -595,7 +595,7 @@
   }
 
   /* ---------- Page 2: tiga tab (Pack, RPH, Home) ---------- */
-  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(3,1fr)}
+  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(4,1fr)}
   .daterow.period{flex-wrap:wrap}
   .daterow.period .input{flex:1 1 128px;font-size:15px}
   .period-sep{align-self:center;color:var(--dim);font-weight:600}
@@ -642,6 +642,42 @@
   .fchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 12px rgba(var(--c-rgb),.35)}
   .fchip.active .nb{color:inherit}
   .dnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--amber)}
+
+  /* ---------- Laporan STOCK WIP SOFT WINDING HARIAN (lembar kertas, sama di layar dan saat dicetak) ---------- */
+  .sfr-bar{flex:none;display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;margin:0 0 12px}
+  .sfr-bar .input{flex:1 1 150px;max-width:230px;min-height:48px;padding:6px 10px;text-align:center;color-scheme:var(--scheme);font-family:var(--display);font-weight:600;font-size:16px}
+  .sfr-bar .icon-btn{width:48px;height:48px}
+  .sfr-bar .btn-sm{margin:0;min-height:48px}
+  .sfr-bar .btn-sm.print{color:var(--ink-c);border-color:var(--cyan);background:linear-gradient(135deg,var(--cyan),var(--cyan-2))}
+  .sfr-scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+  .sfr-paper{background:#fff;color:#111;border-radius:6px;padding:22px 26px 18px;max-width:1100px;margin:0 auto;box-shadow:0 10px 34px rgba(0,0,0,.4);font-family:Arial,Helvetica,sans-serif;min-width:760px}
+  .sfr-title{margin:0 0 8px;text-align:center;font:700 21px Arial,Helvetica,sans-serif;letter-spacing:.6px;text-transform:uppercase}
+  .sfr-date{margin:0 0 12px;font:400 14.5px Arial,Helvetica,sans-serif}
+  .sfr-date b{font-weight:700}
+  table.sfr{width:100%;min-width:0;border-collapse:collapse;font:400 13px Arial,Helvetica,sans-serif;color:#111}
+  table.sfr th,table.sfr td{position:static;padding:5px 7px;border:1px solid #222;background:#fff;color:#111;text-shadow:none;white-space:normal;text-align:left;vertical-align:middle}
+  table.sfr th{background:#e6ecf5;text-align:center;font:700 12.5px Arial,Helvetica,sans-serif;white-space:nowrap}
+  table.sfr tbody tr:nth-child(even) td,table.sfr tbody tr:hover td{background:#fff}
+  table.sfr td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.sfr td.c{text-align:center;width:34px}
+  table.sfr tr.tot td{background:#e6ecf5 !important;font-weight:700}
+  table.sfr tr.tot td.lbl{text-align:right}
+  table.sfr td.empty{text-align:center;color:#666;padding:22px 7px}
+  .sfr-foot{margin:8px 0 0;font:400 11px Arial,Helvetica,sans-serif;color:#555;display:flex;justify-content:space-between;gap:10px}
+  @page{size:A4 landscape;margin:12mm}
+  @media print{
+    html,body{height:auto !important;overflow:visible !important;background:#fff !important}
+    body{display:block !important;padding:0 !important}
+    .bg,.topbar,.tabbar,.toast,.sfr-bar,.lstate,.lcount{display:none !important}
+    .app{position:static !important;display:block !important;height:auto !important;max-height:none !important;width:100% !important;max-width:none !important;border:0 !important;box-shadow:none !important;background:none !important;border-radius:0 !important}
+    main,main.is-data{display:block !important;overflow:visible !important;padding:0 !important;height:auto !important}
+    .view{display:none !important}
+    #viewSoft.active{display:block !important}
+    .sfr-scroll{overflow:visible !important}
+    .sfr-paper{box-shadow:none !important;border-radius:0 !important;padding:0 !important;max-width:none !important;min-width:0 !important}
+    table.sfr th,table.sfr td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    table.sfr tr{page-break-inside:avoid}
+  }
 </style>
 </head>
 <body>
@@ -769,6 +805,34 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section id="viewSoft" class="view list" aria-label="Laporan SOFT harian">
+      <div class="sfr-bar">
+        <button type="button" class="icon-btn" id="sfPrev" aria-label="Hari sebelumnya" title="Hari sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <input class="input" id="sfDate" type="date" aria-label="Tanggal laporan SOFT">
+        <button type="button" class="icon-btn" id="sfNext" aria-label="Hari berikutnya" title="Hari berikutnya"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button type="button" class="btn-today" id="sfToday">Hari ini</button>
+        <button type="button" class="btn-sm print" id="sfPrint" title="Cetak atau simpan sebagai PDF">Cetak / PDF</button>
+      </div>
+      <p class="lcount" id="sfNote" aria-live="polite"></p>
+      <div class="lstate" id="sfState"></div>
+      <div class="sfr-scroll" id="sfScroll">
+        <div class="sfr-paper" id="sfPaper">
+          <h2 class="sfr-title">STOCK WIP SOFT WINDING HARIAN</h2>
+          <p class="sfr-date">Hari/Tanggal : <b id="sfHari">-</b></p>
+          <table class="sfr">
+            <thead>
+              <tr>
+                <th rowspan="2">No</th><th rowspan="2">Benang</th><th rowspan="2">Supplier</th><th rowspan="2">Keterangan</th><th rowspan="2">Berat<br>(Kg/Cone)</th>
+                <th colspan="3">STOCK WIP (CONE)</th><th rowspan="2">&sum; Cone</th><th rowspan="2">&sum; Kg</th>
+              </tr>
+              <tr><th>SSM</th><th>FADIS</th><th>TAIHE</th></tr>
+            </thead>
+            <tbody id="sfRows"></tbody>
+          </table>
+          <div class="sfr-foot"><span id="sfFootL"></span><span id="sfFootR"></span></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <nav class="tabbar" aria-label="Menu Page 2">
@@ -783,6 +847,10 @@
     <button type="button" class="tab" id="tabDelivery" data-view="delivery" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>
       Delivery
+    </button>
+    <button type="button" class="tab" id="tabSoft" data-view="soft" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M12 3 3 7.5 12 12l9-4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></svg>
+      SOFT
     </button>
   </nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1021,7 +1089,7 @@
     syncPeriod(k);
   });
   if (mqWide) {
-    var onWide = function () { Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; }); dv.page = 1; if (view === 'delivery') renderDelivery(); else renderList(view); };
+    var onWide = function () { Object.keys(lst).forEach(function (k) { lst[k].rk = ''; lst[k].page = 1; }); dv.page = 1; if (view === 'delivery') renderDelivery(); else if (view === 'soft') renderSoft(); else renderList(view); };
     if (mqWide.addEventListener) mqWide.addEventListener('change', onWide); else if (mqWide.addListener) mqWide.addListener(onWide);
   }
 
@@ -1243,14 +1311,100 @@
     $('#sDlv').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-retry]')) loadDelivery({ force: true, reread: true }); });
   })();
 
+
+  /* ---------- Laporan STOCK WIP SOFT WINDING HARIAN ---------- */
+  var HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  var BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  function hariTanggal(iso) {
+    var p = String(iso || '').split('-');
+    if (p.length !== 3) return '-';
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return HARI_ID[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function shiftIso(iso, n) { var p = iso.split('-'); return isoOf(new Date(+p[0], +p[1] - 1, +p[2] + n)); }
+  var sf = { rows: [], at: 0, loading: false, error: '', date: todayIso(), key: '', seq: 0, latest: '', missing: false };
+  function sfState(html) { var el = $('#sfState'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
+  function renderSoft() {
+    $('#sfDate').value = sf.date;
+    $('#sfHari').textContent = hariTanggal(sf.date);
+    $('#sfToday').classList.toggle('active', sf.date === todayIso());
+    var rows = sf.rows, t = { ssm: 0, fadis: 0, taihe: 0, cone: 0, kg: 0 };
+    var body = rows.map(function (r, i) {
+      t.ssm += r.ssm; t.fadis += r.fadis; t.taihe += r.taihe; t.cone += r.cone; t.kg += r.kg;
+      return '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(r.benang) + '</td><td>' + esc(r.supplier) + '</td><td>' + esc(r.ket) + '</td>' +
+        '<td class="n">' + fmtNum(r.berat, 4) + '</td><td class="n">' + fmtNum(r.ssm, 0) + '</td><td class="n">' + fmtNum(r.fadis, 0) + '</td><td class="n">' + fmtNum(r.taihe, 0) + '</td>' +
+        '<td class="n">' + fmtNum(r.cone, 0) + '</td><td class="n">' + fmtNum(r.kg, 2) + '</td></tr>';
+    }).join('');
+    if (!rows.length) body = '<tr><td class="empty" colspan="10">' + (sf.loading && !sf.at ? 'Memuat...' : (sf.missing ? 'Sheet SOFT belum ada. Isi dulu lewat Home &gt; Input &gt; SOFT.' : 'Belum ada data SOFT pada tanggal ini.')) + '</td></tr>';
+    else body += '<tr class="tot"><td class="lbl" colspan="5">TOTAL</td><td class="n">' + fmtNum(t.ssm, 0) + '</td><td class="n">' + fmtNum(t.fadis, 0) + '</td><td class="n">' + fmtNum(t.taihe, 0) + '</td><td class="n">' + fmtNum(t.cone, 0) + '</td><td class="n">' + fmtNum(t.kg, 2) + '</td></tr>';
+    $('#sfRows').innerHTML = body;
+    $('#sfFootL').textContent = 'DyePocket · Yarn Dyeing';
+    var d = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    $('#sfFootR').textContent = 'Dicetak ' + p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+    $('#sfNote').textContent = (sf.loading ? 'Memuat... · ' : '') + rows.length + ' baris' + (!rows.length && sf.latest && sf.latest !== sf.date ? ' · data terbaru ada di ' + fmtDMY(sf.latest) : '');
+    if (sf.error) sfState('<div class="state">' + esc(sf.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
+    else if (!rows.length && !sf.loading && sf.latest && sf.latest !== sf.date) sfState('<div class="state" style="padding:12px"><button type="button" class="btn-sm" data-latest="1" style="margin:0">Buka tanggal terbaru: ' + esc(fmtDMY(sf.latest)) + '</button></div>');
+    else sfState('');
+  }
+  function loadSoft(opts) {
+    opts = opts || {};
+    if (!opts.force && sf.key === sf.date && sf.at && Date.now() - sf.at < LIST_FRESH) return Promise.resolve();
+    var my = ++sf.seq;
+    sf.loading = true; sf.error = ''; window.__dvLoading = true;
+    if (view === 'soft') $('#btnRefresh').classList.add('spin');
+    renderSoft();
+    return gs('getSoftHari', sf.date).then(function (r) {
+      if (my !== sf.seq) return;
+      if (!r) throw new Error('Server tidak mengembalikan data.');
+      if (r.error) throw new Error(r.error);
+      sf.rows = r.rows || []; sf.latest = r.latest || ''; sf.missing = !!r.missing; sf.key = sf.date; sf.at = Date.now();
+    }).catch(function (e) {
+      if (my !== sf.seq) return;
+      sf.error = 'Gagal memuat data. ' + errMsg(e);
+      if (sf.at) toast('Gagal memperbarui, menampilkan data sebelumnya. ' + errMsg(e), 'err', 6000);
+    }).then(function () {
+      if (my !== sf.seq) return;
+      sf.loading = false; window.__dvLoading = false; stopSpin(); renderSoft();
+    });
+  }
+  function setSoftDate(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return;
+    sf.date = iso; sf.rows = []; sf.at = 0; sf.error = '';
+    loadSoft({ force: true });
+  }
+  $('#sfDate').addEventListener('change', function () { setSoftDate(this.value); });
+  $('#sfPrev').addEventListener('click', function () { setSoftDate(shiftIso(sf.date, -1)); });
+  $('#sfNext').addEventListener('click', function () { setSoftDate(shiftIso(sf.date, 1)); });
+  $('#sfToday').addEventListener('click', function () { setSoftDate(todayIso()); });
+  $('#sfState').addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    if (e.target.closest('[data-retry]')) loadSoft({ force: true });
+    else if (e.target.closest('[data-latest]')) setSoftDate(sf.latest);
+  });
+  $('#sfPrint').addEventListener('click', function () {
+    var old = document.title;
+    document.title = 'STOCK WIP SOFT WINDING HARIAN ' + sf.date;   // nama file bawaan saat disimpan sebagai PDF
+    var back = function () { document.title = old; window.removeEventListener('afterprint', back); };
+    window.addEventListener('afterprint', back);
+    window.print();
+    setTimeout(back, 4000);
+  });
+
   function showView(name) {
     view = name;
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
     $('#viewDelivery').classList.toggle('active', name === 'delivery');
+    $('#viewSoft').classList.toggle('active', name === 'soft');
     $$('.tab').forEach(function (b) {
       var on = b.getAttribute('data-view') === name;
       b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
     });
+    if (name === 'soft') {
+      $('#subtitle').textContent = 'Page 2 · SOFT · stock WIP harian';
+      renderSoft();
+      loadSoft();
+      return;
+    }
     if (name === 'delivery') {
       $('#subtitle').textContent = 'Page 2 · Delivery · celup ke pack';
       renderDelivery();
@@ -1264,7 +1418,8 @@
   $('#tabRph').addEventListener('click', function () { showView('rph'); });
   $('#tabPack').addEventListener('click', function () { showView('pack'); });
   $('#tabDelivery').addEventListener('click', function () { showView('delivery'); });
-  $('#btnRefresh').addEventListener('click', function () { if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); });
+  $('#tabSoft').addEventListener('click', function () { showView('soft'); });
+  $('#btnRefresh').addEventListener('click', function () { if (view === 'delivery') loadDelivery({ force: true, reread: true }); else if (view === 'soft') loadSoft({ force: true }); else loadList(view, { force: true, reread: true }); });
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
     if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
