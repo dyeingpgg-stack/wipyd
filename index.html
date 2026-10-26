@@ -800,14 +800,14 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
             <label class="label" for="sfTanggal"><span>Tanggal</span></label>
             <input class="input" id="sfTanggal" type="date">
           </div>
-          <small>Timestamp dan ID Unik terisi otomatis saat disimpan (satu ID Unik per baris). Tanggal bawaan = hari ini, bisa diubah.</small>
+          <small>Timestamp dan ID Unik terisi otomatis saat disimpan (satu ID Unik per baris). Tanggal bawaan = hari ini, bisa diubah. Tombol Enter = pindah ke isian berikutnya (seperti Tab); data baru tersimpan hanya saat tombol Simpan SOFT diketuk.</small>
         </div>
         <p class="sf-status" id="sfStatus">Memuat daftar benang dari sheet SUP...</p>
         <div class="sf-wrap">
           <table class="sf-t">
             <thead>
               <tr>
-                <th rowspan="2" class="c-b">Benang</th><th rowspan="2" class="c-s">Supplier</th><th rowspan="2" class="c-k">Keterangan</th><th rowspan="2" class="c-n">Berat<br>(Kg/Cone)</th>
+                <th rowspan="2" class="c-b">Benang</th><th rowspan="2" class="c-n">Berat<br>(Kg/Cone)</th><th rowspan="2" class="c-s">Supplier</th><th rowspan="2" class="c-k">Keterangan</th>
                 <th colspan="3" class="grp">STOCK WIP (CONE)</th><th rowspan="2">∑ Cone</th><th rowspan="2">∑ Kg</th><th rowspan="2"></th>
               </tr>
               <tr><th class="sub c-n">SSM</th><th class="sub c-n">FADIS</th><th class="sub c-n">TAIHE</th></tr>
@@ -3349,17 +3349,17 @@ var Code128 = (function () {
     });
   }
   function sfCbHtml(cls, ph, label) {
-    return '<div class="sf-cb"><input class="sf-in ' + cls + '" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + ph + '" aria-label="' + label + '">' +
+    return '<div class="sf-cb"><input class="sf-in ' + cls + '" type="text" role="combobox" enterkeyhint="next" aria-autocomplete="list" aria-expanded="false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + ph + '" aria-label="' + label + '">' +
       '<button type="button" class="sf-caret" tabindex="-1" aria-label="Buka daftar ' + label.toLowerCase() + '"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>';
   }
   function sfRowEl() {
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="c-b">' + sfCbHtml('f-benang', 'Pilih / ketik benang', 'Benang') + '</td>' +
+      '<td class="c-n"><input class="sf-in sf-num f-berat" type="text" inputmode="decimal" enterkeyhint="next" placeholder="0,00" aria-label="Berat Kg per Cone"></td>' +
       '<td class="c-s">' + sfCbHtml('f-sup', 'Pilih / ketik supplier', 'Supplier') + '</td>' +
-      '<td class="c-k"><input class="sf-in f-ket" type="text" placeholder="Keterangan" aria-label="Keterangan"></td>' +
-      '<td class="c-n"><input class="sf-in sf-num f-berat" type="text" inputmode="decimal" placeholder="0,00" aria-label="Berat Kg per Cone"></td>' +
-      SF_MACH.map(function (m) { return '<td class="c-n"><input class="sf-in sf-num f-m" data-m="' + m + '" type="text" inputmode="numeric" placeholder="0" aria-label="Stock WIP ' + m.toUpperCase() + ' (cone)"></td>'; }).join('') +
+      '<td class="c-k"><input class="sf-in f-ket" type="text" enterkeyhint="next" placeholder="Keterangan" aria-label="Keterangan"></td>' +
+      SF_MACH.map(function (m) { return '<td class="c-n"><input class="sf-in sf-num f-m" data-m="' + m + '" type="text" inputmode="numeric" enterkeyhint="next" placeholder="0" aria-label="Stock WIP ' + m.toUpperCase() + ' (cone)"></td>'; }).join('') +
       '<td class="sf-out cone o-cone">0</td><td class="sf-out o-kg">0</td>' +
       '<td><button type="button" class="sf-del" aria-label="Hapus baris" title="Hapus baris">&times;</button></td>';
     return tr;
@@ -3501,6 +3501,24 @@ var Code128 = (function () {
     if (SF.ref) sfRebuild();
     sfCalc();
   }
+  /* Enter berfungsi seperti Tab: pindah ke isian berikutnya (Tanggal > Benang > Berat > Supplier > Keterangan > SSM > FADIS > TAIHE > baris berikutnya).
+     Data baru tersimpan hanya saat tombol "Simpan SOFT" diketuk. Di isian terakhir baris terakhir, Enter menambah baris kosong. */
+  function sfNext(el) {
+    var fields = $$('#sfTanggal, #sfBody .sf-in'), i = fields.indexOf(el);
+    if (i < 0) return;
+    var nx = fields[i + 1];
+    if (!nx) { var tr = sfAddRow(); nx = tr.querySelector('.f-benang'); }
+    nx.focus();
+    if (nx.select && !sfIsCb(nx)) { try { nx.select(); } catch (err) { /* abaikan */ } }
+    if (nx.scrollIntoView) nx.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  $('#softForm').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing) return;
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;   // tombol (Simpan, Tambah baris, hapus) tetap bekerja seperti biasa
+    e.preventDefault();   // cegah pengiriman form lewat Enter
+    sfNext(el);
+  });
   $('#sfBody').addEventListener('input', function (e) {
     var el = e.target;
     if (el.classList.contains('f-m')) { var c = el.value.replace(/\D/g, ''); if (c !== el.value) el.value = c; }
@@ -3528,15 +3546,18 @@ var Code128 = (function () {
       var cur = SFP.el.children[SFP.act]; if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();   // Enter di kotak pilihan tidak mengirim form
-      if (!open) return;
-      var i = SFP.act;
-      if (i < 0) {   // belum menyorot: ambil yang namanya persis sama, kalau tidak ada pilih "+ Tambah"
-        var k = sfKey(el.value);
-        for (var j = 0; j < n; j++) if (!SFP.ent[j].add && sfKey(SFP.ent[j].name) === k) { i = j; break; }
-        if (i < 0) for (var j2 = 0; j2 < n; j2++) if (SFP.ent[j2].add) { i = j2; break; }
-        if (i < 0 && n === 1) i = 0;
+      if (e.isComposing) return;
+      if (open) {
+        var i = SFP.act;
+        if (i < 0) {   // belum menyorot: ambil yang namanya persis sama, kalau tidak ada pilih "+ Tambah"
+          var k = sfKey(el.value);
+          for (var j = 0; j < n; j++) if (!SFP.ent[j].add && sfKey(SFP.ent[j].name) === k) { i = j; break; }
+          if (i < 0) for (var j2 = 0; j2 < n; j2++) if (SFP.ent[j2].add) { i = j2; break; }
+          if (i < 0 && n === 1) i = 0;
+        }
+        if (i >= 0) sfPick(i);
       }
-      if (i >= 0) sfPick(i);
+      sfNext(el);   // seperti Tab: lanjut ke isian berikutnya
     } else if (e.key === 'Escape' && open) { e.stopPropagation(); sfClose(); }
   });
   $('#sfBody').addEventListener('click', function (e) {

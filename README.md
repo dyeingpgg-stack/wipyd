@@ -183,5 +183,18 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Page 2 > SOFT sekarang berupa tabel data** seperti Pack dan RPH: Periode (default bulan ini), pencarian semua tanggal, halaman 50/100 baris,
   terbaru di atas, kolom BENANG beku di kiri; Timestamp dan ID UNIK di ujung kanan. Sumber: sheet **SOFT**.
 - Unduh **PDF/PNG laporan harian** (infografis STOCK WIP SOFT WINDING) tetap ada di bagian bawah tab SOFT, memakai tanggal laporan (bawaan = tanggal data terbaru).
-- Pasang: ganti `Kode.gs` (Deploy versi baru), `index.html`, `page2.html` (Apps Script: file HTML `Index` dan `Page2`), `sw.js` (cache v60).
+- **Unduhan PDF/PNG laporan SOFT berukuran layar HP potret**: lebar 1080 px (PNG 2160 px), tinggi menyesuaikan jumlah baris dengan minimal rasio 9:19,5 (1080 x 2340).
+  Susunan ke bawah: judul dan tanggal, kartu ringkasan, sebaran cone, resume per benang per supplier, tabel (Supplier, Keterangan, Berat di baris kedua kolom Benang). PDF = satu halaman potret.
+- Pasang: ganti `Kode.gs` (Deploy versi baru), `index.html`, `page2.html` (Apps Script: file HTML `Index` dan `Page2`), `sw.js` (cache v61).
   `Kode.gs`, `index.html`, dan `page2.html` harus diperbarui bersamaan.
+
+
+## Pembaruan v36: SOFT
+- **Page 2 > SOFT (tabel):** kolom Timestamp dan ID UNIK disembunyikan di layar (isi sheet tidak berubah). Tombol baru **Daftar | Resume per Benang & Supplier**:
+  resume menggabungkan baris dengan Benang dan Supplier yang sama (SSM, FADIS, TAIHE, ∑ Cone, ∑ Kg, % Kg). Karena SOFT adalah stok harian, resume dihitung **per tanggal**
+  (bawaan = tanggal terbaru pada daftar yang tampil; pilih tanggal lain lewat pilihan di sebelah tombol), tidak dijumlahkan antar tanggal.
+- **Input SOFT:** tombol **Enter** sekarang berfungsi seperti **Tab** (pindah ke isian berikutnya); data baru tersimpan hanya saat **Simpan SOFT** diketuk.
+  Di isian terakhir baris terakhir, Enter menambah baris kosong.
+- **Input SOFT:** kolom **Berat (Kg/Cone)** dipindah tepat setelah **Benang** (hanya tampilan form; urutan kolom sheet SOFT tidak berubah).
+- **Unduhan PDF/PNG laporan SOFT:** panel "Top 5 Benang" diganti **Resume per Benang per Supplier** (tinggi panel mengikuti jumlah kelompok).
+- `Kode.gs` tidak berubah. Pasang ulang `index.html` dan `page2.html`.
