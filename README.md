@@ -183,5 +183,7 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Page 2 > SOFT sekarang berupa tabel data** seperti Pack dan RPH: Periode (default bulan ini), pencarian semua tanggal, halaman 50/100 baris,
   terbaru di atas, kolom BENANG beku di kiri; Timestamp dan ID UNIK di ujung kanan. Sumber: sheet **SOFT**.
 - Unduh **PDF/PNG laporan harian** (infografis STOCK WIP SOFT WINDING) tetap ada di bagian bawah tab SOFT, memakai tanggal laporan (bawaan = tanggal data terbaru).
-- Pasang: ganti `Kode.gs` (Deploy versi baru), `index.html`, `page2.html` (Apps Script: file HTML `Index` dan `Page2`), `sw.js` (cache v60).
+- **Unduhan PDF/PNG laporan SOFT berukuran layar HP potret**: lebar 1080 px (PNG 2160 px), tinggi menyesuaikan jumlah baris dengan minimal rasio 9:19,5 (1080 x 2340).
+  Susunan ke bawah: judul dan tanggal, kartu ringkasan, sebaran cone, top 5 benang, tabel (Supplier, Keterangan, Berat di baris kedua kolom Benang). PDF = satu halaman potret.
+- Pasang: ganti `Kode.gs` (Deploy versi baru), `index.html`, `page2.html` (Apps Script: file HTML `Index` dan `Page2`), `sw.js` (cache v61).
   `Kode.gs`, `index.html`, dan `page2.html` harus diperbarui bersamaan.
