@@ -1301,15 +1301,13 @@
   })();
 
 
-  /* ---------- Infografis STOCK WIP SOFT WINDING HARIAN (digambar ke kanvas; dipakai untuk unduhan PNG/PDF) ----------
-     Ukuran layar HP potret: lebar 1080 px, tinggi menyesuaikan jumlah baris (minimal rasio 9:19,5). Susunan ke bawah: judul, kartu ringkasan,
-     sebaran cone, top 5 benang, lalu tabel (Supplier, Keterangan, dan Berat ditulis di baris kedua kolom Benang). */
+  /* ---------- Infografis STOCK WIP SOFT WINDING HARIAN (digambar ke kanvas: tampilan layar = hasil unduh PNG/PDF) ---------- */
   var SFG = {
-    W: 1080, PAD: 44, MINH: 2340,
+    W: 1800, PAD: 70,
     FONT: '"Chakra Petch","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif',
     C: { ssm: '#5dffa0', fadis: '#ffc24d', taihe: '#58b0ff', cone: '#b997ff', kg: '#ff5c93', cyan: '#22f3ff', mag: '#ff3df0', vio: '#8b5cff' },
-    COLS: [['No', 56, 'c'], ['Benang', 396, 'l'], ['SSM', 100, 'r'], ['FADIS', 100, 'r'], ['TAIHE', 100, 'r'], ['\u2211 Cone', 110, 'r'], ['\u2211 Kg', 130, 'r']],
-    ROW: 84, HEAD: 100, TOT: 72, TOP: 1472
+    COLS: [['No', 70, 'c'], ['Benang', 330, 'l'], ['Supplier', 250, 'l'], ['Keterangan', 270, 'l'], ['Berat', 130, 'r'], ['SSM', 120, 'r'], ['FADIS', 120, 'r'], ['TAIHE', 120, 'r'], ['\u2211 Cone', 120, 'r'], ['\u2211 Kg', 130, 'r']],
+    ROW: 46, HEAD: 112, TOT: 64, TOP: 800
   };
   function sfgNum(n, dec) { return (+n || 0).toLocaleString('id-ID', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 }); }
   function sfgRR(c, x, y, w, h, r) {
@@ -1327,9 +1325,9 @@
     var n = parseInt(hex.slice(1), 16);
     return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
-  function sfgHeight(nRows) { return Math.max(SFG.MINH, SFG.TOP + SFG.HEAD + Math.max(nRows, 1) * SFG.ROW + (nRows ? SFG.TOT : 0) + 120); }
+  function sfgHeight(nRows) { return SFG.TOP + SFG.HEAD + Math.max(nRows, 1) * SFG.ROW + (nRows ? SFG.TOT : 0) + 130; }
   function drawSoftReport(cv, d, scale) {
-    var rows = d.rows || [], n = rows.length, W = SFG.W, P = SFG.PAD, F = SFG.FONT, K = SFG.C, IW = W - 2 * P;
+    var rows = d.rows || [], n = rows.length, W = SFG.W, P = SFG.PAD, F = SFG.FONT, K = SFG.C;
     var H = sfgHeight(n);
     cv.width = Math.round(W * scale); cv.height = Math.round(H * scale);
     var c = cv.getContext('2d');
@@ -1339,14 +1337,14 @@
     rows.forEach(function (r) { t.ssm += r.ssm; t.fadis += r.fadis; t.taihe += r.taihe; t.cone += r.cone; t.kg += r.kg; });
 
     // ===== latar =====
-    var bg = c.createLinearGradient(0, 0, W, H);
+    var bg = c.createLinearGradient(0, 0, W * 0.6, H);
     bg.addColorStop(0, '#04071a'); bg.addColorStop(0.5, '#080e2c'); bg.addColorStop(1, '#050818');
     c.fillStyle = bg; c.fillRect(0, 0, W, H);
-    var g1 = c.createRadialGradient(W * 0.15, 150, 0, W * 0.15, 150, 620); g1.addColorStop(0, 'rgba(34,243,255,.20)'); g1.addColorStop(1, 'rgba(34,243,255,0)');
+    var g1 = c.createRadialGradient(W * 0.12, 120, 0, W * 0.12, 120, 760); g1.addColorStop(0, 'rgba(34,243,255,.20)'); g1.addColorStop(1, 'rgba(34,243,255,0)');
     c.fillStyle = g1; c.fillRect(0, 0, W, H);
-    var g2 = c.createRadialGradient(W * 0.95, 760, 0, W * 0.95, 760, 700); g2.addColorStop(0, 'rgba(255,61,240,.16)'); g2.addColorStop(1, 'rgba(255,61,240,0)');
+    var g2 = c.createRadialGradient(W * 0.92, 380, 0, W * 0.92, 380, 820); g2.addColorStop(0, 'rgba(255,61,240,.17)'); g2.addColorStop(1, 'rgba(255,61,240,0)');
     c.fillStyle = g2; c.fillRect(0, 0, W, H);
-    var g3 = c.createRadialGradient(W * 0.5, H, 0, W * 0.5, H, 800); g3.addColorStop(0, 'rgba(139,92,255,.16)'); g3.addColorStop(1, 'rgba(139,92,255,0)');
+    var g3 = c.createRadialGradient(W * 0.5, H, 0, W * 0.5, H, 900); g3.addColorStop(0, 'rgba(139,92,255,.16)'); g3.addColorStop(1, 'rgba(139,92,255,0)');
     c.fillStyle = g3; c.fillRect(0, 0, W, H);
     c.strokeStyle = 'rgba(130,160,255,.055)'; c.lineWidth = 1; c.beginPath();
     for (var gx = 0; gx <= W; gx += 60) { c.moveTo(gx + .5, 0); c.lineTo(gx + .5, H); }
@@ -1354,82 +1352,81 @@
     c.stroke();
 
     // bingkai HUD
-    c.save(); c.strokeStyle = K.cyan; c.lineWidth = 3; c.shadowColor = K.cyan; c.shadowBlur = 12;
-    var b = 24, L = 56;
+    c.save(); c.strokeStyle = K.cyan; c.lineWidth = 3; c.shadowColor = K.cyan; c.shadowBlur = 14;
+    var b = 34, L = 70;
     [[b, b, 1, 1], [W - b, b, -1, 1], [b, H - b, 1, -1], [W - b, H - b, -1, -1]].forEach(function (q) {
       c.beginPath(); c.moveTo(q[0], q[1] + q[3] * L); c.lineTo(q[0], q[1]); c.lineTo(q[0] + q[2] * L, q[1]); c.stroke();
     });
     c.restore();
 
     // ===== header =====
-    var ox = P + 44, oy = 112;
-    c.save(); c.shadowColor = K.cyan; c.shadowBlur = 22;
-    c.lineWidth = 7; c.strokeStyle = K.cyan; c.beginPath(); c.arc(ox, oy, 38, 0, Math.PI * 2); c.stroke();
-    c.shadowColor = K.mag; c.strokeStyle = K.mag; c.lineWidth = 5; c.setLineDash([18, 12]); c.lineCap = 'round';
-    c.beginPath(); c.arc(ox, oy, 23, 0.4, Math.PI * 2 + 0.4); c.stroke(); c.setLineDash([]);
-    c.fillStyle = '#fff'; c.shadowColor = '#fff'; c.shadowBlur = 14; c.beginPath(); c.arc(ox, oy, 6, 0, Math.PI * 2); c.fill();
+    var ox = P + 52, oy = 128;
+    c.save(); c.shadowColor = K.cyan; c.shadowBlur = 26;
+    c.lineWidth = 8; c.strokeStyle = K.cyan; c.beginPath(); c.arc(ox, oy, 46, 0, Math.PI * 2); c.stroke();
+    c.shadowColor = K.mag; c.strokeStyle = K.mag; c.lineWidth = 6; c.setLineDash([22, 14]); c.lineCap = 'round';
+    c.beginPath(); c.arc(ox, oy, 28, 0.4, Math.PI * 2 + 0.4); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#fff'; c.shadowColor = '#fff'; c.shadowBlur = 16; c.beginPath(); c.arc(ox, oy, 7, 0, Math.PI * 2); c.fill();
     c.restore();
 
-    var tx = P + 108, tmax = W - P - tx;
-    c.font = '600 18px ' + F; c.fillStyle = K.cyan; c.save(); c.shadowColor = K.cyan; c.shadowBlur = 8;
-    c.fillText(sfgFit(c, 'D Y E P O C K E T   \u00B7   Y A R N   D Y E I N G   \u00B7   L I V E', tmax), tx, 84); c.restore();
-    var title = 'STOCK WIP SOFT WINDING HARIAN', tfs = 48;
+    var tx = P + 140;
+    c.font = '600 22px ' + F; c.fillStyle = K.cyan; c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10;
+    c.fillText('D Y E P O C K E T   \u00B7   Y A R N   D Y E I N G   \u00B7   L I V E   R E P O R T', tx, 86); c.restore();
+    var title = 'STOCK WIP SOFT WINDING HARIAN', tfs = 70, tmax = W - P - 540 - tx - 30;
     c.font = '700 ' + tfs + 'px ' + F;
-    while (c.measureText(title).width > tmax && tfs > 26) { tfs -= 1; c.font = '700 ' + tfs + 'px ' + F; }
+    while (c.measureText(title).width > tmax && tfs > 36) { tfs -= 2; c.font = '700 ' + tfs + 'px ' + F; }
     var tw = c.measureText(title).width;
     var tg = c.createLinearGradient(tx, 0, tx + tw, 0); tg.addColorStop(0, '#ffffff'); tg.addColorStop(0.35, '#7cf9ff'); tg.addColorStop(0.7, '#b997ff'); tg.addColorStop(1, '#ff7af3');
-    c.save(); c.shadowColor = 'rgba(34,243,255,.65)'; c.shadowBlur = 22; c.fillStyle = tg; c.fillText(title, tx, 134); c.restore();
-    var ul = c.createLinearGradient(tx, 0, tx + tmax, 0); ul.addColorStop(0, K.cyan); ul.addColorStop(0.6, K.vio); ul.addColorStop(1, 'rgba(255,61,240,0)');
-    c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10; c.fillStyle = ul; sfgRR(c, tx, 150, tmax, 5, 2.5); c.fill(); c.restore();
+    c.save(); c.shadowColor = 'rgba(34,243,255,.65)'; c.shadowBlur = 26; c.fillStyle = tg; c.fillText(title, tx, 158); c.restore();
+    var ul = c.createLinearGradient(tx, 0, tx + 760, 0); ul.addColorStop(0, K.cyan); ul.addColorStop(0.6, K.vio); ul.addColorStop(1, 'rgba(255,61,240,0)');
+    c.save(); c.shadowColor = K.cyan; c.shadowBlur = 12; c.fillStyle = ul; sfgRR(c, tx, 178, 760, 6, 3); c.fill(); c.restore();
 
-    // chip hari/tanggal (selebar halaman)
-    var cy = 188, ch = 88;
-    c.save(); sfgRR(c, P, cy, IW, ch, 22); c.fillStyle = 'rgba(34,243,255,.08)'; c.fill();
-    c.strokeStyle = 'rgba(34,243,255,.75)'; c.lineWidth = 2; c.shadowColor = K.cyan; c.shadowBlur = 14; c.stroke(); c.restore();
-    c.font = '600 17px ' + F; c.fillStyle = '#93a0cc'; c.fillText('H A R I   /   T A N G G A L', P + 28, cy + 32);
-    var dfs = 36; c.font = '700 ' + dfs + 'px ' + F;
-    while (c.measureText(d.hari || '-').width > IW - 56 && dfs > 22) { dfs -= 1; c.font = '700 ' + dfs + 'px ' + F; }
-    c.fillStyle = '#ffffff'; c.save(); c.shadowColor = 'rgba(34,243,255,.7)'; c.shadowBlur = 10;
-    c.fillText(d.hari || '-', P + 28, cy + 70); c.restore();
+    // chip hari/tanggal
+    var cw = 520, ch = 92, cx = W - P - cw, cy = 76;
+    c.save(); sfgRR(c, cx, cy, cw, ch, 22); c.fillStyle = 'rgba(34,243,255,.08)'; c.fill();
+    c.strokeStyle = 'rgba(34,243,255,.75)'; c.lineWidth = 2; c.shadowColor = K.cyan; c.shadowBlur = 16; c.stroke(); c.restore();
+    c.font = '600 19px ' + F; c.fillStyle = '#93a0cc'; c.fillText('H A R I  /  T A N G G A L', cx + 28, cy + 34);
+    var dfs = 33; c.font = '700 ' + dfs + 'px ' + F;
+    while (c.measureText(d.hari || '-').width > cw - 56 && dfs > 20) { dfs -= 1; c.font = '700 ' + dfs + 'px ' + F; }
+    c.fillStyle = '#ffffff'; c.save(); c.shadowColor = 'rgba(34,243,255,.7)'; c.shadowBlur = 12;
+    c.fillText(d.hari || '-', cx + 28, cy + 74); c.restore();
 
-    // ===== kartu ringkasan: 3 mesin, lalu total cone dan total kg =====
-    var gap = 18, kh = 150, ky1 = 304, ky2 = ky1 + kh + gap, kw3 = (IW - 2 * gap) / 3, kw2 = (IW - gap) / 2;
-    var cards = [
-      { x: P, y: ky1, w: kw3, a: 'SSM', b: 'CONE', v: t.ssm, col: K.ssm, dec: 0, pct: true },
-      { x: P + kw3 + gap, y: ky1, w: kw3, a: 'FADIS', b: 'CONE', v: t.fadis, col: K.fadis, dec: 0, pct: true },
-      { x: P + 2 * (kw3 + gap), y: ky1, w: kw3, a: 'TAIHE', b: 'CONE', v: t.taihe, col: K.taihe, dec: 0, pct: true },
-      { x: P, y: ky2, w: kw2, a: 'TOTAL', b: 'CONE', v: t.cone, col: K.cone, dec: 0 },
-      { x: P + kw2 + gap, y: ky2, w: kw2, a: 'TOTAL', b: 'KG', v: t.kg, col: K.kg, dec: 2 }
+    // ===== kartu KPI =====
+    var gap = 24, kw = (W - 2 * P - 4 * gap) / 5, ky = 236, kh = 170;
+    var kpis = [
+      ['SSM', 'CONE', t.ssm, K.ssm, t.ssm, 0], ['FADIS', 'CONE', t.fadis, K.fadis, t.fadis, 0], ['TAIHE', 'CONE', t.taihe, K.taihe, t.taihe, 0],
+      ['TOTAL', 'CONE', t.cone, K.cone, t.cone, 0], ['TOTAL', 'KG', t.kg, K.kg, t.kg, 2]
     ];
-    cards.forEach(function (k) {
-      var x = k.x, y = k.y, w = k.w, col = k.col;
+    kpis.forEach(function (k, i) {
+      var x = P + i * (kw + gap), col = k[3];
       c.save();
-      sfgRR(c, x, y, w, kh, 24);
-      var cg = c.createLinearGradient(x, y, x + w, y + kh); cg.addColorStop(0, sfgRgba(col, .22)); cg.addColorStop(1, sfgRgba(col, .05));
-      c.fillStyle = cg; c.shadowColor = sfgRgba(col, .55); c.shadowBlur = 20; c.fill(); c.shadowBlur = 0;
+      sfgRR(c, x, ky, kw, kh, 24);
+      var cg = c.createLinearGradient(x, ky, x + kw, ky + kh); cg.addColorStop(0, sfgRgba(col, .22)); cg.addColorStop(1, sfgRgba(col, .05));
+      c.fillStyle = cg; c.shadowColor = sfgRgba(col, .55); c.shadowBlur = 24; c.fill(); c.shadowBlur = 0;
       c.strokeStyle = sfgRgba(col, .85); c.lineWidth = 2; c.stroke();
       c.restore();
-      c.fillStyle = col; c.save(); c.shadowColor = col; c.shadowBlur = 8; sfgRR(c, x + 22, y + 22, 30, 5, 2.5); c.fill(); c.restore();
-      c.font = '600 20px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(k.a + '  \u00B7  ' + k.b, x + 22, y + 64);
-      var v = sfgNum(k.v, k.dec), fs = 64;
+      c.fillStyle = col; c.save(); c.shadowColor = col; c.shadowBlur = 10; sfgRR(c, x + 26, ky + 26, 34, 6, 3); c.fill(); c.restore();
+      c.font = '600 22px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(k[0] + '  \u00B7  ' + k[1], x + 26, ky + 70);
+      var v = sfgNum(k[2], k[5]), fs = 66;
       c.font = '700 ' + fs + 'px ' + F;
-      while (c.measureText(v).width > w - 44 && fs > 28) { fs -= 2; c.font = '700 ' + fs + 'px ' + F; }
-      c.save(); c.fillStyle = '#ffffff'; c.shadowColor = col; c.shadowBlur = 16; c.fillText(v, x + 22, y + 128); c.restore();
-      if (k.pct) {   // porsi terhadap total cone
-        var pc = t.cone ? k.v / t.cone : 0;
-        c.font = '600 19px ' + F; c.fillStyle = col; c.textAlign = 'right'; c.fillText(Math.round(pc * 100) + '%', x + w - 22, y + 64); c.textAlign = 'left';
+      while (c.measureText(v).width > kw - 52 && fs > 30) { fs -= 4; c.font = '700 ' + fs + 'px ' + F; }
+      c.save(); c.fillStyle = '#ffffff'; c.shadowColor = col; c.shadowBlur = 18; c.fillText(v, x + 26, ky + 132); c.restore();
+      // porsi terhadap total (khusus SSM/FADIS/TAIHE)
+      if (i < 3) {
+        var pc = t.cone ? k[2] / t.cone : 0;
+        c.font = '600 20px ' + F; c.fillStyle = col; c.textAlign = 'right'; c.fillText(Math.round(pc * 100) + '%', x + kw - 26, ky + 70); c.textAlign = 'left';
       }
     });
 
-    // ===== panel: sebaran cone per mesin (donut) =====
+    // ===== panel infografis: donut + top benang =====
+    var iy = 436, ih = 330, dw = 600;
     function panel(x, y, w, h, col, label) {
       c.save(); sfgRR(c, x, y, w, h, 26); c.fillStyle = 'rgba(10,16,48,.72)'; c.fill();
-      c.strokeStyle = sfgRgba(col, .45); c.lineWidth = 2; c.shadowColor = sfgRgba(col, .4); c.shadowBlur = 14; c.stroke(); c.restore();
-      c.font = '600 19px ' + F; c.fillStyle = col; c.fillText(sfgFit(c, label, w - 56), x + 28, y + 44);
+      c.strokeStyle = sfgRgba(col, .45); c.lineWidth = 2; c.shadowColor = sfgRgba(col, .4); c.shadowBlur = 16; c.stroke(); c.restore();
+      c.font = '600 21px ' + F; c.fillStyle = col; c.fillText(label, x + 32, y + 46);
     }
-    var iy = ky2 + kh + 28, ih = 290;
-    panel(P, iy, IW, ih, K.cyan, 'S E B A R A N   C O N E   P E R   M E S I N');
-    var dx = P + 190, dy = iy + 168, ro = 104, ri = 68;
+    panel(P, iy, dw, ih, K.cyan, 'S E B A R A N   C O N E   P E R   M E S I N');
+    // donut
+    var dx = P + 190, dy = iy + 190, ro = 108, ri = 72;
     var parts = [['SSM', t.ssm, K.ssm], ['FADIS', t.fadis, K.fadis], ['TAIHE', t.taihe, K.taihe]];
     c.save(); c.lineWidth = ro - ri; c.strokeStyle = 'rgba(130,160,255,.14)'; c.beginPath(); c.arc(dx, dy, (ro + ri) / 2, 0, Math.PI * 2); c.stroke(); c.restore();
     if (t.cone > 0) {
@@ -1437,71 +1434,70 @@
       parts.forEach(function (p) {
         if (p[1] <= 0) return;
         var sw = (p[1] / t.cone) * Math.PI * 2;
-        c.save(); c.lineWidth = ro - ri; c.lineCap = 'butt'; c.strokeStyle = p[2]; c.shadowColor = p[2]; c.shadowBlur = 18;
+        c.save(); c.lineWidth = ro - ri; c.lineCap = 'butt'; c.strokeStyle = p[2]; c.shadowColor = p[2]; c.shadowBlur = 20;
         c.beginPath(); c.arc(dx, dy, (ro + ri) / 2, a0 + gp / 2, a0 + sw - gp / 2); c.stroke(); c.restore();
         a0 += sw;
       });
     }
     c.textAlign = 'center';
-    c.font = '700 42px ' + F; c.fillStyle = '#fff'; c.save(); c.shadowColor = K.cone; c.shadowBlur = 12; c.fillText(sfgNum(t.cone, 0), dx, dy + 6); c.restore();
-    c.font = '600 16px ' + F; c.fillStyle = '#93a0cc'; c.fillText('TOTAL CONE', dx, dy + 32);
+    c.font = '700 44px ' + F; c.fillStyle = '#fff'; c.save(); c.shadowColor = K.cone; c.shadowBlur = 14; c.fillText(sfgNum(t.cone, 0), dx, dy + 6); c.restore();
+    c.font = '600 18px ' + F; c.fillStyle = '#93a0cc'; c.fillText('TOTAL CONE', dx, dy + 34);
     c.textAlign = 'left';
     parts.forEach(function (p, i) {
-      var ly = iy + 104 + i * 68, lx = P + 400;
-      c.save(); c.fillStyle = p[2]; c.shadowColor = p[2]; c.shadowBlur = 10; sfgRR(c, lx, ly - 22, 26, 26, 7); c.fill(); c.restore();
-      c.font = '700 30px ' + F; c.fillStyle = '#fff'; c.fillText(p[0], lx + 44, ly);
-      c.font = '600 21px ' + F; c.fillStyle = p[2]; c.fillText((t.cone ? p[1] / t.cone * 100 : 0).toFixed(1).replace('.', ',') + '%  \u00B7  ' + sfgNum(p[1], 0) + ' cone', lx + 44, ly + 30);
+      var ly = iy + 128 + i * 64, lx = P + 340;
+      c.save(); c.fillStyle = p[2]; c.shadowColor = p[2]; c.shadowBlur = 12; sfgRR(c, lx, ly - 20, 24, 24, 7); c.fill(); c.restore();
+      c.font = '700 26px ' + F; c.fillStyle = '#fff'; c.fillText(p[0], lx + 40, ly);
+      c.font = '600 20px ' + F; c.fillStyle = p[2]; c.fillText((t.cone ? p[1] / t.cone * 100 : 0).toFixed(1).replace('.', ',') + '%  \u00B7  ' + sfgNum(p[1], 0) + ' cone', lx + 40, ly + 26);
     });
 
-    // ===== panel: top 5 benang berdasarkan kg =====
-    var ty5 = iy + ih + 24, h5 = 484;
-    panel(P, ty5, IW, h5, K.mag, 'T O P   5   B E N A N G   B E R D A S A R K A N   K G');
+    var tpx = P + dw + 24, tpw = W - P - tpx;
+    panel(tpx, iy, tpw, ih, K.mag, 'T O P   5   B E N A N G   B E R D A S A R K A N   K G');
     var top = rows.map(function (r) { return r; }).filter(function (r) { return r.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; }).slice(0, 5);
-    var mx = top.length ? top[0].kg : 1, bx = P + 28 + 44, bW = IW - 56 - 44;
-    if (!top.length) { c.font = '600 24px ' + F; c.fillStyle = '#6f7aa5'; c.fillText('Belum ada data untuk diranking.', P + 28, ty5 + 140); }
+    var mx = top.length ? top[0].kg : 1, by0 = iy + 86, lblW = 400, barX = tpx + 32 + lblW, barW = tpw - 64 - lblW - 150;
+    if (!top.length) { c.font = '600 24px ' + F; c.fillStyle = '#6f7aa5'; c.fillText('Belum ada data untuk diranking.', tpx + 32, iy + 180); }
     top.forEach(function (r, i) {
-      var y = ty5 + 76 + i * 80;
-      c.font = '700 20px ' + F; c.fillStyle = K.mag; c.fillText(String(i + 1).padStart(2, '0'), P + 28, y + 26);
-      c.font = '700 22px ' + F; c.textAlign = 'right'; var kgT = sfgNum(r.kg, 2) + ' kg', kgW = c.measureText(kgT).width;
-      c.fillStyle = '#fff'; c.fillText(kgT, P + IW - 28, y + 26); c.textAlign = 'left';
-      var nameMax = bW - kgW - 24;
-      c.font = '600 23px ' + F; c.fillStyle = '#eaf0ff';
-      var bl = sfgFit(c, r.benang, nameMax), bwid = c.measureText(bl).width;
-      c.fillText(bl, bx, y + 26);
+      var y = by0 + i * 46;
+      c.font = '700 20px ' + F; c.fillStyle = K.mag; c.fillText(String(i + 1).padStart(2, '0'), tpx + 32, y + 22);
+      c.font = '600 22px ' + F; c.fillStyle = '#eaf0ff';
+      var bl = sfgFit(c, r.benang, lblW - 60), bwid = c.measureText(bl).width;
+      c.fillText(bl, tpx + 76, y + 22);
       if (r.supplier) {
         c.font = '500 17px ' + F; var sp = r.supplier, sw2 = c.measureText(sp).width;
-        if (bwid + 14 + sw2 <= nameMax) { c.fillStyle = '#93a0cc'; c.fillText(sp, bx + bwid + 14, y + 26); }
+        if (bwid + 14 + sw2 <= lblW - 60) { c.fillStyle = '#93a0cc'; c.fillText(sp, tpx + 76 + bwid + 14, y + 22); }
       }
-      c.save(); sfgRR(c, bx, y + 40, bW, 18, 9); c.fillStyle = 'rgba(130,160,255,.12)'; c.fill(); c.restore();
-      var bw = Math.max(18, bW * r.kg / mx), bgd = c.createLinearGradient(bx, 0, bx + bw, 0); bgd.addColorStop(0, K.cyan); bgd.addColorStop(0.55, K.vio); bgd.addColorStop(1, K.mag);
-      c.save(); c.shadowColor = K.mag; c.shadowBlur = 12; sfgRR(c, bx, y + 40, bw, 18, 9); c.fillStyle = bgd; c.fill(); c.restore();
+      c.save(); sfgRR(c, barX, y + 4, barW, 22, 11); c.fillStyle = 'rgba(130,160,255,.12)'; c.fill(); c.restore();
+      var bw = Math.max(20, barW * r.kg / mx), bgd = c.createLinearGradient(barX, 0, barX + bw, 0); bgd.addColorStop(0, K.cyan); bgd.addColorStop(0.55, K.vio); bgd.addColorStop(1, K.mag);
+      c.save(); c.shadowColor = K.mag; c.shadowBlur = 14; sfgRR(c, barX, y + 4, bw, 22, 11); c.fillStyle = bgd; c.fill(); c.restore();
+      c.font = '700 22px ' + F; c.fillStyle = '#fff'; c.textAlign = 'right'; c.fillText(sfgNum(r.kg, 2) + ' kg', tpx + tpw - 32, y + 22); c.textAlign = 'left';
     });
 
     // ===== tabel =====
-    var tx0 = P, ty = SFG.TOP, tW = IW, cols = SFG.COLS, xs = [], acc = tx0;
+    var tx0 = P, ty = SFG.TOP, tW = W - 2 * P, cols = SFG.COLS, xs = [], acc = tx0;
     cols.forEach(function (cl) { xs.push(acc); acc += cl[1]; });
-    var tableH = SFG.HEAD + Math.max(n, 1) * SFG.ROW + (n ? SFG.TOT : 0), RW = SFG.ROW;
+    var tableH = SFG.HEAD + Math.max(n, 1) * SFG.ROW + (n ? SFG.TOT : 0);
     c.save(); sfgRR(c, tx0, ty, tW, tableH, 26); c.fillStyle = 'rgba(8,13,40,.78)'; c.fill();
-    c.strokeStyle = 'rgba(130,160,255,.4)'; c.lineWidth = 2; c.shadowColor = 'rgba(139,92,255,.45)'; c.shadowBlur = 18; c.stroke(); c.restore();
+    c.strokeStyle = 'rgba(130,160,255,.4)'; c.lineWidth = 2; c.shadowColor = 'rgba(139,92,255,.45)'; c.shadowBlur = 20; c.stroke(); c.restore();
     c.save(); sfgRR(c, tx0, ty, tW, tableH, 26); c.clip();
 
-    // header kolom: kelompok STOK WIP (SSM, FADIS, TAIHE) di atas, lainnya di tengah vertikal
-    var hh = SFG.HEAD, h1 = 46, mcol = [K.ssm, K.fadis, K.taihe], g0 = xs[2], gW = cols[2][1] + cols[3][1] + cols[4][1];
+    // header kolom
+    var hh = SFG.HEAD, h1 = 56;
     var hg = c.createLinearGradient(0, ty, 0, ty + hh); hg.addColorStop(0, 'rgba(255,92,147,.30)'); hg.addColorStop(1, 'rgba(255,92,147,.12)');
     c.fillStyle = hg; c.fillRect(tx0, ty, tW, hh);
-    for (var m = 0; m < 3; m++) { c.fillStyle = sfgRgba(mcol[m], .26); c.fillRect(xs[2 + m], ty + h1, cols[2 + m][1], hh - h1); }
-    c.fillStyle = 'rgba(130,160,255,.20)'; c.fillRect(g0, ty, gW, h1);
-    c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(g0, ty + h1 - 1, gW, 2);
-    c.textAlign = 'center'; c.font = '700 19px ' + F; c.fillStyle = '#eaf0ff';
-    c.fillText('STOK WIP (CONE)', g0 + gW / 2, ty + 31);
-    [0, 1, 5, 6].forEach(function (i) {
-      c.font = '700 20px ' + F; c.fillStyle = '#eaf0ff';
-      c.fillText(cols[i][0], xs[i] + cols[i][1] / 2, ty + hh / 2 + 8);
+    var mcol = [K.ssm, K.fadis, K.taihe];
+    for (var m = 0; m < 3; m++) {
+      c.fillStyle = sfgRgba(mcol[m], .26); c.fillRect(xs[5 + m], ty + h1, cols[5 + m][1], hh - h1);
+    }
+    c.fillStyle = 'rgba(130,160,255,.20)'; c.fillRect(xs[5], ty, cols[5][1] + cols[6][1] + cols[7][1], h1);
+    c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(xs[5], ty + h1 - 1, cols[5][1] + cols[6][1] + cols[7][1], 2);
+    c.textAlign = 'center'; c.font = '700 22px ' + F; c.fillStyle = '#eaf0ff';
+    c.fillText('STOK WIP (CONE)', xs[5] + (cols[5][1] + cols[6][1] + cols[7][1]) / 2, ty + 36);
+    [0, 1, 2, 3, 4, 8, 9].forEach(function (i) {
+      var lab = cols[i][0], cxm = xs[i] + cols[i][1] / 2;
+      c.font = '700 22px ' + F; c.fillStyle = '#eaf0ff';
+      if (i === 4) { c.fillText('Berat', cxm, ty + hh / 2 - 4); c.font = '600 17px ' + F; c.fillStyle = '#c4cdf2'; c.fillText('(Kg/Cone)', cxm, ty + hh / 2 + 22); }
+      else c.fillText(lab, cxm, ty + hh / 2 + 8);
     });
-    [2, 3, 4].forEach(function (i) {
-      c.font = '700 20px ' + F; c.fillStyle = mcol[i - 2]; c.save(); c.shadowColor = mcol[i - 2]; c.shadowBlur = 8;
-      c.fillText(cols[i][0], xs[i] + cols[i][1] / 2, ty + h1 + 36); c.restore();
-    });
+    [5, 6, 7].forEach(function (i) { c.font = '700 22px ' + F; c.fillStyle = mcol[i - 5]; c.save(); c.shadowColor = mcol[i - 5]; c.shadowBlur = 10; c.fillText(cols[i][0], xs[i] + cols[i][1] / 2, ty + h1 + 36); c.restore(); });
     c.textAlign = 'left';
     var hl = c.createLinearGradient(tx0, 0, tx0 + tW, 0); hl.addColorStop(0, K.cyan); hl.addColorStop(0.5, K.vio); hl.addColorStop(1, K.mag);
     c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10; c.fillStyle = hl; c.fillRect(tx0, ty + hh - 3, tW, 3); c.restore();
@@ -1509,57 +1505,56 @@
     // baris data
     var ry = ty + hh, mxm = Math.max(1, Math.max.apply(null, rows.map(function (r) { return Math.max(r.ssm, r.fadis, r.taihe); }).concat([0])));
     if (!n) {
-      c.textAlign = 'center'; c.font = '600 24px ' + F; c.fillStyle = '#6f7aa5';
-      c.fillText(sfgFit(c, d.empty || 'Belum ada data SOFT pada tanggal ini.', tW - 48), tx0 + tW / 2, ry + RW / 2 + 8); c.textAlign = 'left';
+      c.textAlign = 'center'; c.font = '600 26px ' + F; c.fillStyle = '#6f7aa5';
+      c.fillText(d.empty || 'Belum ada data SOFT pada tanggal ini.', tx0 + tW / 2, ry + 31); c.textAlign = 'left';
     }
     rows.forEach(function (r, i) {
-      var y = ry + i * RW, mid = y + RW / 2 + 9;
-      if (i % 2 === 0) { c.fillStyle = 'rgba(130,160,255,.07)'; c.fillRect(tx0, y, tW, RW); }
-      c.fillStyle = 'rgba(130,160,255,.13)'; c.fillRect(tx0, y + RW - 1, tW, 1);
+      var y = ry + i * SFG.ROW, mid = y + SFG.ROW / 2 + 8;
+      if (i % 2 === 0) { c.fillStyle = 'rgba(130,160,255,.07)'; c.fillRect(tx0, y, tW, SFG.ROW); }
+      c.fillStyle = 'rgba(130,160,255,.13)'; c.fillRect(tx0, y + SFG.ROW - 1, tW, 1);
       c.textAlign = 'center'; c.font = '600 20px ' + F; c.fillStyle = K.cyan; c.fillText(String(i + 1), xs[0] + cols[0][1] / 2, mid);
-      // kolom Benang: nama benang, lalu baris kedua = supplier, keterangan, berat per cone
-      c.textAlign = 'left'; c.font = '600 23px ' + F; c.fillStyle = '#ffffff'; c.fillText(sfgFit(c, r.benang, cols[1][1] - 24), xs[1] + 12, y + 36);
-      var sub = [r.supplier, r.ket, r.berat > 0 ? sfgNum(r.berat, 4) + ' kg/cone' : ''].filter(function (x) { return x; }).join('  \u00B7  ');
-      if (sub) { c.font = '500 17px ' + F; c.fillStyle = '#93a0cc'; c.fillText(sfgFit(c, sub, cols[1][1] - 24), xs[1] + 12, y + 64); }
-      c.textAlign = 'right';
-      [['ssm', 2], ['fadis', 3], ['taihe', 4]].forEach(function (mm) {
-        var v = r[mm[0]], ci = mm[1], col = mcol[ci - 2], cwid = cols[ci][1];
+      c.textAlign = 'left'; c.font = '600 22px ' + F; c.fillStyle = '#ffffff'; c.fillText(sfgFit(c, r.benang, cols[1][1] - 28), xs[1] + 14, mid);
+      c.font = '500 21px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(sfgFit(c, r.supplier, cols[2][1] - 28), xs[2] + 14, mid);
+      c.fillStyle = '#93a0cc'; c.fillText(sfgFit(c, r.ket, cols[3][1] - 28), xs[3] + 14, mid);
+      c.textAlign = 'right'; c.font = '500 21px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(sfgNum(r.berat, 4), xs[4] + cols[4][1] - 16, mid);
+      [['ssm', 5], ['fadis', 6], ['taihe', 7]].forEach(function (mm) {
+        var v = r[mm[0]], ci = mm[1], col = mcol[ci - 5], cwid = cols[ci][1];
         if (v > 0) {
           var bw2 = Math.max(6, (cwid - 24) * v / mxm);
-          c.save(); c.shadowColor = col; c.shadowBlur = 8; c.fillStyle = sfgRgba(col, .85); sfgRR(c, xs[ci] + 12, y + RW - 14, bw2, 4, 2); c.fill(); c.restore();
-          c.font = '700 24px ' + F; c.fillStyle = col; c.fillText(sfgNum(v, 0), xs[ci] + cwid - 14, mid - 5);
-        } else { c.font = '500 22px ' + F; c.fillStyle = '#47517c'; c.fillText('\u2013', xs[ci] + cwid - 14, mid - 5); }
+          c.save(); c.shadowColor = col; c.shadowBlur = 8; c.fillStyle = sfgRgba(col, .85); sfgRR(c, xs[ci] + 12, y + SFG.ROW - 10, bw2, 4, 2); c.fill(); c.restore();
+          c.font = '700 22px ' + F; c.fillStyle = col; c.fillText(sfgNum(v, 0), xs[ci] + cwid - 16, mid - 3);
+        } else { c.font = '500 21px ' + F; c.fillStyle = '#47517c'; c.fillText('\u2013', xs[ci] + cwid - 16, mid - 3); }
       });
-      c.font = '700 24px ' + F; c.fillStyle = K.cone; c.fillText(sfgNum(r.cone, 0), xs[5] + cols[5][1] - 14, mid - 5);
-      c.fillStyle = K.kg; c.fillText(sfgNum(r.kg, 2), xs[6] + cols[6][1] - 14, mid - 5);
+      c.font = '700 22px ' + F; c.fillStyle = K.cone; c.fillText(sfgNum(r.cone, 0), xs[8] + cols[8][1] - 16, mid);
+      c.fillStyle = K.kg; c.fillText(sfgNum(r.kg, 2), xs[9] + cols[9][1] - 16, mid);
       c.textAlign = 'left';
     });
-    // garis pemisah kolom (kolom SSM/FADIS/TAIHE mulai di bawah judul kelompok)
+    // vertikal pemisah kolom
     c.fillStyle = 'rgba(130,160,255,.14)';
-    for (var q = 1; q < cols.length; q++) { var inG = q >= 3 && q <= 4; c.fillRect(xs[q], inG ? ty + h1 : ty, 1, tableH - (inG ? h1 : 0)); }
+    for (var q = 1; q < cols.length; q++) c.fillRect(xs[q], q >= 5 && q <= 7 ? ty + h1 : ty, 1, tableH - (q >= 5 && q <= 7 ? h1 : 0));
 
     // baris total
     if (n) {
-      var yT = ry + n * RW;
+      var yT = ry + n * SFG.ROW;
       var tgd = c.createLinearGradient(tx0, 0, tx0 + tW, 0); tgd.addColorStop(0, 'rgba(34,243,255,.28)'); tgd.addColorStop(0.5, 'rgba(139,92,255,.30)'); tgd.addColorStop(1, 'rgba(255,61,240,.28)');
       c.fillStyle = tgd; c.fillRect(tx0, yT, tW, SFG.TOT);
       c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10; c.fillStyle = hl; c.fillRect(tx0, yT, tW, 3); c.restore();
       var mt = yT + SFG.TOT / 2 + 9;
-      c.textAlign = 'right'; c.font = '700 24px ' + F; c.fillStyle = '#ffffff';
-      c.fillText('T O T A L', xs[1] + cols[1][1] - 14, mt);
-      c.save(); c.font = '700 25px ' + F;
-      [[t.ssm, 2, K.ssm, 0], [t.fadis, 3, K.fadis, 0], [t.taihe, 4, K.taihe, 0], [t.cone, 5, K.cone, 0], [t.kg, 6, K.kg, 2]].forEach(function (z) {
-        c.fillStyle = z[2]; c.shadowColor = z[2]; c.shadowBlur = 10; c.fillText(sfgNum(z[0], z[3]), xs[z[1]] + cols[z[1]][1] - 14, mt);
+      c.textAlign = 'right'; c.font = '700 26px ' + F; c.fillStyle = '#ffffff';
+      c.fillText('T O T A L', xs[4] + cols[4][1] - 16, mt);
+      c.save(); c.font = '700 28px ' + F;
+      [[t.ssm, 5, K.ssm, 0], [t.fadis, 6, K.fadis, 0], [t.taihe, 7, K.taihe, 0], [t.cone, 8, K.cone, 0], [t.kg, 9, K.kg, 2]].forEach(function (z) {
+        c.fillStyle = z[2]; c.shadowColor = z[2]; c.shadowBlur = 12; c.fillText(sfgNum(z[0], z[3]), xs[z[1]] + cols[z[1]][1] - 16, mt);
       }); c.restore(); c.textAlign = 'left';
     }
     c.restore();
 
     // ===== footer =====
-    var fy = H - 70;
-    c.font = '600 18px ' + F; c.fillStyle = '#93a0cc'; c.fillText('DyePocket  \u00B7  Yarn Dyeing', P, fy);
-    c.textAlign = 'right'; c.fillText('Dicetak ' + (d.printed || '-') + '  \u00B7  ' + n + ' baris data', W - P, fy); c.textAlign = 'left';
+    var fy = H - 78;
+    c.font = '600 20px ' + F; c.fillStyle = '#93a0cc'; c.fillText('DyePocket  \u00B7  Yarn Dyeing', P, fy);
+    c.textAlign = 'right'; c.fillText('Dicetak ' + (d.printed || '-') + '   \u00B7   ' + n + ' baris data', W - P, fy); c.textAlign = 'left';
     var fl = c.createLinearGradient(P, 0, W - P, 0); fl.addColorStop(0, K.cyan); fl.addColorStop(0.5, K.vio); fl.addColorStop(1, K.mag);
-    c.save(); c.shadowColor = K.vio; c.shadowBlur = 8; c.fillStyle = fl; c.fillRect(P, fy + 20, IW, 3); c.restore();
+    c.save(); c.shadowColor = K.vio; c.shadowBlur = 10; c.fillStyle = fl; c.fillRect(P, fy + 22, W - 2 * P, 3); c.restore();
     return { w: W, h: H };
   }
 
@@ -1634,7 +1629,7 @@
     var b = this;
     sfBusy(b, true, 'Unduh PNG');
     sfReady().then(function () {
-      var cv = sfExportCanvas(2);
+      var cv = sfExportCanvas(1.5);
       return new Promise(function (res, rej) { cv.toBlob(function (bl) { bl ? res(bl) : rej(new Error('Gambar terlalu besar untuk dibuat.')); }, 'image/png'); });
     }).then(function (bl) {
       var a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = sfFileName('png'); a.style.display = 'none';
@@ -1647,7 +1642,7 @@
     var b = this;
     sfBusy(b, true, 'Unduh PDF');
     Promise.all([loadJsPdf(), sfReady()]).then(function (x) {
-      var cv = sfExportCanvas(2), w = SFG.W * 0.75, h = sfgHeight(sf.rows.length) * 0.75;   // 1 px = 0,75 pt; satu halaman, tinggi mengikuti jumlah data
+      var cv = sfExportCanvas(1.5), w = SFG.W * 0.75, h = sfgHeight(sf.rows.length) * 0.75;   // 1 px = 0,75 pt; satu halaman, tinggi mengikuti jumlah data
       var doc = new x[0]({ unit: 'pt', format: [w, h], orientation: w >= h ? 'landscape' : 'portrait', compress: true });
       doc.addImage(cv.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, w, h);
       doc.save(sfFileName('pdf'));
