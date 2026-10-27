@@ -4271,23 +4271,44 @@ var Code128 = (function () {
   var PDF_GRUP = { A: '#fbd6a4', B: '#bad5f1', C: '#c6eec6' };
   var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
+  /* Desain lembar WIP (PDF dan PNG memakai fungsi yang sama): banner hijau neon, kartu ringkasan di atas, tabel per Posisi dengan judul seksi,
+     resume No Benang x Posisi berwarna (heat) lengkap dengan baris TOTAL. Hanya memakai perintah gambar yang juga ada di PngDoc. */
   function pdfBuild(JsPDF, rows, date, prev, per) {
-    var W = 842, M = 16, RH = 13, HH = 24, RSH = 22, RRH = 14, CH = 44, TOP = 56, PER = per || 600, TW = W - 2 * M;
-    var hex = function (doc, c, kind) {
-      var n = parseInt(c.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-      if (kind === 'f') doc.setFillColor(r, g, b); else if (kind === 't') doc.setTextColor(r, g, b); else doc.setDrawColor(r, g, b);
-    };
+    var W = 842, M = 18, TW = W - 2 * M, RH = 15, HH = 26, SECH = 20, RSH = 26, RRH = 15, PER = per || 600;
+    var BLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    var C = { ink: '#07140c', dim: '#5b6f5d', neon: '#b8ff2c', teal: '#00e589', grid: '#e1ebd9', band: '#f3f8ec', page: '#f6f9f2', line: '#7fae6e', dark1: '#04100a', dark2: '#0f3a1c' };
+    var POSC = { CELUP: '#e5322d', HDX: '#c026d3', RF: '#1d4ed8', WIP: '#06b6d4', KELOS: '#f59e0b', PACK: '#16a34a' };
+    var POSF = { CELUP: '#ffffff', HDX: '#ffffff', RF: '#ffffff', WIP: '#06222a', KELOS: '#2b1700', PACK: '#ffffff' };
+    var SHIFTC = { 'Shift 1': '#ffe9a6', 'Shift 2': '#bcd6f6', 'Shift 3': '#bfe9bf' }, GRUPC = { A: '#fbcf9a', B: '#b3d0f2', C: '#bfe9bf' };
+    var doc = null;
+    var rgb = function (c) { var n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    var hex = function (c, kind) { var v = rgb(c); if (kind === 'f') doc.setFillColor(v[0], v[1], v[2]); else if (kind === 't') doc.setTextColor(v[0], v[1], v[2]); else doc.setDrawColor(v[0], v[1], v[2]); };
+    var lerp = function (c1, c2, t) { var a = rgb(c1), b = rgb(c2), h = '#'; for (var i = 0; i < 3; i++) { var v = Math.round(a[i] + (b[i] - a[i]) * t); h += (v < 16 ? '0' : '') + v.toString(16); } return h; };
     var tx = function (s) { return String(s === null || s === undefined ? '' : s).replace(/[^\x20-\xFF]/g, '?'); };
-    var fit = function (doc, s, w) {
-      s = tx(s);
-      if (doc.getTextWidth(s) <= w) return s;
-      while (s.length > 1 && doc.getTextWidth(s + '..') > w) s = s.slice(0, -1);
-      return s + '..';
+    var font = function (bold, size, color) { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); hex(color, 't'); };
+    var T = function (s, x, y, align) { doc.text(tx(s), x, y, align ? { align: align } : undefined); };
+    var fit = function (s, w) { s = tx(s); if (doc.getTextWidth(s) <= w) return s; while (s.length > 1 && doc.getTextWidth(s + '..') > w) s = s.slice(0, -1); return s + '..'; };
+    var box = function (x, y, w, h, r, fill, stroke, lw) { hex(fill, 'f'); hex(stroke || fill, 'd'); doc.setLineWidth(lw || 0.8); doc.roundedRect(x, y, w, h, r, r, stroke ? 'FD' : 'F'); };
+    var line = function (x1, y1, x2, y2, c, lw) { hex(c, 'd'); doc.setLineWidth(lw || 0.5); doc.line(x1, y1, x2, y2); };
+    var grad = function (x, y, w, h, c1, c2) {
+      var N = Math.max(10, Math.min(64, Math.round(w / 5))), i;
+      for (i = 0; i < N; i++) { hex(lerp(c1, c2, N > 1 ? i / (N - 1) : 0), 'f'); doc.rect(x + i * w / N, y, w / N + 0.8, h, 'F'); }
     };
+    var spaced = function (s, x, y, k, align) {
+      s = tx(s); var w = 0, i;
+      for (i = 0; i < s.length; i++) w += doc.getTextWidth(s.charAt(i)) + k;
+      w -= k;
+      var cx = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
+      for (i = 0; i < s.length; i++) { doc.text(s.charAt(i), cx, y); cx += doc.getTextWidth(s.charAt(i)) + k; }
+    };
+    var topRound = function (x, y, w, h, r, fill) { hex(fill, 'f'); doc.roundedRect(x, y, w, h, r, r, 'F'); doc.rect(x, y + h - r, w, r, 'F'); };
+
+    // kolom tabel
     var cols = [
-      { w: 22, a: 'l', h: ['', ''] }, { w: 54, a: 'l', h: ['Tanggal', 'Clp'] }, { w: 62, a: 'l', h: ['KIKC', ''] }, { w: 68, a: 'l', h: ['No Benang', ''] },
-      { w: 52, a: 'l', h: ['Warna', ''] }, { w: 42, a: 'r', h: ['Kg', ''] }, { w: 32, a: 'r', h: ['Cone', ''] }, { w: 200, a: 'l', h: ['Keterangan', ''] },
-      { w: 50, a: 'c', h: ['Shift', 'Celup'] }, { w: 34, a: 'c', h: ['Group', ''] }, { w: 56, a: 'c', h: ['Posisi', ''] }, { w: 44, a: 'c', h: ['Uji QC', ''] }, { w: 0, a: 'l', h: ['Catatan', ''] }
+      { k: 'no', w: 24, a: 'c', t: ['NO'] }, { k: 'tgl', w: 42, a: 'l', t: ['TGL', 'CELUP'] }, { k: 'kikc', w: 66, a: 'l', t: ['KIKC'] }, { k: 'nb', w: 74, a: 'l', t: ['NO BENANG'] },
+      { k: 'warna', w: 56, a: 'l', t: ['WARNA'] }, { k: 'kg', w: 48, a: 'r', t: ['KG'] }, { k: 'cone', w: 34, a: 'r', t: ['CONE'] }, { k: 'ket', w: 176, a: 'l', t: ['KETERANGAN'] },
+      { k: 'shift', w: 46, a: 'c', t: ['SHIFT', 'CELUP'] }, { k: 'grup', w: 30, a: 'c', t: ['GROUP'] }, { k: 'pos', w: 62, a: 'c', t: ['POSISI'] }, { k: 'qc', w: 46, a: 'c', t: ['UJI QC'] }, { k: 'cat', w: 0, a: 'l', t: ['CATATAN'] }
     ];
     var used = 0; cols.forEach(function (c) { used += c.w; });
     cols[cols.length - 1].w = TW - used;
@@ -4301,102 +4322,207 @@ var Code128 = (function () {
       var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(r.tglCelup || ''));
       var pi = POSISI.indexOf(r.posisi);
       return {
-        tgl: m ? m[3] + '-' + m[2] + '-' + m[1] : String(r.tglCelup || ''), kikc: r.kikc, nb: r.noBenang, warna: r.warna,
-        kg: fmt2(parseNum(r.kg)), cone: String(r.cone || ''), ket: r.ketKikc, shift: shiftLabel(r.shift), grup: String(r.grup || '').trim(),
-        pos: pi >= 0 ? (pi + 1) + '. ' + r.posisi : String(r.posisi || ''), posKey: r.posisi, qc: r.qc,
+        tgl: m ? parseInt(m[1], 10) + ' ' + BULAN[parseInt(m[2], 10) - 1] : String(r.tglCelup || ''), kikc: r.kikc, nb: r.noBenang, warna: r.warna,
+        kg: fmt2(parseNum(r.kg)), cone: String(r.cone || ''), coneN: parseNum(r.cone), ket: r.ketKikc, shift: shiftLabel(r.shift), grup: String(r.grup || '').trim(),
+        pos: pi >= 0 ? (pi + 1) + '. ' + r.posisi : String(r.posisi || ''), posKey: r.posisi, posIdx: pi, qc: r.qc,
         cat: [(isAdmin() ? r.noteQc : ''), r.keterangan].filter(function (x) { return x && String(x).trim(); }).join(' · ')
       };
     });
-    var res = rsCalc(rows);
-    var pages = [];
-    for (var i = 0; i < data.length; i += PER) pages.push(data.slice(i, i + PER));
-    var resumeH = RSH + res.list.length * RRH + 8;
-    var doc = null, n0 = 0;
+    var res = rsCalc(rows), agg = {};
+    data.forEach(function (r) { var o = agg[r.posKey] || (agg[r.posKey] = { lots: 0, cone: 0 }); o.lots++; o.cone += r.coneN; });
+
+    // bagi ke halaman; judul seksi Posisi disisipkan, dan diulang bila seksi berlanjut ke halaman berikutnya
+    var pages = [], cur = [], cnt = 0, lastKey = null;
+    data.forEach(function (r) {
+      if (cnt >= PER) { pages.push(cur); cur = []; cnt = 0; }
+      if (cnt === 0 || r.posKey !== lastKey) cur.push({ sec: true, key: r.posKey, idx: r.posIdx, cont: cnt === 0 && pages.length > 0 && r.posKey === lastKey });
+      lastKey = r.posKey; cur.push(r); cnt++;
+    });
+    if (cur.length || !pages.length) pages.push(cur);
+
+    var now = new Date(), P2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var dp = date.split('-'), dd = new Date(+dp[0], +dp[1] - 1, +dp[2]);
+    var dateTxt = HARI[dd.getDay()] + ', ' + dd.getDate() + ' ' + BLN[dd.getMonth()] + ' ' + dd.getFullYear();
+    var stamp = P2(now.getDate()) + '/' + P2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + P2(now.getHours()) + ':' + P2(now.getMinutes());
+    var HEAD_H = 72, KPI_Y = HEAD_H + 16, KPI_H = 54, BAR_Y = KPI_Y + KPI_H + 12, BAR_H = 12, TOP1 = BAR_Y + BAR_H + 18;
+    var nPos = POSISI.length, resumeH = RSH + res.list.length * RRH + 22;
+    var vals = res.tot.concat([res.grand]);
+
+    var n0 = 0;
     pages.forEach(function (pg, pi) {
-      var last = pi === pages.length - 1, top = pi === 0 ? TOP : M;
-      var tblH = HH + pg.length * RH + 6;
-      var H = top + tblH + M + (last ? 20 + resumeH + 18 + CH : 0);
+      var last = pi === pages.length - 1, top = pi === 0 ? TOP1 : M + 28;
+      var bodyH = 0; pg.forEach(function (it) { bodyH += it.sec ? SECH : RH; });
+      var tblH = HH + bodyH + 4;
+      var H = top + tblH + 16 + (last ? 20 + 16 + resumeH + 14 : 0) + 22;
       var orient = W >= H ? 'l' : 'p';
-      if (!doc) doc = new JsPDF({ unit: 'pt', format: [W, H], orientation: orient }); else doc.addPage([W, H], orient);
-      var y = top;
+      if (!doc) doc = new JsPDF({ unit: 'pt', format: [W, H], orientation: orient, compress: true }); else doc.addPage([W, H], orient);
+      hex(C.page, 'f'); doc.rect(0, 0, W, H, 'F');
+
       if (pi === 0) {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(22); hex(doc, '#111111', 't');
-        doc.text('WIP YARN DYEING', M, M + 20);
-        var p = date.split('-'), lbl = parseInt(p[2], 10) + ' ' + BULAN[parseInt(p[1], 10) - 1] + ' ' + p[0];
-        doc.setFontSize(8.5);
-        var lw = doc.getTextWidth(lbl) + 16;
-        hex(doc, '#3f3f3f', 'f'); doc.roundedRect(M, M + 27, lw, 15, 4, 4, 'F');
-        hex(doc, '#ffffff', 't'); doc.text(lbl, M + 8, M + 37.5);
+        // ---- banner
+        grad(0, 0, W * 0.55, HEAD_H, C.dark1, '#0b2c14');
+        grad(W * 0.55 - 0.5, 0, W * 0.45 + 0.5, HEAD_H, '#0b2c14', '#1a4a0e');
+        grad(0, HEAD_H, W, 2, '#c6ff00', C.teal);
+        grad(0, HEAD_H + 2, W, 2, '#35640f', '#0d4a2c');
+        for (var ti = 0; ti < 30; ti++) line(430 + ti * 8.5, 64 - (ti % 5 === 0 ? 9 : 4), 430 + ti * 8.5, 64, '#3d8f2a', 0.6);
+        hex(C.neon, 'd'); doc.setLineWidth(2.2); doc.circle(M + 22, 36, 15, 'S');
+        doc.setLineWidth(1.6); doc.circle(M + 22, 36, 8.5, 'S');
+        hex(C.neon, 'f'); doc.circle(M + 22, 36, 2.8, 'F');
+        font(true, 7.6, C.neon); spaced('DYEPOCKET  ·  LAPORAN HARIAN', M + 50, 24, 2.2);
+        font(true, 27, '#ffffff'); T('WIP YARN DYEING', M + 50, 56);
+        var pw = 214;
+        box(W - M - pw, 12, pw, 26, 13, '#0a2410', C.neon, 1.1);
+        font(true, 11.5, '#ffffff'); T(dateTxt, W - M - pw / 2, 29.2, 'center');
+        font(true, 9, C.neon); T(rows.length + ' LOT  ·  ' + fmt2(res.grand) + ' KG', W - M, 54, 'right');
+        font(false, 7.6, '#9fd69a'); T('Dibuat ' + stamp, W - M, 65, 'right');
+
+        // ---- kartu ringkasan per Posisi
+        var gap = 8, kw = (TW - 7 * gap) / (nPos + 1);
+        vals.forEach(function (v, k) {
+          var x = M + k * (kw + gap), isT = k === nPos, pk = POSISI[k], ac = isT ? C.neon : POSC[pk];
+          box(x, KPI_Y, kw, KPI_H, 7, isT ? '#06150a' : '#ffffff', isT ? C.neon : '#cfe3c4', isT ? 1 : 0.8);
+          if (!isT) { hex(ac, 'f'); doc.roundedRect(x, KPI_Y, 5, KPI_H, 2.5, 2.5, 'F'); }
+          font(true, 6.8, isT ? '#9fd69a' : C.dim); spaced(isT ? 'TOTAL KG' : (k + 1) + '. ' + pk, x + 14, KPI_Y + 14, 1.1);
+          var vs = 19, vstr = fmtNum(v); font(true, vs, isT ? C.neon : C.ink);
+          while (vs > 11 && doc.getTextWidth(tx(vstr)) > kw - 24) { vs -= 1; font(true, vs, isT ? C.neon : C.ink); }
+          T(vstr, x + 14, KPI_Y + 35);
+          var lots = isT ? rows.length : ((agg[pk] || {}).lots || 0);
+          font(false, 7, isT ? '#9fd69a' : C.dim); T(lots + ' lot', x + 14, KPI_Y + 47);
+          if (prev) {
+            var d = round2(v - prev[k]);
+            if (d) {
+              var up = d > 0, ds = fmtNum(Math.abs(d)), dc = up ? (isT ? '#4ade80' : '#12873c') : (isT ? '#ff7a7a' : '#d32f2f');
+              font(true, 7, dc); T(ds, x + kw - 9, KPI_Y + 47, 'right');
+              var tw2 = doc.getTextWidth(tx(ds)), tx0 = x + kw - 9 - tw2 - 7;
+              hex(dc, 'f');
+              if (up) doc.triangle(tx0, KPI_Y + 46, tx0 + 5, KPI_Y + 46, tx0 + 2.5, KPI_Y + 41.5, 'F');
+              else doc.triangle(tx0, KPI_Y + 42, tx0 + 5, KPI_Y + 42, tx0 + 2.5, KPI_Y + 46.5, 'F');
+            }
+          }
+        });
+
+        // ---- batang komposisi Posisi
+        var bx = M;
+        if (res.grand > 0) {
+          box(M, BAR_Y, TW, BAR_H, 6, '#e3efd9');
+          POSISI.forEach(function (pk, k) {
+            var sw = TW * res.tot[k] / res.grand;
+            if (sw <= 0) return;
+            hex(POSC[pk], 'f');
+            if (k === 0 || bx === M) doc.roundedRect(bx, BAR_Y, sw, BAR_H, 6, 6, 'F'); else doc.rect(bx, BAR_Y, sw, BAR_H, 'F');
+            if (sw > 34) { font(true, 6.8, POSF[pk]); T(pk + ' ' + fmtNum(Math.round(res.tot[k] / res.grand * 1000) / 10) + '%', bx + sw / 2, BAR_Y + 8.4, 'center'); }
+            bx += sw;
+          });
+          // tutup sudut kanan batang agar bulat
+          hex(C.page, 'f'); doc.rect(M + TW - 3, BAR_Y - 1, 4, BAR_H + 2, 'F');
+        }
+      } else {
+        grad(0, 0, W, 26, C.dark1, '#14451d'); hex(C.neon, 'f'); doc.rect(0, 26, W, 1.6, 'F');
+        font(true, 9, '#ffffff'); T('WIP YARN DYEING', M, 17);
+        font(true, 8, C.neon); T(dateTxt + '  ·  lanjutan', W - M, 17, 'right');
       }
-      // tabel data
-      hex(doc, '#404040', 'f'); doc.roundedRect(M, y, TW, HH, 6, 6, 'F'); doc.rect(M, y + HH - 6, TW, 6, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); hex(doc, '#ffffff', 't');
+
+      // ---- tabel data
+      var y = top;
+      topRound(M, y, TW, HH, 7, C.dark1);
+      grad(M + 7, y, TW - 14, HH, C.dark1, '#0f3a1c');
+      font(true, 6.8, '#d9ffc0');
       cols.forEach(function (c, ci) {
-        var ax2 = c.a === 'r' ? xs[ci] + c.w - 3 : (c.a === 'c' ? xs[ci] + c.w / 2 : xs[ci] + 3);
-        var al = c.a === 'r' ? 'right' : (c.a === 'c' ? 'center' : 'left');
-        if (c.h[1]) { doc.text(c.h[0], ax2, y + 10, { align: al }); doc.text(c.h[1], ax2, y + 19, { align: al }); }
-        else if (c.h[0]) doc.text(c.h[0], ax2, y + 15, { align: al });
+        var ax2 = c.a === 'r' ? xs[ci] + c.w - 4 : (c.a === 'c' ? xs[ci] + c.w / 2 : xs[ci] + 4), al = c.a === 'r' ? 'right' : (c.a === 'c' ? 'center' : 'left');
+        if (c.t.length === 2) { T(c.t[0], ax2, y + 11, al); T(c.t[1], ax2, y + 20, al); } else T(c.t[0], ax2, y + 16, al);
       });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
-      pg.forEach(function (r, ri) {
-        var yy = y + HH + ri * RH, by = yy + RH - 4;
+      line(M, y + HH, M + TW, y + HH, C.neon, 1.4);
+      var yy = y + HH, ri = 0;
+      pg.forEach(function (it) {
+        if (it.sec) {
+          var pk = it.key, ac = POSC[pk] || '#6b7280', pr = agg[pk] || { lots: 0, cone: 0 }, idx = it.idx;
+          hex(lerp(ac, '#ffffff', 0.86), 'f'); doc.rect(M, yy, TW, SECH, 'F');
+          hex(ac, 'f'); doc.rect(M, yy, 5, SECH, 'F');
+          line(M, yy, M + TW, yy, lerp(ac, '#ffffff', 0.45), 0.7);
+          var lab = (idx >= 0 ? (idx + 1) + '. ' : '') + (pk || 'TANPA POSISI');
+          font(true, 8.6, ac); spaced(lab, M + 12, yy + SECH / 2 + 3, 1.2);
+          font(false, 7.2, C.dim);
+          var info = (it.cont ? 'lanjutan  ·  ' : '') + pr.lots + ' lot  ·  ' + fmtNum(round2(pr.cone)) + ' cone  ·  ' + (idx >= 0 ? fmt2(res.tot[idx]) : '-') + ' kg';
+          T(info, M + TW - 8, yy + SECH / 2 + 2.6, 'right');
+          yy += SECH; ri = 0;
+          return;
+        }
+        var r = it, by = yy + RH / 2 + 2.5;
         n0++;
-        var fills = [[8, PDF_SHIFT[r.shift]], [9, PDF_GRUP[r.grup]], [10, (PDF_POS[r.posKey] || [])[0]]];
-        fills.forEach(function (f) { if (f[1]) { hex(doc, f[1], 'f'); doc.rect(xs[f[0]], yy, cols[f[0]].w, RH, 'F'); } });
-        hex(doc, '#e3e3e3', 'd'); doc.setLineWidth(0.3); doc.line(M, yy + RH, M + TW, yy + RH);
-        hex(doc, '#222222', 't');
+        hex(ri % 2 ? C.band : '#ffffff', 'f'); doc.rect(M, yy, TW, RH, 'F');
+        line(M, yy + RH, M + TW, yy + RH, C.grid, 0.4);
+        var cc = function (k) { return cols[k]; };
+        // chip Shift, Group, Posisi, QC
+        if (r.shift && SHIFTC[r.shift]) { box(xs[8] + 3, yy + 2.5, cc(8).w - 6, RH - 5, 3.5, SHIFTC[r.shift]); }
+        if (r.grup && GRUPC[r.grup]) { box(xs[9] + 5, yy + 2.5, cc(9).w - 10, RH - 5, 3.5, GRUPC[r.grup]); }
+        if (POSC[r.posKey]) { box(xs[10] + 3, yy + 2.5, cc(10).w - 6, RH - 5, 3.5, POSC[r.posKey]); }
+        var qcOk = /layak/i.test(String(r.qc || ''));
+        if (qcOk) { box(xs[11] + 3, yy + 2.5, cc(11).w - 6, RH - 5, 3.5, '#d6f5dd', '#2f9e55', 0.5); }
         var cells = [n0 + '.', r.tgl, r.kikc, r.nb, r.warna, r.kg, r.cone, r.ket, r.shift, r.grup, r.pos, r.qc, r.cat];
         cells.forEach(function (v, ci) {
-          var c = cols[ci], s = fit(doc, v, c.w - 6);
-          if (ci === 10) { hex(doc, (PDF_POS[r.posKey] || [null, '#222222'])[1], 't'); doc.setFont('helvetica', 'bold'); }
-          if (ci === 7) doc.setFontSize(6.5);
-          var ax3 = c.a === 'r' ? xs[ci] + c.w - 3 : (c.a === 'c' ? xs[ci] + c.w / 2 : xs[ci] + 3);
-          if (s) doc.text(s, ax3, by, { align: c.a === 'r' ? 'right' : (c.a === 'c' ? 'center' : 'left') });
-          if (ci === 10) { doc.setFont('helvetica', 'normal'); hex(doc, '#222222', 't'); }
-          if (ci === 7) doc.setFontSize(7);
+          var c = cols[ci], s, fs = 7.4, bold = false, col = C.ink;
+          if (ci === 0) { fs = 6.6; col = '#8aa08a'; }
+          else if (ci === 1) { col = C.dim; }
+          else if (ci === 2) { bold = true; col = '#1a5e00'; }
+          else if (ci === 4) { bold = true; }
+          else if (ci === 5) { bold = true; fs = 7.8; }
+          else if (ci === 7) { fs = 6.9; col = '#2d3b2f'; }
+          else if (ci === 8) { fs = 6.6; bold = true; col = '#1f2a21'; }
+          else if (ci === 9) { bold = true; col = '#1f2a21'; }
+          else if (ci === 10) { fs = 6.8; bold = true; col = POSF[r.posKey] || C.ink; }
+          else if (ci === 11) { fs = 6.6; bold = true; col = qcOk ? '#157a3a' : C.ink; }
+          else if (ci === 12) { fs = 6.9; col = '#2d3b2f'; }
+          font(bold, fs, col);
+          s = fit(v, c.w - 8);
+          var ax3 = c.a === 'r' ? xs[ci] + c.w - 4 : (c.a === 'c' ? xs[ci] + c.w / 2 : xs[ci] + 4);
+          if (s) T(s, ax3, by, c.a === 'r' ? 'right' : (c.a === 'c' ? 'center' : undefined));
         });
+        yy += RH; ri++;
       });
-      hex(doc, '#333333', 'd'); doc.setLineWidth(1.6); doc.roundedRect(M, y, TW, tblH, 6, 6, 'S');
-      if (!last) return;
-      // resume No Benang x Posisi
-      var ry = y + tblH + 20, nbW = 170, cw = (TW - nbW) / (POSISI.length + 1);
-      hex(doc, '#404040', 'f'); doc.roundedRect(M, ry, TW, RSH, 6, 6, 'F'); doc.rect(M, ry + RSH - 6, TW, 6, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); hex(doc, '#ffffff', 't');
-      doc.text('No Benang', M + 6, ry + 15);
+      hex('#2b4a2a', 'd'); doc.setLineWidth(1.2); doc.roundedRect(M, y, TW, tblH, 7, 7, 'S');
+
+      if (!last) {
+        font(false, 7, C.dim); T('Halaman ' + (pi + 1) + ' dari ' + pages.length, W - M, H - 10, 'right');
+        return;
+      }
+
+      // ---- resume No Benang x Posisi
+      var ry0 = y + tblH + 20;
+      hex(C.neon, 'f'); doc.rect(M, ry0 - 1, 4, 11, 'F');
+      font(true, 8.6, C.ink); spaced('RESUME NO BENANG  x  POSISI  (KG)', M + 11, ry0 + 8, 1.4);
+      var ry = ry0 + 16, nbW = 150, cw = (TW - nbW) / (nPos + 1);
+      topRound(M, ry, TW, RSH, 7, C.dark1);
+      grad(M + 7, ry, TW - 14, RSH, C.dark1, '#0f3a1c');
+      font(true, 8, '#ffffff'); T('NO BENANG', M + 8, ry + 16);
       POSISI.concat(['TOTAL']).forEach(function (p2, k) {
-        doc.text(k < POSISI.length ? (k + 1) + '. ' + p2 : p2, M + nbW + (k + 1) * cw - 8, ry + 15, { align: 'right' });
+        var isT = k === nPos, rx = M + nbW + (k + 1) * cw;
+        font(true, 8, isT ? C.neon : '#ffffff'); T(isT ? 'TOTAL' : (k + 1) + '. ' + p2, rx - 9, ry + 15.5, 'right');
+        hex(isT ? C.neon : POSC[p2], 'f'); doc.rect(rx - cw + 3, ry + RSH - 3, cw - 6, 3, 'F');
       });
-      doc.setFontSize(8);
+      var colMax = POSISI.map(function (p2, k) { var m = 0; res.list.forEach(function (o) { if (o.v[k] > m) m = o.v[k]; }); return m; });
       res.list.forEach(function (o, k) {
-        var yy = ry + RSH + k * RRH;
-        if (k % 2) { hex(doc, '#f0f0f0', 'f'); doc.rect(M + 1, yy, TW - 2, RRH, 'F'); }
-        hex(doc, '#222222', 't'); doc.setFont('helvetica', 'normal');
-        doc.text(fit(doc, o.name, nbW - 10), M + 6, yy + 10);
-        o.v.forEach(function (v, j) { if (v) doc.text(fmt2(v), M + nbW + (j + 1) * cw - 8, yy + 10, { align: 'right' }); });
-        doc.setFont('helvetica', 'bold'); doc.text(fmt2(o.total), M + nbW + (POSISI.length + 1) * cw - 8, yy + 10, { align: 'right' });
+        var ry2 = ry + RSH + k * RRH;
+        hex(k % 2 ? C.band : '#ffffff', 'f'); doc.rect(M, ry2, TW, RRH, 'F');
+        o.v.forEach(function (v, j) {
+          if (v > 0 && colMax[j] > 0) { hex(lerp('#ffffff', POSC[POSISI[j]], 0.07 + 0.25 * v / colMax[j]), 'f'); doc.rect(M + nbW + j * cw + 1, ry2, cw - 2, RRH, 'F'); }
+        });
+        hex('#eef5e6', 'f'); doc.rect(M + nbW + nPos * cw + 1, ry2, cw - 2, RRH, 'F');
+        line(M, ry2 + RRH, M + TW, ry2 + RRH, C.grid, 0.4);
+        font(true, 8, C.ink); T(fit(o.name, nbW - 14), M + 8, ry2 + 10.4);
+        o.v.forEach(function (v, j) { if (v) { font(false, 8, C.ink); T(fmt2(v), M + nbW + (j + 1) * cw - 9, ry2 + 10.4, 'right'); } });
+        font(true, 8.2, C.ink); T(fmt2(o.total), M + nbW + (nPos + 1) * cw - 9, ry2 + 10.4, 'right');
       });
-      hex(doc, '#333333', 'd'); doc.setLineWidth(1.6); doc.roundedRect(M, ry, TW, resumeH, 6, 6, 'S');
-      // kartu total per posisi
-      var cy = ry + resumeH + 18, cwid = 92, gap = 8, cx0 = W - M - (7 * cwid + 6 * gap);
-      var vals = res.tot.concat([res.grand]), labels = POSISI.map(function (p2, k) { return (k + 1) + '. ' + p2; }).concat(['TOTAL']);
-      vals.forEach(function (v, k) {
-        var cx = cx0 + k * (cwid + gap);
-        hex(doc, '#eeeeee', 'f'); doc.roundedRect(cx, cy, cwid, CH, 8, 8, 'F');
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); hex(doc, '#555555', 't'); doc.text(labels[k], cx + 7, cy + 11);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(13); hex(doc, '#111111', 't'); doc.text(fmtNum(v), cx + cwid - 7, cy + 27, { align: 'right' });
-        if (prev) {
-          var d = round2(v - prev[k]);
-          if (d) {
-            var up = d > 0, ds = fmtNum(d);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
-            hex(doc, up ? '#12873c' : '#d32f2f', 't'); hex(doc, up ? '#12873c' : '#d32f2f', 'f');
-            doc.text(ds, cx + cwid - 7, cy + 38, { align: 'right' });
-            var tw2 = doc.getTextWidth(ds), tx0 = cx + cwid - 7 - tw2 - 7;
-            if (up) doc.triangle(tx0, cy + 37, tx0 + 5, cy + 37, tx0 + 2.5, cy + 32.5, 'F');
-            else doc.triangle(tx0, cy + 33, tx0 + 5, cy + 33, tx0 + 2.5, cy + 37.5, 'F');
-          }
-        }
-      });
+      var ty = ry + RSH + res.list.length * RRH;
+      hex(C.dark1, 'f'); doc.rect(M, ty, TW, 22, 'F');
+      grad(M, ty, TW, 1.6, C.neon, C.teal);
+      font(true, 8.4, C.neon); spaced('TOTAL', M + 8, ty + 14.4, 1.4);
+      vals.forEach(function (v, k) { font(true, 8.4, k === nPos ? C.neon : '#ffffff'); T(fmt2(v), M + nbW + (k + 1) * cw - 9, ty + 14.4, 'right'); });
+      hex('#2b4a2a', 'd'); doc.setLineWidth(1.2); doc.roundedRect(M, ry, TW, RSH + res.list.length * RRH + 22, 7, 7, 'S');
+
+      // ---- kaki halaman
+      line(M, H - 22, M + TW, H - 22, C.grid, 0.8);
+      font(true, 7, C.dim); spaced('DYEPOCKET', M, H - 10, 1.6);
+      font(false, 7, C.dim); T('WIP Yarn Dyeing  ·  ' + dateTxt + '  ·  ' + rows.length + ' lot  ·  dibuat ' + stamp, W - M, H - 10, 'right');
     });
     return doc;
   }
