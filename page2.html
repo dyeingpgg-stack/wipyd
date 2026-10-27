@@ -661,6 +661,21 @@
   .sfr-bar .btn-sm.dl:disabled{opacity:.55;cursor:progress}
   .sfr-stage{max-width:1100px;min-width:820px;margin:0 auto}
   .sfr-stage canvas{display:block;width:100%;height:auto;border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.45)}
+  /* Aksi Edit / Hapus di tabel SOFT dan formulir edit */
+  td.act,th.act{white-space:nowrap;text-align:right;width:1%}
+  .rbtn{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 12px;margin-left:6px;border-radius:10px;border:1px solid var(--edge-strong);background:rgba(var(--w-rgb),.06);color:var(--text);font:600 13.5px var(--body);cursor:pointer}
+  .rbtn.edit{color:var(--cyan);border-color:rgba(var(--c-rgb),.5)}
+  .rbtn.del{color:var(--rose);border-color:rgba(var(--r-rgb),.5)}
+  .rbtn:hover{background:rgba(var(--w-rgb),.12)}
+  .sfed-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sfed-grid label{display:flex;flex-direction:column;gap:6px;font:600 14px var(--body);color:var(--soft);min-width:0}
+  .sfed-grid label.wide{grid-column:1/-1}
+  .sfed-grid .input{min-height:46px;padding:6px 12px;color-scheme:var(--scheme);font-family:var(--display);font-weight:600;font-size:16px;width:100%}
+  .sfed-sum{margin:14px 0 0;font:600 15px var(--body);color:var(--soft)}
+  .sfed-sum b{color:var(--cyan)}
+  .sfed-err{margin:12px 0 0;padding:8px 12px;border-radius:12px;border:1px solid var(--rose);color:var(--alert-ink);background:rgba(var(--r-rgb),.12);font:600 14px/1.35 var(--body)}
+  .sfed-err[hidden]{display:none}
+  @media (max-width:480px){.sfed-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -703,6 +718,9 @@
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPack" type="search" placeholder="Cari di daftar Pack (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Pack">
+      </div>
+      <div class="dtools" id="toolsPack">
+        <button type="button" class="btn-sm" id="btnPackMiss" title="Buka tab Terlewat di Home" aria-label="Buka tab Terlewat di Home">Terlewat &rarr;</button>
       </div>
       <p class="lcount" id="nPack" aria-live="polite"></p>
       <div class="lstate" id="sPack"></div>
@@ -799,6 +817,9 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qSoft" type="search" placeholder="Cari di daftar SOFT (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar SOFT">
       </div>
+      <div class="dtools" id="toolsSoft">
+        <button type="button" class="btn-sm" id="btnSoftInput" title="Buka Input SOFT di Home" aria-label="Buka Input SOFT di Home">+ Input SOFT</button>
+      </div>
       <div class="sfrs-row">
         <div class="seg" id="segSoft" role="tablist" aria-label="Tampilan SOFT">
           <button type="button" class="active" data-smode="list" role="tab" aria-selected="true">Daftar</button>
@@ -854,6 +875,33 @@
       SOFT
     </button>
   </nav>
+  <div class="sheet-backdrop" id="sfEdSheet" role="dialog" aria-modal="true" aria-labelledby="sfEdTitle">
+    <div class="sheet tall">
+      <div class="sheet-head">
+        <h2 id="sfEdTitle">Edit baris SOFT</h2>
+        <button type="button" class="icon-btn" id="sfEdX" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="sheet-body">
+        <div class="sfed-grid">
+          <label class="wide">Tanggal<input class="input" id="sfEdTgl" type="date"></label>
+          <label class="wide">Benang<input class="input" id="sfEdBenang" type="text" list="sfEdBList" autocomplete="off" spellcheck="false"></label>
+          <label class="wide">Supplier<input class="input" id="sfEdSup" type="text" list="sfEdSList" autocomplete="off" spellcheck="false"></label>
+          <label class="wide">Keterangan<input class="input" id="sfEdKet" type="text" autocomplete="off"></label>
+          <label class="wide">Berat (Kg/Cone)<input class="input" id="sfEdBerat" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label>SSM<input class="input" id="sfEdSsm" type="text" inputmode="numeric" autocomplete="off"></label>
+          <label>FADIS<input class="input" id="sfEdFadis" type="text" inputmode="numeric" autocomplete="off"></label>
+          <label>TAIHE<input class="input" id="sfEdTaihe" type="text" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <datalist id="sfEdBList"></datalist><datalist id="sfEdSList"></datalist>
+        <p class="sfed-sum" id="sfEdSum"></p>
+        <div class="sfed-err" id="sfEdErr" role="alert" hidden></div>
+      </div>
+      <div class="sheet-foot actions">
+        <button type="button" class="btn btn-ghost" id="sfEdCancel">Batal</button>
+        <button type="button" class="btn btn-primary" id="sfEdSave">Simpan perubahan</button>
+      </div>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 <script src="config.js"></script>
@@ -945,15 +993,20 @@
   applyTheme(curTheme(), false);
 
   /* ---------- Pindah halaman ---------- */
-  function goHome() {
+  function goHome(tab) {   // tab (opsional): inputsoft = Home > Input > SOFT, miss = Home > Terlewat
+    tab = typeof tab === 'string' ? tab : '';
+    if (tab) lsSet('wipyd_hometab', tab); else lsDel('wipyd_hometab');
     if (IN_GAS) {
-      gs('getPageUrl', 1, MODE).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Home tidak ditemukan.', 'warn', 5000); })
+      gs('getPageUrl', 1, MODE, tab).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Home tidak ditemukan.', 'warn', 5000); })
         .catch(function (e) { toast('Home gagal dibuka. ' + errMsg(e), 'err', 6000); });
       return;
     }
-    location.href = 'index.html' + (MODE === 'viewer' ? '?mode=viewer' : '');
+    var q = [];
+    if (MODE === 'viewer') q.push('mode=viewer');
+    if (tab) q.push('tab=' + tab);
+    location.href = 'index.html' + (q.length ? '?' + q.join('&') : '');
   }
-  $('#btnHome').addEventListener('click', goHome);
+  $('#btnHome').addEventListener('click', function () { goHome(''); });
 
   /* ---------- Daftar RPH dan Pack (isi sheet menurut judul kolom baris 1; KIKC dipindah ke kolom pertama) ----------
      Periode (tanggal awal s/d akhir, default bulan berjalan) menyaring menurut kolom tanggal sheet. Kata kunci pencarian menelusuri SEMUA tanggal (periode diabaikan). */
@@ -1014,13 +1067,16 @@
       if (/^(kg|cone|qty|jumlah|berat|ssm|fadis|taihe|\u2211)(?![a-z])/i.test(h)) c.push('num');
       return c;
     });
-    $('#h' + d.id).innerHTML = order.map(function (j, p) { return '<th' + (p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(hd[j]) + '</th>'; }).join('');
+    var idIx = -1;   // SOFT (mode Admin): kolom Aksi (Edit / Hapus) memakai ID UNIK baris
+    if (k === 'soft' && MODE !== 'viewer') hd.forEach(function (h, i) { if (idIx < 0 && /^id\s*unik$/i.test(h)) idIx = i; });
+    $('#h' + d.id).innerHTML = order.map(function (j, p) { return '<th' + (p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(hd[j]) + '</th>'; }).join('') + (idIx >= 0 ? '<th class="act">Aksi</th>' : '');
     $('#b' + d.id).innerHTML = shown.map(function (r) {
+      var acts = idIx >= 0 && r[idIx] ? '<td class="act"><button type="button" class="rbtn edit" data-sact="edit" data-sid="' + esc(r[idIx]) + '">Edit</button><button type="button" class="rbtn del" data-sact="del" data-sid="' + esc(r[idIx]) + '">Hapus</button></td>' : (idIx >= 0 ? '<td class="act"></td>' : '');
       return '<tr>' + order.map(function (j, p) {
         var c = cc[j].slice(); if (p === 0) c.push('l-s', 'l-s0', 'l-last');
         var v = r[j] === undefined || r[j] === null ? '' : r[j];
         return '<td' + (c.length ? ' class="' + c.join(' ') + '"' : '') + '>' + (v === '' ? '<span class="dim">-</span>' : esc(v)) + '</td>';
-      }).join('') + '</tr>';
+      }).join('') + acts + '</tr>';
     }).join('');
     wrap.classList.remove('hidden');
     var sp = m.reqKey + '|' + m.page;
@@ -1820,6 +1876,97 @@
   if (!IN_GAS && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
+
+  /* ---------- SOFT: Edit / Hapus baris (mode Admin; baris dikenali lewat ID UNIK di sheet SOFT) ---------- */
+  var sfEd = { id: '', ref: null, saving: false, row: null };
+  function sfColIx(re) { var hd = lst.soft.headers, r = -1; hd.forEach(function (h, i) { if (r < 0 && re.test(h)) r = i; }); return r; }
+  function sfFindRow(id) {
+    var ix = sfColIx(/^id\s*unik$/i), rows = lst.soft.rows;
+    if (ix < 0) return null;
+    for (var i = 0; i < rows.length; i++) if (String(rows[i][ix]).trim() === id) return rows[i];
+    return null;
+  }
+  function sfRowObj(r) {
+    var c = { tgl: sfColIx(/^tanggal$/i), b: sfColIx(/^benang$/i), s: sfColIx(/^supplier$/i), k: sfColIx(/^keterangan$/i), w: sfColIx(/^berat/i), a: sfColIx(/^ssm$/i), f: sfColIx(/^fadis$/i), t: sfColIx(/^taihe$/i) };
+    var v = function (i) { return i >= 0 && r[i] !== undefined && r[i] !== null ? String(r[i]).trim() : ''; };
+    var t = v(c.tgl).slice(0, 10).split('/');
+    return { iso: t.length === 3 && /^\d{4}$/.test(t[2]) ? t[2] + '-' + t[1] + '-' + t[0] : '', benang: v(c.b), supplier: v(c.s), ket: v(c.k), berat: numId(v(c.w)), ssm: Math.round(numId(v(c.a))), fadis: Math.round(numId(v(c.f))), taihe: Math.round(numId(v(c.t))) };
+  }
+  function sfEdErr(msg) { var e = $('#sfEdErr'); e.hidden = !msg; e.textContent = msg || ''; }
+  function sfEdSum() {
+    var c = (parseInt($('#sfEdSsm').value, 10) || 0) + (parseInt($('#sfEdFadis').value, 10) || 0) + (parseInt($('#sfEdTaihe').value, 10) || 0);
+    var b = numId($('#sfEdBerat').value);
+    $('#sfEdSum').innerHTML = '\u2211 Cone: <b>' + fmtNum(c, 0) + '</b> · \u2211 Kg: <b>' + fmtNum(c * b, 2) + '</b>';
+  }
+  function sfEdFillLists(ref) {
+    $('#sfEdBList').innerHTML = (ref.benang || []).map(function (x) { return '<option value="' + esc(x) + '"></option>'; }).join('');
+    $('#sfEdSList').innerHTML = (ref.suppliers || []).map(function (x) { return '<option value="' + esc(x) + '"></option>'; }).join('');
+  }
+  function sfEdOpen(id) {
+    var r = sfFindRow(id);
+    if (!r) { toast('Baris tidak ditemukan. Muat ulang daftar.', 'warn'); return; }
+    var o = sfRowObj(r);
+    sfEd.id = id; sfEd.row = o; sfEdErr('');
+    $('#sfEdTgl').value = o.iso; $('#sfEdBenang').value = o.benang; $('#sfEdSup').value = o.supplier; $('#sfEdKet').value = o.ket;
+    $('#sfEdBerat').value = String(o.berat).replace('.', ','); $('#sfEdSsm').value = o.ssm; $('#sfEdFadis').value = o.fadis; $('#sfEdTaihe').value = o.taihe;
+    sfEdSum();
+    $('#sfEdSheet').classList.add('show');
+    if (sfEd.ref) sfEdFillLists(sfEd.ref);
+    gs('getSoftRef', false).then(function (ref) { if (ref && !ref.error) { sfEd.ref = ref; sfEdFillLists(ref); } }).catch(function () { /* daftar saran gagal dimuat: tetap bisa mengetik */ });
+  }
+  function sfEdClose() { $('#sfEdSheet').classList.remove('show'); sfEd.id = ''; }
+  function sfEdRender() { var b = $('#sfEdSave'); b.disabled = sfEd.saving; b.textContent = sfEd.saving ? 'Menyimpan...' : 'Simpan perubahan'; }
+  function sfAfterChange() { sf.at = 0; loadList('soft', { force: true, reread: true }); }
+  ['#sfEdSsm', '#sfEdFadis', '#sfEdTaihe', '#sfEdBerat'].forEach(function (sel) {
+    $(sel).addEventListener('input', function () {
+      var isW = sel === '#sfEdBerat', c = this.value.replace(isW ? /[^\d.,]/g : /\D/g, '');
+      if (c !== this.value) this.value = c;
+      sfEdSum();
+    });
+  });
+  $('#sfEdX').addEventListener('click', sfEdClose);
+  $('#sfEdCancel').addEventListener('click', sfEdClose);
+  $('#sfEdSheet').addEventListener('mousedown', function (e) { if (e.target === this) sfEdClose(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('#sfEdSheet').classList.contains('show')) sfEdClose(); });
+  $('#sfEdSave').addEventListener('click', function () {
+    if (sfEd.saving || !sfEd.id) return;
+    var tgl = $('#sfEdTgl').value, b = $('#sfEdBenang').value.replace(/\s+/g, ' ').trim(), sp = $('#sfEdSup').value.replace(/\s+/g, ' ').trim();
+    var berat = numId($('#sfEdBerat').value), ssm = parseInt($('#sfEdSsm').value, 10) || 0, fadis = parseInt($('#sfEdFadis').value, 10) || 0, taihe = parseInt($('#sfEdTaihe').value, 10) || 0;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tgl)) { sfEdErr('Isi tanggal dulu.'); return; }
+    if (!b) { sfEdErr('Benang wajib diisi.'); return; }
+    if ((ssm + fadis + taihe) > 0 && !(berat > 0)) { sfEdErr('Berat (Kg/Cone) wajib diisi jika ada cone.'); return; }
+    var ref = sfEd.ref || { benang: [], suppliers: [] };
+    var has = function (arr, v) { var k = v.toLowerCase(); return (arr || []).some(function (x) { return String(x).toLowerCase() === k; }); };
+    var baruB = !has(ref.benang, b), baruS = !!sp && !has(ref.suppliers, sp);
+    if (baruB && !window.confirm('Benang "' + b + '" belum ada di daftar SUP. Tambahkan sebagai benang baru?')) return;
+    if (baruS && !window.confirm('Supplier "' + sp + '" belum ada di daftar SUP. Tambahkan sebagai supplier baru?')) return;
+    sfEdErr(''); sfEd.saving = true; sfEdRender();
+    gs('updateSoft', { mode: 'admin', id: sfEd.id, tanggal: tgl, benang: b, supplier: sp, keterangan: $('#sfEdKet').value.trim(), berat: String(berat), ssm: ssm, fadis: fadis, taihe: taihe, baruBenang: baruB, baruSupplier: baruS })
+      .then(function (msg) { toast(msg || 'Baris SOFT diperbarui.', 'ok'); sfEdClose(); sfAfterChange(); })
+      .catch(function (err) { sfEdErr('Gagal menyimpan: ' + errMsg(err)); })
+      .then(function () { sfEd.saving = false; sfEdRender(); });
+  });
+  function sfDelete(id) {
+    var r = sfFindRow(id);
+    if (!r) { toast('Baris tidak ditemukan. Muat ulang daftar.', 'warn'); return; }
+    var o = sfRowObj(r);
+    if (!window.confirm('Hapus baris SOFT ini?\n\n' + o.benang + (o.supplier ? ' · ' + o.supplier : '') + '\nTanggal ' + fmtDMY(o.iso) + ' · ' + fmtNum(o.ssm + o.fadis + o.taihe, 0) + ' cone\n\nBaris akan dihapus dari sheet SOFT dan tidak bisa dikembalikan.')) return;
+    gs('deleteSoft', { mode: 'admin', id: id })
+      .then(function (msg) { toast(msg || 'Baris SOFT dihapus.', 'ok'); sfAfterChange(); })
+      .catch(function (err) { toast('Gagal menghapus: ' + errMsg(err), 'err', 7000); });
+  }
+  $('#bSoft').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-sact]') : null;
+    if (!b) return;
+    var id = b.getAttribute('data-sid');
+    if (b.getAttribute('data-sact') === 'edit') sfEdOpen(id); else sfDelete(id);
+  });
+
+  /* ---------- Pintasan antar halaman: SOFT > Input SOFT (Home), Pack > Terlewat (Home) ---------- */
+  $('#btnSoftInput').addEventListener('click', function () { goHome('inputsoft'); });
+  $('#btnPackMiss').addEventListener('click', function () { goHome('miss'); });
+  if (MODE === 'viewer') { $('#toolsSoft').hidden = true; $('#toolsPack').hidden = true; }   // Input SOFT dan Terlewat hanya untuk Admin
+
   var startTab = '';   // tab awal: dari tombol SOFT di Input (window.WIPYD_TAB dari server, ?tab= di versi file, atau tanda di penyimpanan lokal)
   try { startTab = String(window.WIPYD_TAB || new URLSearchParams(location.search).get('tab') || lsGet('wipyd_p2tab') || '').toLowerCase(); } catch (e) { startTab = ''; }
   lsDel('wipyd_p2tab');

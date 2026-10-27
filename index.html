@@ -1060,6 +1060,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       </div>
       <div class="dtools">
         <button type="button" class="btn-sm admin-only" id="btnSyncPack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg><span>Sinkron Tgl Pack</span></button>
+        <button type="button" class="btn-sm" id="btnMissPack" title="Buka tab Pack di Page 2" aria-label="Buka tab Pack di Page 2">PACK &rarr;</button>
         <button type="button" class="btn-sm" id="btnCsvMiss" aria-label="Unduh daftar lot terlewat sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh CSV</span></button>
       </div>
       <div class="lstate" id="sMiss"></div>
@@ -3411,6 +3412,14 @@ var Code128 = (function () {
     for (var i = 0; i < SF.sups.length; i++) if (sfKey(SF.sups[i]) === k) return SF.sups[i];
     return '';
   }
+  /* Berat (Kg/Cone) bawaan menurut benang: berawalan TM (Mesmerize) = 0,75; selain itu (DTY, TR, RSV, dll) = 1. Tetap bisa diubah:
+     nilai bawaan hanya diisi bila kolom Berat masih kosong atau masih berisi nilai bawaan sebelumnya (belum diketik sendiri). */
+  function sfDefBerat(name) { return /^\s*TM(?![A-Za-z])/i.test(String(name || '')) ? '0,75' : '1,00'; }
+  function sfAutoBerat(tr, name) {
+    if (!tr || !name) return;
+    var inp = tr.querySelector('.f-berat'), cur = inp.value.trim(), def = sfDefBerat(name);
+    if (!cur || (tr.dataset.autoBerat && cur === tr.dataset.autoBerat)) { inp.value = def; tr.dataset.autoBerat = def; inp.classList.remove('bad'); }
+  }
   function sfIsCb(el) { return !!(el && el.classList && (el.classList.contains('f-benang') || el.classList.contains('f-sup'))); }
 
   /* Kotak pilihan Benang / Supplier: satu daftar mengambang dipakai bersama (tidak terpotong tabel), disaring saat mengetik. */
@@ -3491,6 +3500,7 @@ var Code128 = (function () {
       inp.value = x.name;
     } else inp.value = x.name;
     inp.classList.remove('bad');
+    if (kind === 'b') sfAutoBerat(inp.closest('tr'), inp.value);
     sfClose();
     sfCalc();
     if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) inp.blur();   // di HP: tutup keyboard setelah memilih
@@ -3499,7 +3509,7 @@ var Code128 = (function () {
     var v = el.value.replace(/\s+/g, ' ').trim();
     if (!v) { el.classList.remove('bad'); return; }
     var isB = el.classList.contains('f-benang'), name = isB ? (SF.byB[sfKey(v)] ? SF.byB[sfKey(v)].name : '') : sfSupCanon(v);
-    if (name) { el.value = name; el.classList.remove('bad'); }
+    if (name) { el.value = name; el.classList.remove('bad'); if (isB) sfAutoBerat(el.closest('tr'), name); }
     else {
       el.classList.add('bad');
       sfStatus((isB ? 'Benang' : 'Supplier') + ' "' + v + '" belum ada di SUP. Ketuk kolomnya lalu pilih "+ Tambah ' + (isB ? 'benang' : 'supplier') + ' baru" agar masuk ke SUP.', true);
@@ -3514,7 +3524,7 @@ var Code128 = (function () {
     return o;
   }
   function sfRowEmpty(tr) {
-    return !tr.querySelector('.f-benang').value.trim() && !tr.querySelector('.f-ket').value.trim() && !tr.querySelector('.f-berat').value.trim() &&
+    return !tr.querySelector('.f-benang').value.trim() && !tr.querySelector('.f-ket').value.trim() && (!tr.querySelector('.f-berat').value.trim() || tr.querySelector('.f-berat').value.trim() === (tr.dataset.autoBerat || '')) &&
       !SF_MACH.some(function (m) { return tr.querySelector('[data-m="' + m + '"]').value.trim(); });
   }
   function sfCalc() {
@@ -3563,7 +3573,7 @@ var Code128 = (function () {
   $('#sfBody').addEventListener('input', function (e) {
     var el = e.target;
     if (el.classList.contains('f-m')) { var c = el.value.replace(/\D/g, ''); if (c !== el.value) el.value = c; }
-    if (el.classList.contains('f-berat')) { var b = el.value.replace(/[^\d.,]/g, ''); if (b !== el.value) el.value = b; }
+    if (el.classList.contains('f-berat')) { var b = el.value.replace(/[^\d.,]/g, ''); if (b !== el.value) el.value = b; var rw = el.closest('tr'); if (rw) rw.dataset.autoBerat = ''; }   // diketik sendiri: bukan nilai bawaan lagi
     el.classList.remove('bad');
     if (sfIsCb(el)) sfOpen(el, false);   // mengetik: daftar disaring
     sfCalc();
@@ -5398,6 +5408,7 @@ var Code128 = (function () {
   }
   $('#btnPage2').addEventListener('click', function () { openPage2(''); });
   $('#sfGoSoft').addEventListener('click', function () { openPage2('soft'); });
+  $('#btnMissPack').addEventListener('click', function () { openPage2('pack'); });
 
   /* ---------- Bagikan link Viewer (hanya Admin) ---------- */
   (function () {
@@ -5482,6 +5493,11 @@ var Code128 = (function () {
   renderPill();
   syncModeUi();
   if (isAdmin()) {
+    var homeTab = '';   // tab awal dari tombol di Page 2: inputsoft = Input > SOFT, miss = Terlewat (window.WIPYD_HOMETAB dari server, ?tab= di versi file, atau tanda di penyimpanan lokal)
+    try { homeTab = String(window.WIPYD_HOMETAB || new URLSearchParams(location.search).get('tab') || lsGet('wipyd_hometab') || '').toLowerCase(); } catch (eHt) { homeTab = ''; }
+    lsDel('wipyd_hometab');
+    if (homeTab === 'inputsoft') { setInputKind('soft'); showView('form'); }
+    else if (homeTab === 'miss') showView('miss');
     loadKikc().then(function () { setTimeout(prefetchLists, 0); });
   } else {
     showView('data');                       // Viewer: langsung ke tab WIP; daftar KIKC (untuk form Input) tidak perlu dimuat
