@@ -199,12 +199,12 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Unduhan PDF/PNG laporan SOFT:** panel "Top 5 Benang" diganti **Resume per Benang per Supplier** (tinggi panel mengikuti jumlah kelompok).
 - `Kode.gs` tidak berubah. Pasang ulang `index.html` dan `page2.html`.
 
-## Pembaruan v37: tab WIP dan tombol SOFT
+## Pembaruan v37: Plan, tab WIP, dan tombol SOFT
 - **Tab WIP, Tgl Celup:** urutan sumber diubah. 1) kolom CELUP di tab Plan (tanggal Plan yang sudah disusul input data, atau tanggal di sheet Plan = TODAY()-1),
-  2) bila Plan tidak punya, tanggal di tab Celup.
-- **Tab WIP, kolom virtual SISA ORDER dan PENDING (centang, hanya Admin yang bisa mengubah):** disimpan per KIKC di sheet baru **Status Lot** (dibuat otomatis); sheet Jawaban tidak berubah.
+  2) bila Plan tidak punya, tanggal di tab Celup. Tabel WIP tidak punya kolom baru.
+- **Tab Plan, kolom virtual SISA ORDER dan PENDING (centang, hanya Admin dan hanya Plan tanggal hari ini ke depan):** disimpan per KIKC di sheet baru **Status Lot** (dibuat otomatis); sheet Plan dan Jawaban tidak berubah.
   Satu KIKC hanya punya satu status (mencentang yang satu melepas yang lain).
-  - **Sisa Order:** order lot ini di Plan belum terealisasi celup, kolom CELUP di tab Plan tampil "Sisa Order".
+  - **Sisa Order:** order lot ini di Plan belum terealisasi celup, kolom CELUP tampil "Sisa Order".
   - **Pending:** lot batal diplan / ditarik. Plan pada tanggal centang dan sebelumnya tidak lagi menghitung lot ini sebagai Sisa Order; bila di hari lain lot diplan lagi, statusnya baru (bukan Sisa Order).
 - **Input SOFT:** tombol **SOFT** membuka tab SOFT di Page 2 (Page 2 kini bisa dibuka langsung ke tab tertentu lewat `?tab=soft`).
 - Pasang ulang `Kode.gs`, `index.html`, dan `page2.html`.

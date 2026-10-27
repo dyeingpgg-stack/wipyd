@@ -1,5 +1,5 @@
 /**
- * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v36: tab WIP: Tgl Celup = kolom CELUP Plan dulu, baru tab Celup; kolom virtual SISA ORDER / PENDING (sheet "Status Lot"); tombol SOFT di Input membuka tab SOFT Page 2; v35: tab SOFT di Page 2 = tabel data dari sheet SOFT (getSheetList 'soft'), daftar SUP selalu dibaca segar saat form SOFT dibuka; v34: sheet SUP = dua daftar terpisah (kolom A Benang, kolom B Supplier), form SOFT bisa menambah benang/supplier baru ke SUP; v33: laporan STOCK WIP SOFT WINDING HARIAN di Page 2 (getSoftHari); v32: form Input SOFT (sheet SUP -> sheet SOFT); v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v36: tab WIP: Tgl Celup = kolom CELUP Plan dulu, baru tab Celup; tab Plan: kolom virtual SISA ORDER / PENDING (sheet "Status Lot"); tombol SOFT di Input membuka tab SOFT Page 2; v35: tab SOFT di Page 2 = tabel data dari sheet SOFT (getSheetList 'soft'), daftar SUP selalu dibaca segar saat form SOFT dibuka; v34: sheet SUP = dua daftar terpisah (kolom A Benang, kolom B Supplier), form SOFT bisa menambah benang/supplier baru ke SUP; v33: laporan STOCK WIP SOFT WINDING HARIAN di Page 2 (getSoftHari); v32: form Input SOFT (sheet SUP -> sheet SOFT); v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Terlewat hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Terlewat (lot Pack tetap bisa diinput); Terlewat memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Terlewat = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -748,7 +748,7 @@ function setMesinStop(mesin, stop, mode) {
   }
 }
 
-// ---------- Status Lot: SISA ORDER / PENDING (kolom virtual tab WIP, disimpan menurut KIKC) ----------
+// ---------- Status Lot: SISA ORDER / PENDING (kolom virtual tab Plan, disimpan menurut KIKC) ----------
 // SISA   = order lot ini di Plan belum terealisasi celup: kolom CELUP di tab Plan tampil "Sisa Order".
 // PENDING = lot batal diplan / ditarik: Plan pada tanggal ini dan sebelumnya tidak lagi menghitungnya sebagai Sisa Order; bila di hari lain
 //           lot dibuat di Plan lagi, statusnya baru (bukan Sisa Order). TANGGAL = hari status dicentang (yyyy-MM-dd).
@@ -1042,7 +1042,7 @@ function planSnapshotBuild_(plan, iso) {
     return '';
   });
   const lewat = planSisaLewat_(iso);   // sudah lewat pukul 09:00 hari sesudah tanggal Plan
-  const stl = readStatusLot_();   // SISA ORDER / PENDING dari tab WIP
+  const stl = readStatusLot_();   // SISA ORDER / PENDING dari tab Plan
   const rows = src.map(function (r, i) {
     const kk = normKikc_(r[iK]), sl = stl[kk];
     // "Sisa Order" = belum celup DAN (batas pukul 09:00 hari sesudah tanggal Plan sudah lewat, ATAU lot ini sisa dari Plan hari sebelumnya)
@@ -1156,8 +1156,8 @@ function getPlanHari(iso, fb, force) {
       if (prev) { shown = prev; fell = true; }
     }
     const want = shown.split('-').reverse().join('/');
-    const out = { success: true, date: shown, requested: iso, fallback: fell, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: dates, sisaFrom: {}, celupPlan: {}, statusLot: {} };
-    const stl = readStatusLot_();   // SISA ORDER / PENDING dari tab WIP
+    const out = { success: true, date: shown, requested: iso, fallback: fell, headers: PLAN_HARIAN_HEAD.slice(1, 11), rows: [], savedAt: '', dates: dates, sisaFrom: {}, celupPlan: {}, statusLot: {}, statusAll: {} };
+    const stl = readStatusLot_();   // SISA ORDER / PENDING dari tab Plan
     const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN);
     if (!sh || sh.getLastRow() < 2) return out;
     const last = sh.getLastRow();
@@ -1183,6 +1183,7 @@ function getPlanHari(iso, fb, force) {
       else if (kc && cm[kc]) { row[9] = cm[kc]; out.celupPlan[kc] = cm[kc]; }   // 2) tanggal Plan bila lot sudah terinput setelah Plan itu (bukan Sisa Order)
       const sl = kc ? stl[kc] : null;
       if (sl) {
+        out.statusAll[kc] = sl.s;   // status centang (kolom virtual SISA ORDER / PENDING di tab Plan)
         if (sl.s === 'SISA') { out.statusLot[kc] = 'SISA'; row[9] = 'Sisa Order'; delete out.celupPlan[kc]; }   // dicentang SISA ORDER: belum terealisasi celup
         else if (sl.s === 'PENDING' && shown <= sl.d) { out.statusLot[kc] = 'PENDING'; if (/^sisa\s*order$/i.test(row[9])) row[9] = ''; }   // PENDING (berlaku untuk Plan tanggal ini): lot ditarik, bukan Sisa Order
       }
@@ -1910,7 +1911,6 @@ function jawabanRows_(sheet, start, end, tz, keys, want) {
   const tsRaw = sheet.getRange(start, 1, end - start + 1, 1).getValues();
   const refs = refMaps_();   // referensi per KIKC: Celup, lalu Plan
   let cpm = {}; try { cpm = celupPlanMap_(); } catch (eCp) { cpm = {}; }   // tanggal Plan terbaru yang sudah disusul input data (kolom CELUP Plan)
-  const stLot = readStatusLot_();   // kolom virtual SISA ORDER / PENDING
   let packMap = {}; try { packMap = getPackMap_(false).map || {}; } catch (ePk) { packMap = {}; }   // Tanggal Pack dari sheet PACK (kosong bila sheet tidak ada)
   let alk = {}; try { alk = readAlokasi_().vals || {}; } catch (eAl) { alk = {}; }
   const kemarin = Utilities.formatDate(new Date(Date.now() - 86400000), tz, 'dd/MM/yyyy');   // TODAY()-1, dipakai untuk tanggal dari kolom Celup tab Plan
@@ -1930,7 +1930,6 @@ function jawabanRows_(sheet, start, end, tz, keys, want) {
       shift: pick('shift', r[8]), grup: pick('grup', r[9]),
       // Tgl Celup: 1) kolom CELUP di tab Plan (tanggal Plan yang sudah disusul input; atau isi tanggal di sheet Plan = TODAY()-1), 2) bila Plan tidak punya, tab Celup
       tglCelup: cpm[k] || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : '') || cl.tanggal || '',
-      sisa: !!(stLot[k] && stLot[k].s === 'SISA'), pending: !!(stLot[k] && stLot[k].s === 'PENDING'),
       tglPack: packMap[k] || fmtDmy_(r[COL_PACK - 1], r[COL_PACK - 1], tz, false),
       shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah)
       posisi: stripNum_(r[10]),

@@ -877,8 +877,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
               <th>Grup</th>
               <th>Tgl Celup</th>
               <th>Tgl Pack</th>
-              <th title="Centang: order lot ini di Plan belum terealisasi celup (Sisa Order)">Sisa Order</th>
-              <th title="Centang: lot batal diplan / ditarik. Jika di hari lain diplan lagi, statusnya baru (bukan Sisa Order)">Pending</th>
               <th>Posisi</th>
               <th>QC</th>
               <th>Keterangan</th>
@@ -2432,7 +2430,10 @@ var Code128 = (function () {
     // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
     var order = colOrder(k, hd);
     var iCel = isPlan ? hd.indexOf('CELUP') : -1, iK = hd.indexOf('KIKC');
-    $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('');
+    var stCols = isPlan && !psearch && iK >= 0;   // kolom virtual SISA ORDER dan PENDING (centang) hanya di tab Plan per tanggal
+    var stEdit = stCols && isAdmin() && planEditable();
+    $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('') +
+      (stCols ? '<th title="Centang: order lot ini di Plan belum terealisasi celup (Sisa Order)">SISA ORDER</th><th title="Centang: lot batal diplan / ditarik. Jika di hari lain diplan lagi, statusnya baru (bukan Sisa Order)">PENDING</th>' : '');
     var out = [];
     var alokJ = (isPlan && !psearch && planEditable() && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // tanggal lewat atau Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
@@ -2444,6 +2445,12 @@ var Code128 = (function () {
         if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
         else if (sisa && j === iCel) { var sf = !psearch && m.sisaFrom && m.sisaFrom[String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase()]; tr += '<td' + cls(p, hd[j], true) + '><span class="tag-sisa"' + (sf ? ' title="Sisa dari Plan ' + esc(fmtDMY(sf)) + '"' : '') + '>Sisa Order</span></td>'; }
         else tr += '<td' + cls(p, hd[j], true) + '>' + (cell === '' ? '<span class="dim">-</span>' : esc(cell)) + '</td>';
+      }
+      if (stCols) {
+        var kst2 = String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase(), cur = (m.statusAll || {})[kst2] || '';
+        ['SISA', 'PENDING'].forEach(function (sk) {
+          tr += '<td class="chkc"><input type="checkbox" class="stchk" data-st="' + sk + '" data-k="' + esc(kst2) + '"' + (cur === sk ? ' checked' : '') + (stEdit && kst2 ? '' : ' disabled') + ' aria-label="' + (sk === 'SISA' ? 'Sisa Order ' : 'Pending ') + esc(kst2) + '"></td>';
+        });
       }
       out.push(tr + '</tr>');
     }
@@ -2514,7 +2521,7 @@ var Code128 = (function () {
     var ik = headers.indexOf('KIKC'), c = headers.indexOf('CELUP');
     var ci = ik >= 0 ? clpInfo(r[ik]) : null;
     var kst = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '';
-    if (kst && lst.plan.statusLot && lst.plan.statusLot[kst] === 'SISA') return { fin: false, date: '', src: '' };   // dicentang SISA ORDER di tab WIP: belum terealisasi celup
+    if (kst && lst.plan.statusLot && lst.plan.statusLot[kst] === 'SISA') return { fin: false, date: '', src: '' };   // dicentang SISA ORDER di tab Plan: belum terealisasi celup
     if (ci && ci.tgl) return { fin: true, date: ci.tgl, src: 'CLP' };   // 1) tab Celup (CLP) = master data produksi, prioritas utama
     // 2) tanggal Plan terbaru yang sudah disusul input data (dihitung server, lihat celupPlanMap_ di Kode.gs)
     var kp = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '', cpm = lst.plan.celupPlan;
@@ -2678,6 +2685,27 @@ var Code128 = (function () {
     planSyncUi();
     loadPlanDay(true);
   }
+  /* ---------- Kolom virtual SISA ORDER / PENDING (tab Plan; disimpan menurut KIKC di sheet "Status Lot") ---------- */
+  $('#bPlan').addEventListener('change', function (e) {
+    var cb = e.target;
+    if (!cb || !cb.classList || !cb.classList.contains('stchk')) return;
+    var m = lst.plan, k = cb.getAttribute('data-k'), want = cb.checked ? cb.getAttribute('data-st') : '';
+    if (!isAdmin() || !planEditable()) { cb.checked = !cb.checked; return; }
+    m.statusAll = m.statusAll || {};
+    var before = m.statusAll[k] || '';
+    if (want) m.statusAll[k] = want; else delete m.statusAll[k];   // satu KIKC hanya satu status: mencentang yang satu melepas yang lain
+    m.rk = ''; renderList('plan');
+    gs('setStatusLot', k, want, state.mode).then(function (r) {
+      if (r && r.error) throw new Error(r.error);
+      toast(want === 'SISA' ? k + ': Sisa Order dicentang.' : want === 'PENDING' ? k + ': Pending dicentang.' : k + ': status dilepas.', 'ok', 2500);
+      return loadPlanDay(true);   // muat ulang Plan: kolom CELUP mengikuti status
+    }).catch(function (err) {
+      if (before) m.statusAll[k] = before; else delete m.statusAll[k];
+      m.rk = ''; renderList('plan');
+      toast('Status gagal disimpan. ' + errMsg(err), 'err', 6000);
+    });
+  });
+
   function loadPlanDates(force) {
     if (!force && planDatesAt && Date.now() - planDatesAt < LIST_FRESH) return;
     planDatesAt = Date.now();
@@ -2688,7 +2716,7 @@ var Code128 = (function () {
   function loadPlanDay(force) {
     var m = lst.plan, dt = planCur();
     if (!force && m.reqDate === dt && m.at && Date.now() - m.at < LIST_FRESH) return Promise.resolve();
-    if (m.reqDate !== dt) { m.headers = []; m.rows = []; m.sig = ''; m.rowNos = null; m.savedAt = ''; m.date = ''; m.sisaFrom = {}; m.celupPlan = {}; m.statusLot = {}; }   // jangan tampilkan Plan tanggal lain
+    if (m.reqDate !== dt) { m.headers = []; m.rows = []; m.sig = ''; m.rowNos = null; m.savedAt = ''; m.date = ''; m.sisaFrom = {}; m.celupPlan = {}; m.statusLot = {}; m.statusAll = {}; }   // jangan tampilkan Plan tanggal lain
     m.loading = true; m.error = '';
     if (state.view === 'plan' || state.view === 'mesin') $('#btnRefresh').classList.add('spin');
     renderList('plan');
@@ -2698,8 +2726,8 @@ var Code128 = (function () {
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
       var sp = sortPlan(r.headers || [], (r.rows || []).slice(), null);
-      m.headers = r.headers || []; m.rows = sp.rows; m.rowNos = null; m.reqDate = dt; m.date = r.date || dt; m.savedAt = r.savedAt || ''; m.sisaFrom = r.sisaFrom || {}; m.celupPlan = r.celupPlan || {}; m.statusLot = r.statusLot || {};
-      m.sig = hashStr(m.date + '|' + JSON.stringify(m.rows) + '|' + JSON.stringify(m.sisaFrom) + '|' + JSON.stringify(m.statusLot)); m.at = Date.now(); m.error = '';
+      m.headers = r.headers || []; m.rows = sp.rows; m.rowNos = null; m.reqDate = dt; m.date = r.date || dt; m.savedAt = r.savedAt || ''; m.sisaFrom = r.sisaFrom || {}; m.celupPlan = r.celupPlan || {}; m.statusLot = r.statusLot || {}; m.statusAll = r.statusAll || {};
+      m.sig = hashStr(m.date + '|' + JSON.stringify(m.rows) + '|' + JSON.stringify(m.sisaFrom) + '|' + JSON.stringify(m.statusLot) + '|' + JSON.stringify(m.statusAll)); m.at = Date.now(); m.error = '';
       if (r.dates) { planDates = r.dates; planDatesAt = Date.now(); }
     }).catch(function (e) {
       if (my !== planReq) return;
@@ -4038,8 +4066,6 @@ var Code128 = (function () {
         '<td>' + esc(r.grup) + '</td>' +
         '<td class="date">' + esc(r.tglCelup) + '</td>' +
         '<td>' + (r.tglPack ? '<span class="tag fin" title="Sudah ada Tanggal Pack: lot Finish">' + esc(r.tglPack) + '</span>' : '') + '</td>' +
-        '<td class="chkc"><input type="checkbox" class="stchk" data-st="SISA" data-k="' + esc(r.kikc) + '"' + (r.sisa ? ' checked' : '') + (isAdmin() ? '' : ' disabled') + ' aria-label="Sisa Order ' + esc(r.kikc) + '"></td>' +
-        '<td class="chkc"><input type="checkbox" class="stchk" data-st="PENDING" data-k="' + esc(r.kikc) + '"' + (r.pending ? ' checked' : '') + (isAdmin() ? '' : ' disabled') + ' aria-label="Pending ' + esc(r.kikc) + '"></td>' +
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
@@ -4049,32 +4075,6 @@ var Code128 = (function () {
     }).join('');
     setTableState('');
   }
-
-  /* ---------- Kolom virtual SISA ORDER / PENDING (tab WIP; disimpan menurut KIKC di sheet "Status Lot") ---------- */
-  function normK(v) { return String(v === undefined || v === null ? '' : v).replace(/\s+/g, ' ').trim().toUpperCase(); }
-  function setLocalStatus(k, st) {
-    [state.rows, state.srows || []].forEach(function (a) {
-      a.forEach(function (r) { if (normK(r.kikc) === k) { r.sisa = st === 'SISA'; r.pending = st === 'PENDING'; } });
-    });
-  }
-  $('#tbody').addEventListener('change', function (e) {
-    var cb = e.target;
-    if (!cb || !cb.classList || !cb.classList.contains('stchk')) return;
-    if (!isAdmin()) { cb.checked = !cb.checked; return; }
-    var k = normK(cb.getAttribute('data-k')), want = cb.checked ? cb.getAttribute('data-st') : '';
-    var cur = (state.rows.concat(state.srows || [])).filter(function (r) { return normK(r.kikc) === k; })[0];
-    var before = cur ? (cur.sisa ? 'SISA' : cur.pending ? 'PENDING' : '') : '';
-    setLocalStatus(k, want);   // satu KIKC hanya satu status: mencentang yang satu melepas yang lain
-    renderRows();
-    gs('setStatusLot', k, want, state.mode).then(function (r) {
-      if (r && r.error) throw new Error(r.error);
-      lst.plan.at = 0; lst.plan.rk = '';   // tab Plan memuat ulang agar label Sisa Order mengikuti
-      toast(want === 'SISA' ? k + ': Sisa Order dicentang.' : want === 'PENDING' ? k + ': Pending dicentang.' : k + ': status dilepas.', 'ok', 2500);
-    }).catch(function (err) {
-      setLocalStatus(k, before); renderRows();
-      toast('Status gagal disimpan. ' + errMsg(err), 'err', 6000);
-    });
-  });
 
   var loadSeq = 0;   // hanya respons terbaru yang dipakai (aman saat tanggal diganti cepat-cepat)
   function loadData() {
