@@ -976,7 +976,7 @@
     var lead = k === 'soft' ? /^benang$/i : /^kikc$/i, il = -1, o = hd.map(function (_, i) { return i; });
     hd.forEach(function (h, i) { if (il < 0 && lead.test(h)) il = i; });
     if (il > 0) { o.splice(il, 1); o.unshift(il); }
-    if (k === 'soft') o = o.filter(function (i) { return !/^(timestamp|id\s*unik)$/i.test(hd[i]); });   // hanya disembunyikan di layar; isi sheet tidak berubah
+    if (k === 'soft') o = o.filter(function (i) { return !/^(time\s*stamps?|id\s*unik)$/i.test(hd[i]); });   // hanya disembunyikan di layar; isi sheet tidak berubah
     return o;
   }
   function syncPeriod(k) {
@@ -1404,12 +1404,12 @@
 
   /* ---------- Infografis STOCK WIP SOFT WINDING HARIAN (digambar ke kanvas; dipakai untuk unduhan PNG/PDF) ----------
      Ukuran lebar (landscape) 1800 px, tinggi menyesuaikan jumlah baris. Susunan: judul + Hari/Tanggal, 5 kartu ringkasan, sebaran cone per mesin (kiri)
-     dan resume per benang per supplier (kanan), lalu tabel data lengkap (No, Benang, Supplier, Keterangan, Berat, SSM, FADIS, TAIHE, Cone, Kg). */
+     dan resume per benang per supplier (kanan), lalu tabel data (No, Benang, Berat, Supplier / Keterangan, SSM, FADIS, TAIHE, Cone, Kg). */
   var SFG = {
     W: 1800, PAD: 70,
     FONT: '"Chakra Petch","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif',
     C: { ssm: '#5dffa0', fadis: '#ffc24d', taihe: '#58b0ff', cone: '#b997ff', kg: '#ff5c93', cyan: '#22f3ff', mag: '#ff3df0', vio: '#8b5cff' },
-    COLS: [['No', 70, 'c'], ['Benang', 330, 'l'], ['Supplier', 250, 'l'], ['Keterangan', 270, 'l'], ['Berat', 130, 'r'], ['SSM', 120, 'r'], ['FADIS', 120, 'r'], ['TAIHE', 120, 'r'], ['\u2211 Cone', 120, 'r'], ['\u2211 Kg', 130, 'r']],
+    COLS: [['No', 70, 'c'], ['Benang', 360, 'l'], ['Berat', 130, 'r'], ['Supplier / Keterangan', 490, 'l'], ['SSM', 120, 'r'], ['FADIS', 120, 'r'], ['TAIHE', 120, 'r'], ['\u2211 Cone', 120, 'r'], ['\u2211 Kg', 130, 'r']],
     ROW: 46, HEAD: 112, TOT: 64,
     RES_Y: 436, RES_HEAD: 104, RES_ROW: 44, RES_PAD: 20, RES_MIN: 330   // baris panel donut + resume: tinggi mengikuti jumlah kelompok benang-supplier
   };
@@ -1597,7 +1597,8 @@
     });
 
     // ===== tabel =====
-    var tx0 = P, ty = LAY.top, tW = W - 2 * P, cols = SFG.COLS, xs = [], acc = tx0;
+    // urutan kolom: 0 No, 1 Benang, 2 Berat, 3 Supplier / Keterangan, 4 SSM, 5 FADIS, 6 TAIHE, 7 Cone, 8 Kg
+    var tx0 = P, ty = LAY.top, tW = W - 2 * P, cols = SFG.COLS, xs = [], acc = tx0, M0 = 4;
     cols.forEach(function (cl) { xs.push(acc); acc += cl[1]; });
     var tableH = SFG.HEAD + Math.max(n, 1) * SFG.ROW + (n ? SFG.TOT : 0);
     c.save(); sfgRR(c, tx0, ty, tW, tableH, 26); c.fillStyle = 'rgba(8,13,40,.78)'; c.fill();
@@ -1605,24 +1606,24 @@
     c.save(); sfgRR(c, tx0, ty, tW, tableH, 26); c.clip();
 
     // header kolom
-    var hh = SFG.HEAD, h1 = 56;
+    var hh = SFG.HEAD, h1 = 56, gW = cols[M0][1] + cols[M0 + 1][1] + cols[M0 + 2][1];
     var hg = c.createLinearGradient(0, ty, 0, ty + hh); hg.addColorStop(0, 'rgba(255,92,147,.30)'); hg.addColorStop(1, 'rgba(255,92,147,.12)');
     c.fillStyle = hg; c.fillRect(tx0, ty, tW, hh);
     var mcol = [K.ssm, K.fadis, K.taihe];
     for (var m = 0; m < 3; m++) {
-      c.fillStyle = sfgRgba(mcol[m], .26); c.fillRect(xs[5 + m], ty + h1, cols[5 + m][1], hh - h1);
+      c.fillStyle = sfgRgba(mcol[m], .26); c.fillRect(xs[M0 + m], ty + h1, cols[M0 + m][1], hh - h1);
     }
-    c.fillStyle = 'rgba(130,160,255,.20)'; c.fillRect(xs[5], ty, cols[5][1] + cols[6][1] + cols[7][1], h1);
-    c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(xs[5], ty + h1 - 1, cols[5][1] + cols[6][1] + cols[7][1], 2);
+    c.fillStyle = 'rgba(130,160,255,.20)'; c.fillRect(xs[M0], ty, gW, h1);
+    c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(xs[M0], ty + h1 - 1, gW, 2);
     c.textAlign = 'center'; c.font = '700 22px ' + F; c.fillStyle = '#eaf0ff';
-    c.fillText('STOK WIP (CONE)', xs[5] + (cols[5][1] + cols[6][1] + cols[7][1]) / 2, ty + 36);
-    [0, 1, 2, 3, 4, 8, 9].forEach(function (i) {
+    c.fillText('STOK WIP (CONE)', xs[M0] + gW / 2, ty + 36);
+    [0, 1, 2, 3, 7, 8].forEach(function (i) {
       var lab = cols[i][0], cxm = xs[i] + cols[i][1] / 2;
       c.font = '700 22px ' + F; c.fillStyle = '#eaf0ff';
-      if (i === 4) { c.fillText('Berat', cxm, ty + hh / 2 - 4); c.font = '600 17px ' + F; c.fillStyle = '#c4cdf2'; c.fillText('(Kg/Cone)', cxm, ty + hh / 2 + 22); }
+      if (i === 2) { c.fillText('Berat', cxm, ty + hh / 2 - 4); c.font = '600 17px ' + F; c.fillStyle = '#c4cdf2'; c.fillText('(Kg/Cone)', cxm, ty + hh / 2 + 22); }
       else c.fillText(lab, cxm, ty + hh / 2 + 8);
     });
-    [5, 6, 7].forEach(function (i) { c.font = '700 22px ' + F; c.fillStyle = mcol[i - 5]; c.save(); c.shadowColor = mcol[i - 5]; c.shadowBlur = 10; c.fillText(cols[i][0], xs[i] + cols[i][1] / 2, ty + h1 + 36); c.restore(); });
+    [4, 5, 6].forEach(function (i) { c.font = '700 22px ' + F; c.fillStyle = mcol[i - M0]; c.save(); c.shadowColor = mcol[i - M0]; c.shadowBlur = 10; c.fillText(cols[i][0], xs[i] + cols[i][1] / 2, ty + h1 + 36); c.restore(); });
     c.textAlign = 'left';
     var hl = c.createLinearGradient(tx0, 0, tx0 + tW, 0); hl.addColorStop(0, K.cyan); hl.addColorStop(0.5, K.vio); hl.addColorStop(1, K.mag);
     c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10; c.fillStyle = hl; c.fillRect(tx0, ty + hh - 3, tW, 3); c.restore();
@@ -1639,24 +1640,35 @@
       c.fillStyle = 'rgba(130,160,255,.13)'; c.fillRect(tx0, y + SFG.ROW - 1, tW, 1);
       c.textAlign = 'center'; c.font = '600 20px ' + F; c.fillStyle = K.cyan; c.fillText(String(i + 1), xs[0] + cols[0][1] / 2, mid);
       c.textAlign = 'left'; c.font = '600 22px ' + F; c.fillStyle = '#ffffff'; c.fillText(sfgFit(c, r.benang, cols[1][1] - 28), xs[1] + 14, mid);
-      c.font = '500 21px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(sfgFit(c, r.supplier, cols[2][1] - 28), xs[2] + 14, mid);
-      c.fillStyle = '#93a0cc'; c.fillText(sfgFit(c, r.ket, cols[3][1] - 28), xs[3] + 14, mid);
-      c.textAlign = 'right'; c.font = '500 21px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(sfgNum(r.berat, 4), xs[4] + cols[4][1] - 16, mid);
-      [['ssm', 5], ['fadis', 6], ['taihe', 7]].forEach(function (mm) {
-        var v = r[mm[0]], ci = mm[1], col = mcol[ci - 5], cwid = cols[ci][1];
+      c.textAlign = 'right'; c.font = '500 21px ' + F; c.fillStyle = '#c4cdf2'; c.fillText(sfgNum(r.berat, 4), xs[2] + cols[2][1] - 16, mid);
+      // kolom gabungan: "Supplier / Keterangan" (tanpa tanda "/" bila salah satunya kosong)
+      var sup = String(r.supplier || '').trim(), ket = String(r.ket || '').trim(), sx = xs[3] + 14, smax = cols[3][1] - 28;
+      c.textAlign = 'left'; c.font = '500 21px ' + F;
+      if (sup && ket) {
+        var supT = sfgFit(c, sup, smax), supW = c.measureText(supT).width, sepW = c.measureText(' / ').width;
+        c.fillStyle = '#c4cdf2'; c.fillText(supT, sx, mid);
+        if (smax - supW - sepW > 40) {
+          c.fillStyle = '#6f7aa5'; c.fillText(' / ', sx + supW, mid);
+          c.fillStyle = '#93a0cc'; c.fillText(sfgFit(c, ket, smax - supW - sepW), sx + supW + sepW, mid);
+        }
+      } else if (sup) { c.fillStyle = '#c4cdf2'; c.fillText(sfgFit(c, sup, smax), sx, mid); }
+      else if (ket) { c.fillStyle = '#93a0cc'; c.fillText(sfgFit(c, ket, smax), sx, mid); }
+      c.textAlign = 'right';
+      [['ssm', 4], ['fadis', 5], ['taihe', 6]].forEach(function (mm) {
+        var v = r[mm[0]], ci = mm[1], col = mcol[ci - M0], cwid = cols[ci][1];
         if (v > 0) {
           var bw2 = Math.max(6, (cwid - 24) * v / mxm);
           c.save(); c.shadowColor = col; c.shadowBlur = 8; c.fillStyle = sfgRgba(col, .85); sfgRR(c, xs[ci] + 12, y + SFG.ROW - 10, bw2, 4, 2); c.fill(); c.restore();
           c.font = '700 22px ' + F; c.fillStyle = col; c.fillText(sfgNum(v, 0), xs[ci] + cwid - 16, mid - 3);
         } else { c.font = '500 21px ' + F; c.fillStyle = '#47517c'; c.fillText('\u2013', xs[ci] + cwid - 16, mid - 3); }
       });
-      c.font = '700 22px ' + F; c.fillStyle = K.cone; c.fillText(sfgNum(r.cone, 0), xs[8] + cols[8][1] - 16, mid);
-      c.fillStyle = K.kg; c.fillText(sfgNum(r.kg, 2), xs[9] + cols[9][1] - 16, mid);
+      c.font = '700 22px ' + F; c.fillStyle = K.cone; c.fillText(sfgNum(r.cone, 0), xs[7] + cols[7][1] - 16, mid);
+      c.fillStyle = K.kg; c.fillText(sfgNum(r.kg, 2), xs[8] + cols[8][1] - 16, mid);
       c.textAlign = 'left';
     });
-    // vertikal pemisah kolom
+    // garis pemisah kolom (kolom FADIS dan TAIHE mulai di bawah judul kelompok)
     c.fillStyle = 'rgba(130,160,255,.14)';
-    for (var q = 1; q < cols.length; q++) c.fillRect(xs[q], q >= 5 && q <= 7 ? ty + h1 : ty, 1, tableH - (q >= 5 && q <= 7 ? h1 : 0));
+    for (var q = 1; q < cols.length; q++) { var inG = q === M0 + 1 || q === M0 + 2; c.fillRect(xs[q], inG ? ty + h1 : ty, 1, tableH - (inG ? h1 : 0)); }
 
     // baris total
     if (n) {
@@ -1666,9 +1678,9 @@
       c.save(); c.shadowColor = K.cyan; c.shadowBlur = 10; c.fillStyle = hl; c.fillRect(tx0, yT, tW, 3); c.restore();
       var mt = yT + SFG.TOT / 2 + 9;
       c.textAlign = 'right'; c.font = '700 26px ' + F; c.fillStyle = '#ffffff';
-      c.fillText('T O T A L', xs[4] + cols[4][1] - 16, mt);
+      c.fillText('T O T A L', xs[3] + cols[3][1] - 16, mt);
       c.save(); c.font = '700 28px ' + F;
-      [[t.ssm, 5, K.ssm, 0], [t.fadis, 6, K.fadis, 0], [t.taihe, 7, K.taihe, 0], [t.cone, 8, K.cone, 0], [t.kg, 9, K.kg, 2]].forEach(function (z) {
+      [[t.ssm, 4, K.ssm, 0], [t.fadis, 5, K.fadis, 0], [t.taihe, 6, K.taihe, 0], [t.cone, 7, K.cone, 0], [t.kg, 8, K.kg, 2]].forEach(function (z) {
         c.fillStyle = z[2]; c.shadowColor = z[2]; c.shadowBlur = 12; c.fillText(sfgNum(z[0], z[3]), xs[z[1]] + cols[z[1]][1] - 16, mt);
       }); c.restore(); c.textAlign = 'left';
     }
