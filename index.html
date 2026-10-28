@@ -252,6 +252,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .stats2{grid-template-columns:repeat(2,1fr)}
   .stat small{display:block;font-size:12.5px;color:var(--dim)}
   .stat b{display:block;font:700 24px/1.15 var(--display);color:var(--cyan);text-shadow:0 0 12px rgba(var(--c-rgb),.55);overflow-wrap:anywhere}
+  button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none}
+  button.stat[aria-pressed=true]{outline:2px solid currentColor;outline-offset:-2px}
   .stat b.flash{animation:readout .7s ease-out}
   .stat .stat-sub{margin-top:1px;font-size:12px;font-weight:600;color:var(--amber)}
   .carry-note{flex:none;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px solid rgba(var(--c-rgb),.35);background:rgba(var(--c-rgb),.08);font:600 13.5px/1.35 var(--body);color:var(--soft);max-width:480px}
@@ -923,6 +925,11 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qGrm" type="search" placeholder="Cari di daftar GRM" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar GRM">
+      </div>
+      <div class="stats grm-stats" id="grmStats" aria-live="polite">
+        <button type="button" class="stat r" data-gs="belum" aria-pressed="false" title="Lot GRM yang belum punya Tanggal Celup. Ketuk untuk memfilter."><small>Belum Celup</small><b id="gsBelum">-</b></button>
+        <button type="button" class="stat a" data-gs="celup" aria-pressed="false" title="Lot GRM yang sudah Celup tetapi belum Pack. Ketuk untuk memfilter."><small>Celup</small><b id="gsCelup">-</b></button>
+        <button type="button" class="stat g" data-gs="pack" aria-pressed="false" title="Lot GRM yang sudah Terpacking. Ketuk untuk memfilter."><small>Terpacking</small><b id="gsPack">-</b></button>
       </div>
       <p class="lcount" id="nGrm" aria-live="polite"></p>
       <div class="lstate" id="sGrm"></div>
@@ -2338,7 +2345,7 @@ var Code128 = (function () {
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
     wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
-    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/ },
+    grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(TANGGAL|TGL CELUP|TGL PACK)$/ },
     plan: { id: 'Plan', sub: 'Plan Harian · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(CELUP|TANGGAL)$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
   };
@@ -2393,6 +2400,21 @@ var Code128 = (function () {
     if (k === 'clp' && lst.plan.rows.length) renderList0('plan');   // kolom Celup di Plan mengikuti tab Celup
     if (k === 'plan' || k === 'wod' || k === 'clp') renderMesin();   // alokasi mesin ikut diperbarui saat data Plan (atau supplier dari WOD, atau tab Celup) berubah
   }
+  var grmFilter = '';   // '', 'belum', 'celup', 'pack' (ketuk scorecard GRM; ketuk lagi = semua)
+  function grmStatsShow(c) {
+    $('#gsBelum').textContent = c ? fmtNum(c.belum) : '-';
+    $('#gsCelup').textContent = c ? fmtNum(c.celup) : '-';
+    $('#gsPack').textContent = c ? fmtNum(c.pack) : '-';
+    $$('#grmStats [data-gs]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-gs') === grmFilter ? 'true' : 'false'); });
+  }
+  $('#grmStats').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-gs]') : null;
+    if (!b) return;
+    var v = b.getAttribute('data-gs');
+    grmFilter = grmFilter === v ? '' : v;
+    lst.grm.page = 1; lst.grm.rk = '';
+    renderList('grm');
+  });
   function renderList0(k) {
     var isPlan = k === 'plan';
     var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
@@ -2402,6 +2424,7 @@ var Code128 = (function () {
     var pd = planCur().split('-').reverse().join('/');
     if (!S.headers.length || !S.rows.length) {
       if (isPlan) { planStats(null, m.headers); renderResumePlan(); }
+      if (k === 'grm') grmStatsShow(null);
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
       if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
@@ -2411,10 +2434,20 @@ var Code128 = (function () {
     }
     if (isPlan && !psearch) planFillSisa(m);   // CELUP kosong lewat pukul 09:00 hari sesudah tanggal Plan = "Sisa Order"
     var ps = pageSize();
-    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
+    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
-    S.rows.forEach(function (r, i) { if (!q || nq(r.join(' ')).indexOf(q) >= 0) { rows.push(r); idx.push(i); } });
+    var gsF = k === 'grm' ? grmFilter : '', gsC = { belum: 0, celup: 0, pack: 0 }, gC = k === 'grm' ? S.headers.indexOf('TGL CELUP') : -1, gP = k === 'grm' ? S.headers.indexOf('TGL PACK') : -1;
+    S.rows.forEach(function (r, i) {
+      if (q && nq(r.join(' ')).indexOf(q) < 0) return;
+      if (k === 'grm') {   // scorecard: Terpacking (ada Tgl Pack) > Celup (ada Tgl Celup, belum Pack) > Belum Celup
+        var gst = gP >= 0 && r[gP] ? 'pack' : gC >= 0 && r[gC] ? 'celup' : 'belum';
+        gsC[gst]++;
+        if (gsF && gsF !== gst) return;
+      }
+      rows.push(r); idx.push(i);
+    });
+    if (k === 'grm') grmStatsShow(gsC);
     if (isPlan) { planStats(psearch ? null : rows, S.headers); renderResumePlan(); }
     var pnote = psearch ? 'Pencarian semua tanggal Plan · ' : isPlan ? 'Plan ' + fmtDMY(planShown()) + (planCarried() ? ' (terakhir)' : planHistOn() ? ' (riwayat)' : '') + (m.savedAt ? ' · disimpan ' + m.savedAt : '') + ' · ' : '';
     if (!rows.length) {
