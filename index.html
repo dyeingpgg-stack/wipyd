@@ -2680,8 +2680,8 @@ var Code128 = (function () {
     $('#mesinPrev').disabled = $('#planPrev').disabled;
     $('#mesinToday').classList.toggle('active', cur === t);
     $('#viewPlan').classList.toggle('plan-hist', planHistOn());
-    var car = planCarried() && lst.plan.rows.length > 0, cmsg = car ? 'Belum ada Plan tanggal <b>' + esc(fmtDMY(cur)) + '</b>. Menampilkan Plan terakhir: <b>' + esc(fmtDMY(sh)) + '</b>' + (lst.plan.savedAt ? ' (disimpan ' + esc(lst.plan.savedAt) + ')' : '') + '. Data berubah setelah Plan terbaru dibuat lewat Create &gt; Get Plan &gt; Save.' : '';
-    ['#planCarry', '#mesinCarry'].forEach(function (id) { var el = $(id); el.hidden = !car; el.innerHTML = cmsg; });
+    var car = planCarried() && lst.plan.rows.length > 0, cmsg = '';   // info "Belum ada Plan tanggal ..." dihapus
+    ['#planCarry', '#mesinCarry'].forEach(function (id) { var el = $(id); el.hidden = true; el.innerHTML = ''; });
     var ptxt = car ? fmtDMY(sh) + ' (terakhir)' : dateLabel(cur);
     if (state.view === 'plan') $('#subtitle').textContent = 'Plan · ' + ptxt + (!car && planHistOn() ? ' (riwayat)' : '');
     else if (state.view === 'mesin') $('#subtitle').textContent = 'Alokasi mesin · ' + ptxt + (!car && planHistOn() ? ' (riwayat)' : '');
