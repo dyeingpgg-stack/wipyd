@@ -80,6 +80,7 @@ const DATE_TEXT_MDY = { clp: true, pack: false };   // sheet yang menyimpan tang
 const MAX_ROWS = 300;
 const TOKEN_SALT = 'wipyd-v1';
 const APP_PIN = '';              // OPSIONAL: isi mis. '2468'. Kosong = tanpa PIN.
+const MODE_PC = 'pc';             // mode PC: hanya boleh Input SOFT (saveSoft, updateSoft, deleteSoft); lihat needSoft_
 const MODE_ADMIN = 'admin';       // tanda yang dikirim aplikasi saat berada di mode Admin
 const HEADERS = ['Timestamp', 'ID UNIK', 'KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'POSISI', 'QC', 'NOTE QC', 'KETERANGAN', 'KET KIKC', 'TANGGAL PACK'];
 const TOTAL_COLS = 16;
@@ -95,7 +96,7 @@ function doGet(e) {
   // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
   // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
   const want = str_(p.mode).toLowerCase();
-  if (want === 'viewer' || want === 'admin') {
+  if (want === 'viewer' || want === 'admin' || want === 'pc') {
     page = HtmlService.createHtmlOutput(page.getContent().replace('<head>', '<head><script>window.WIPYD_FORCE_MODE="' + want + '";</script>'));
   }
   const tab = str_(p.tab).toLowerCase();
@@ -155,7 +156,7 @@ function getPageUrl(page, mode, tab) {
   if (!u) return '';
   const q = [];
   if (String(page) === '2') q.push('page=2');
-  if (str_(mode) === 'viewer') q.push('mode=viewer');
+  if (str_(mode) === 'viewer' || str_(mode) === 'pc') q.push('mode=' + str_(mode));
   if (String(page) === '2' && /^(rph|pack|delivery|soft)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());
   if (String(page) !== '2' && /^(inputsoft|miss)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());   // Home: tab awal Input SOFT / Terlewat
   return u + (q.length ? '?' + q.join('&') : '');
@@ -251,6 +252,14 @@ function str_(v) { return (v === undefined || v === null) ? '' : String(v); }
 function needAdmin_(mode) {
   if (str_(mode) !== MODE_ADMIN) {
     throw new Error('Mode Viewer: data hanya bisa dilihat. Ganti ke mode Admin untuk menyimpan, mengubah, atau menghapus data.');
+  }
+}
+
+// Input / ubah / hapus SOFT boleh dari mode Admin dan mode PC.
+function needSoft_(mode) {
+  const m = str_(mode);
+  if (m !== MODE_ADMIN && m !== MODE_PC) {
+    throw new Error('Mode Viewer: data hanya bisa dilihat. Gunakan link Admin atau PC untuk menyimpan, mengubah, atau menghapus data SOFT.');
   }
 }
 
@@ -1702,7 +1711,7 @@ function softNum_(v, label, int) {
 }
 function saveSoft(p) {
   p = p || {};
-  needAdmin_(p.mode);
+  needSoft_(p.mode);
   const tg = str_(p.tanggal).trim(), m = tg.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) throw new Error('Tanggal tidak valid.');
   const tanggal = new Date(+m[1], +m[2] - 1, +m[3]);
@@ -1798,7 +1807,7 @@ function softIdOk_(v) {
 // Ubah satu baris SOFT (dicari lewat ID UNIK). Timestamp dan ID UNIK tidak berubah; ∑ Cone dan ∑ Kg dihitung ulang.
 function updateSoft(p) {
   p = p || {};
-  needAdmin_(p.mode);
+  needSoft_(p.mode);
   const id = softIdOk_(p.id);
   const m = str_(p.tanggal).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) throw new Error('Tanggal tidak valid.');
@@ -1855,7 +1864,7 @@ function updateSoft(p) {
 // Hapus satu baris SOFT (dicari lewat ID UNIK). Baris di sheet benar-benar dihapus.
 function deleteSoft(p) {
   p = p || {};
-  needAdmin_(p.mode);
+  needSoft_(p.mode);
   const id = softIdOk_(p.id);
   const lock = lock_();
   try {

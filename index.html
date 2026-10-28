@@ -23,9 +23,10 @@
 (function () {
   var m = '', lock = false, q = '';
   try { q = String(window.WIPYD_FORCE_MODE || new URLSearchParams(location.search).get('mode') || '').toLowerCase(); } catch (e) { /* abaikan */ }
-  if (q === 'viewer' || q === 'admin') { m = q; lock = (q === 'viewer'); }
-  /* Tanpa tombol ganti mode: link utama selalu Admin, link Viewer selalu Viewer (pilihan lama di HP diabaikan). */
-  if (m !== 'viewer') m = 'admin';
+  if (q === 'viewer' || q === 'admin' || q === 'pc') { m = q; lock = (q === 'viewer' || q === 'pc'); }
+  /* Tanpa tombol ganti mode: link utama selalu Admin, link Viewer selalu Viewer, link PC (pc.html atau ?mode=pc) selalu PC (pilihan lama di HP diabaikan).
+     Mode PC: hanya Input SOFT (Home) serta tab SOFT dan RPH (Page 2). */
+  if (m !== 'viewer' && m !== 'pc') m = 'admin';
   var h = document.documentElement;
   h.setAttribute('data-mode', m);
   if (lock) h.setAttribute('data-lock', '1');
@@ -39,7 +40,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* Link Viewer yang dipasang ke layar utama harus tetap terbuka sebagai Viewer: pakai manifest sendiri (start_url berisi ?mode=viewer) */
-if (document.documentElement.hasAttribute('data-lock')) document.querySelector('link[rel="manifest"]').setAttribute('href', 'manifest-viewer.webmanifest');
+if (document.documentElement.hasAttribute('data-lock')) document.querySelector('link[rel="manifest"]').setAttribute('href', document.documentElement.getAttribute('data-mode') === 'pc' ? 'manifest-pc.webmanifest' : 'manifest-viewer.webmanifest');
 </script>
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -547,6 +548,11 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   #viewMiss .stat small{font-size:12px}
   tbody tr.finrow td.c-kikc{color:var(--lime)}
   html[data-mode="viewer"] .c-kikc{left:0}
+  /* Mode PC: hanya Input SOFT (tab Input, tanpa pilihan WIP). Tab lain disembunyikan; Page 2 hanya SOFT dan RPH. */
+  html[data-mode="pc"] .admin-only:not(.pc-ok){display:none !important}
+  html[data-mode="pc"] .tabbar{grid-template-columns:1fr}
+  html[data-mode="pc"] .tabbar .tab:not(#tabForm){display:none !important}
+  html[data-mode="pc"] #inputSwitch,html[data-mode="pc"] #wipForm{display:none !important}
   .mswitch.ro{cursor:default;pointer-events:none}
   @media(max-width:430px){.modebtn{padding:0;width:44px;justify-content:center}.modebtn span{display:none}}
 
@@ -712,7 +718,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   <main id="main">
 
     <!-- ============ INPUT ============ -->
-    <section id="viewForm" class="view active admin-only" aria-label="Form input">
+    <section id="viewForm" class="view active admin-only pc-ok" aria-label="Form input">
       <div class="sf-switch" id="inputSwitch" role="tablist" aria-label="Jenis input">
         <button type="button" class="active" data-in="wip" role="tab" aria-selected="true">WIP</button>
         <button type="button" data-in="soft" role="tab" aria-selected="false">SOFT</button>
@@ -1111,7 +1117,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
       Plan
     </button>
-    <button type="button" class="tab active admin-only" id="tabForm" data-view="form" aria-selected="true">
+    <button type="button" class="tab active admin-only pc-ok" id="tabForm" data-view="form" aria-selected="true">
       <svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L11 16l-4 1 1-4Z"/></svg>
       Input
     </button>
@@ -1480,7 +1486,7 @@ var Code128 = (function () {
 
   var state = {
     view: 'form',
-    mode: document.documentElement.getAttribute('data-mode') === 'admin' ? 'admin' : 'viewer',
+    mode: document.documentElement.getAttribute('data-mode') === 'admin' ? 'admin' : (document.documentElement.getAttribute('data-mode') === 'pc' ? 'pc' : 'viewer'),
     kikc: [], rows: [], total: 0, filterPos: '', filterPack: '', query: '', srows: null, sInfo: '', sBusy: false,
     date: todayStr(), followToday: true,
     saving: false, savingEdit: false, loadingKikc: false,
@@ -1501,6 +1507,7 @@ var Code128 = (function () {
   var ROOT = document.documentElement;
   var MODE_LOCKED = ROOT.hasAttribute('data-lock');   // dibuka dengan ?mode=viewer: tombol ganti mode disembunyikan
   function isAdmin() { return state.mode === 'admin'; }
+  function isPc() { return state.mode === 'pc'; }   // mode PC: hanya Input SOFT di Home (dan SOFT + RPH di Page 2); selain itu setara Viewer
   var MSG_VIEWER = 'Mode Viewer: data hanya bisa dilihat. Ketuk tombol mode di kanan atas untuk masuk mode Admin.';
 
   /* ---------- Koneksi ke server ----------
@@ -3646,7 +3653,7 @@ var Code128 = (function () {
   }
   $('#softForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
+    if (!isAdmin() && !isPc()) { toast(MSG_VIEWER, 'warn', 4000); return; }
     if (SF.saving) return;
     if (!SF.ref) { toast('Daftar benang dari sheet SUP belum termuat. Ketuk muat ulang lalu coba lagi.', 'warn', 5000); return; }
     var tgl = $('#sfTanggal').value;
@@ -3666,7 +3673,7 @@ var Code128 = (function () {
     if (!rows.length) { toast('Belum ada baris yang diisi.', 'warn'); return; }
     if (!SF.cid) SF.cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // cid sama dipakai saat coba ulang, supaya tidak tersimpan dobel
     SF.saving = true; sfRenderSave();
-    gs('saveSoft', { mode: 'admin', tanggal: tgl, rows: rows, cid: SF.cid }).then(function (msg) {
+    gs('saveSoft', { mode: state.mode, tanggal: tgl, rows: rows, cid: SF.cid }).then(function (msg) {
       toast(msg || 'Data SOFT tersimpan.', 'ok', 4500);
       var hadNew = rows.some(function (r) { return r.baruBenang || r.baruSupplier; });
       if (hadNew && SF.ref) {   // masukkan dulu ke daftar lokal agar langsung bisa dipilih, lalu muat ulang dari SUP
@@ -3699,7 +3706,8 @@ var Code128 = (function () {
   /* ---------- Tab ---------- */
   function showView(name) {
     sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
-    if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Terlewat hanya untuk mode Admin
+    if (isPc()) name = 'form';   // mode PC: hanya Input SOFT
+    else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Terlewat hanya untuk mode Admin
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
@@ -5402,7 +5410,7 @@ var Code128 = (function () {
       return;
     }
     var q = [];
-    if (state.mode === 'viewer') q.push('mode=viewer');
+    if (state.mode === 'viewer' || state.mode === 'pc') q.push('mode=' + state.mode);
     if (tab) q.push('tab=' + tab);
     location.href = 'page2.html' + (q.length ? '?' + q.join('&') : '');
   }
@@ -5499,6 +5507,8 @@ var Code128 = (function () {
     if (homeTab === 'inputsoft') { setInputKind('soft'); showView('form'); }
     else if (homeTab === 'miss') showView('miss');
     loadKikc().then(function () { setTimeout(prefetchLists, 0); });
+  } else if (isPc()) {
+    setInputKind('soft'); showView('form'); // PC: langsung ke Input SOFT; daftar KIKC dan tab lain tidak dimuat
   } else {
     showView('data');                       // Viewer: langsung ke tab WIP; daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);

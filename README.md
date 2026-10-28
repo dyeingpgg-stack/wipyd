@@ -208,3 +208,20 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
   - **Pending:** lot batal diplan / ditarik. Plan pada tanggal centang dan sebelumnya tidak lagi menghitung lot ini sebagai Sisa Order; bila di hari lain lot diplan lagi, statusnya baru (bukan Sisa Order).
 - **Input SOFT:** tombol **SOFT** membuka tab SOFT di Page 2 (Page 2 kini bisa dibuka langsung ke tab tertentu lewat `?tab=soft`).
 - Pasang ulang `Kode.gs`, `index.html`, dan `page2.html`.
+
+
+## Mode PC (Input SOFT, tab SOFT, tab RPH)
+
+Mode ketiga selain Admin dan Viewer, untuk komputer di area SOFT. Tanpa login, dikunci (tidak ada tombol ganti mode).
+
+| | Admin | Viewer | PC |
+|---|---|---|---|
+| Link | alamat aplikasi | `.../viewer.html` atau `?mode=viewer` | `.../pc.html` atau `?mode=pc` |
+| Home | semua tab | tab lihat saja | hanya **Input SOFT** |
+| Page 2 | RPH, Pack, Delivery, SOFT | idem (lihat saja) | hanya **SOFT** dan **RPH** |
+| Edit / Hapus baris SOFT | ya | tidak | ya |
+
+- Apps Script: link PC = URL web app + `?mode=pc` (mis. `https://script.google.com/.../exec?mode=pc`).
+- GitHub / hosting: unggah juga `pc.html` dan `manifest-pc.webmanifest` (dipasang ke layar utama tetap terbuka sebagai PC).
+- `Kode.gs`: `saveSoft`, `updateSoft`, dan `deleteSoft` menerima mode Admin dan PC (`needSoft_`); fungsi ubah data lain tetap hanya Admin. Tempel ulang `Kode.gs`, lalu Deploy versi baru.
+- Seperti mode Viewer, pembatasan ini pengaman tampilan (tanpa login), bukan keamanan data: siapa pun yang tahu cara memakai `?mode=admin` tetap bisa membuka mode Admin.
