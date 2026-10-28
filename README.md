@@ -83,18 +83,18 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - **Plan terakhir tetap tampil**: bila tanggal yang dipilih (mis. besok) belum punya Plan, tab Plan dan tab Mesin menampilkan Plan terakhir yang tersimpan, lengkap dengan catatan tanggalnya, dan alokasi mesinnya masih bisa diubah. Tampilan berganti ke Plan baru setelah Create > Get Plan > Save dilakukan untuk tanggal itu (Get Plan saja hanya pratinjau).
 - **Sisa Order dari Plan tanggal berapa**: kartu Sisa Order di tab Plan menampilkan "dari Plan dd/mm/yyyy" (tanggal Plan paling awal tempat lot itu belum celup); label Sisa Order di baris tabel memuat tanggal yang sama saat ditunjuk. Perlu Kode.gs v21.
 
-## Tanggal Pack, Finish, dan tab Terlewat (v22)
+## Tanggal Pack, Finish, dan tab Outstanding (v22)
 - Sheet **WIP YD (Jawaban)** kini punya kolom **P = Tanggal Pack** (judul `TANGGAL PACK`; jika Anda sudah menamai sendiri, judul tidak diubah).
   Isinya diambil dari sheet **PACK** kolom **A** (Tanggal Pack), dicocokkan menurut **KIKC**. Kolom KIKC di sheet PACK dicari menurut judul `KIKC` di baris 1; jika tidak ada, dipakai kolom **B**
   (ubah `PACK_KIKC_DEFAULT` di `Kode.gs` bila KIKC ada di kolom lain). Bila satu KIKC punya beberapa tanggal Pack, yang terbaru dipakai.
   Teks tanggal di sheet PACK dibaca DD/MM/YYYY; jika berformat MM/DD/YYYY ubah `DATE_TEXT_MDY` menjadi `{ clp: true, pack: true }`.
 - **Lot yang punya Tanggal Pack = Finish.** Tab **Data** menampilkan kolom **Tgl Pack** (label hijau), ringkasan jumlah lot Finish, dan filter **Belum Pack** / **Finish (Pack)**.
   Tampilan memakai data sheet PACK langsung (cache 10 menit); kolom P di sheet menjadi salinan.
-- Cara kolom P terisi: otomatis saat Simpan (bila tanggal sudah ada di cache), tombol **Sinkron Tgl Pack** di tab Terlewat (Admin), atau pemicu tiap jam:
+- Cara kolom P terisi: otomatis saat Simpan (bila tanggal sudah ada di cache), tombol **Sinkron Tgl Pack** di tab Outstanding (Admin), atau pemicu tiap jam:
   jalankan `pasangPemicuTanggalPack` sekali dari editor Apps Script (hapus: `hapusPemicuTanggalPack`). Sinkron hanya mengisi/memperbarui, tidak pernah menghapus isi kolom P.
   **Jangan taruh rumus di kolom P**: jika ada rumus, aplikasi tidak menulis ke kolom P (rumus aman), tab Data tetap membaca sheet PACK.
-- Tab baru **Terlewat**: daftar lot yang terdata pada tanggal H-1 (kemarin) tetapi tidak terdata pada tanggal terpilih (default hari ini), kecuali lot yang sudah punya Tanggal Pack.
-  Ada kartu Lot kemarin / Terdata hari ini / Sudah Pack / Terlewat, pencarian, pilih tanggal, dan Unduh CSV. Diurutkan menurut posisi terakhir (CELUP, HDX, RF, WIP, KELOS, PACK).
+- Tab baru **Outstanding**: daftar lot yang terdata pada tanggal H-1 (kemarin) tetapi tidak terdata pada tanggal terpilih (default hari ini), kecuali lot yang sudah punya Tanggal Pack.
+  Ada kartu Lot kemarin / Terdata hari ini / Sudah Pack / Outstanding, pencarian, pilih tanggal, dan Unduh CSV. Diurutkan menurut posisi terakhir (CELUP, HDX, RF, WIP, KELOS, PACK).
   Lot dianggap terdata bila ada minimal satu input (posisi apa pun) pada tanggal itu.
 - Uji dari editor Apps Script: `tesPack` (melihat hasil baca sheet PACK tanpa menulis).
 - Pasang: ganti `Kode.gs` lalu Deploy > Manage deployments > New version; unggah `index.html` dan `sw.js` (cache v44). `Kode.gs` dan `index.html` harus diperbarui bersamaan.
@@ -114,25 +114,25 @@ masuk sebagai Admin. Untuk pengamanan sungguhan, isi `APP_PIN` di `Kode.gs` (PIN
 - Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v46, lihat v25 di bawah) bersamaan.
 
 ## Sheet PACK hanya untuk kontrol (v25)
-- Koreksi v24: lot yang ada di sheet PACK **tetap muncul dan bisa diinput** di tab Input (tidak disembunyikan, tidak ditolak). Sheet PACK hanya dipakai tab **Terlewat** dan penanda Finish di tab Data.
-- Tab **Terlewat** memeriksa lot yang pernah terdata dalam **14 hari** sebelum tanggal pemeriksaan (ubah `TERLEWAT_HARI` di `Kode.gs`) tetapi **tidak terdata pada tanggal itu**, kecuali yang sudah ada di sheet PACK (Tanggal Pack pada/ sebelum tanggal itu).
+- Koreksi v24: lot yang ada di sheet PACK **tetap muncul dan bisa diinput** di tab Input (tidak disembunyikan, tidak ditolak). Sheet PACK hanya dipakai tab **Outstanding** dan penanda Finish di tab Data.
+- Tab **Outstanding** memeriksa lot yang pernah terdata dalam **14 hari** sebelum tanggal pemeriksaan (ubah `TERLEWAT_HARI` di `Kode.gs`) tetapi **tidak terdata pada tanggal itu**, kecuali yang sudah ada di sheet PACK (Tanggal Pack pada/ sebelum tanggal itu).
   Contoh: AHN26J001 terdata di posisi CELUP kemarin, hari ini tidak diinput, dan tidak ada di sheet PACK -> muncul.
 - Kolom **Lewat** menunjukkan sudah berapa hari sejak input terakhir (urut paling lama dulu); kolom Posisi terakhir menunjukkan posisi saat terakhir diinput.
-- **Notifikasi:** angka merah di tab Terlewat (jumlah lot terlewat hari ini) dan pemberitahuan sekali saat aplikasi dibuka. Angka diperbarui setelah input terkirim atau tombol muat ulang.
+- **Notifikasi:** angka merah di tab Outstanding (jumlah lot outstanding hari ini) dan pemberitahuan sekali saat aplikasi dibuka. Angka diperbarui setelah input terkirim atau tombol muat ulang.
 - Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v47) bersamaan.
 
 ## Filter Pack disembunyikan (v26)
-- Filter **Belum Pack** / **Finish (Pack)** di tab Data disembunyikan sementara. Untuk menampilkan lagi, ubah `SHOW_PACK_FILTER` menjadi `true` di `index.html`. Kolom Tgl Pack dan tab Terlewat tidak berubah. Cache `sw.js` v48.
+- Filter **Belum Pack** / **Finish (Pack)** di tab Data disembunyikan sementara. Untuk menampilkan lagi, ubah `SHOW_PACK_FILTER` menjadi `true` di `index.html`. Kolom Tgl Pack dan tab Outstanding tidak berubah. Cache `sw.js` v48.
 
-## Terlewat hanya untuk Admin (v27)
-- Tab **Terlewat** (termasuk angka notifikasinya) disembunyikan di mode Viewer, dan server menolak `getTerlewat` tanpa tanda Admin. Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v49) bersamaan.
+## Outstanding hanya untuk Admin (v27)
+- Tab **Outstanding** (termasuk angka notifikasinya) disembunyikan di mode Viewer, dan server menolak `getTerlewat` tanpa tanda Admin. Perbarui `Kode.gs` (Deploy versi baru), `index.html`, dan `sw.js` (cache v49) bersamaan.
 - **PDF/PNG Order Celup Harian lebih ringkas**: judul, kartu ringkasan, dan ringkasan bawah (Grand Total, Realisasi, Shift) dikecilkan. Pada judul, tanggal besar = hari order celup dan tepat di bawahnya tertulis "ORDER TANGGAL dd/mm/yyyy" (tanggal Plan yang dipakai alokasi mesin, bisa lebih lama bila Plan baru belum dibuat). Baris lot memakai huruf lebih besar (hingga 9 pt) dengan lebar kolom dihitung otomatis dari isi data, sehingga kolom rapat dan teks tidak terpotong.
 - **PDF/PNG Order Celup Harian, ukuran huruf dimaksimalkan**: kolom Keterangan disamakan lebarnya dengan kolom Konsumsi, lalu huruf baris lot dibuat sebesar mungkin (hingga 11 pt) selama semua kolom masih muat selebar halaman; sisa lebar dibagi rata ke semua kolom. Resume No. Benang (Notes) memakai ukuran huruf dan tinggi baris yang mengikuti huruf lot.
 - **PDF/PNG Order Celup Harian, huruf judul dan kartu mengisi bentuknya**: judul (hingga 30 pt), kartu ringkasan atas (angka hingga 24 pt), serta kartu Grand Total, Realisasi, dan Shift Group di bawah dibuat dengan huruf yang lebih besar sehingga tidak ada ruang kosong. Angka besar otomatis mengecil bila terlalu lebar untuk kartunya.
 
 ## Pembaruan v28 (Plan terbaca ulang, pencarian semua tanggal, Mesin, Page 2)
 - **Plan membaca ulang isian yang kosong.** Isian kosong di salinan "Plan Harian" (No Benang, Supplier, Warna, Mesin, Kg, Cone, Keterangan) dilengkapi otomatis saat tab Plan dibuka dari sheet "Plan" yang terbaru, lalu dari tab WOD. Isian yang sudah terisi tidak diganti, dan sheet "Plan Harian" tidak ditulis ulang. Tombol muat ulang membaca sheet "Plan" langsung (tanpa cache 90 detik).
-- **Pencarian menelusuri semua tanggal**: tab Data (seluruh sheet Jawaban, 500 hasil terbaru), tab Plan (seluruh Plan Harian, kolom TANGGAL ikut tampil), tab Mesin (hasil berupa kartu lot lintas tanggal Plan). Tab WOD, GRM, dan Celup memang sudah mencari di seluruh daftar. Tab Terlewat tetap per tanggal pemeriksaan.
+- **Pencarian menelusuri semua tanggal**: tab Data (seluruh sheet Jawaban, 500 hasil terbaru), tab Plan (seluruh Plan Harian, kolom TANGGAL ikut tampil), tab Mesin (hasil berupa kartu lot lintas tanggal Plan). Tab WOD, GRM, dan Celup memang sudah mencari di seluruh daftar. Tab Outstanding tetap per tanggal pemeriksaan.
 - **Ubah Mesin di tab Data** kini dicatat sebagai alokasi mesin lot itu (sheet "Alokasi" dan kolom ALOKASI pada Plan Harian terbaru yang memuat lot): tab Mesin dan Plan ikut berubah, dan tidak ada dua sumber yang bentrok. Kolom Mesin di tab Data menampilkan alokasi lebih dulu, lalu tab Celup, Plan, dan isian sheet.
 - **Tampilan HP potret:** tombol Create, Resume, Reset Alokasi, dan Unduh CSV tidak lagi tertutup keterangan "Plan ...".
 - **Tema default = mode malam** (tidak lagi mengikuti pengaturan perangkat). Pilihan lewat tombol tema tetap tersimpan.

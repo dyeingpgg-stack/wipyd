@@ -722,7 +722,7 @@
         <input class="input" id="qPack" type="search" placeholder="Cari di daftar Pack (semua tanggal)" autocomplete="off" enterkeyhint="search" aria-label="Cari di daftar Pack">
       </div>
       <div class="dtools" id="toolsPack">
-        <button type="button" class="btn-sm" id="btnPackMiss" title="Buka tab Terlewat di Home" aria-label="Buka tab Terlewat di Home">Terlewat &rarr;</button>
+        <button type="button" class="btn-sm" id="btnPackMiss" title="Buka tab Outstanding di Home" aria-label="Buka tab Outstanding di Home">Outstanding &rarr;</button>
       </div>
       <p class="lcount" id="nPack" aria-live="polite"></p>
       <div class="lstate" id="sPack"></div>
@@ -995,7 +995,7 @@
   applyTheme(curTheme(), false);
 
   /* ---------- Pindah halaman ---------- */
-  function goHome(tab) {   // tab (opsional): inputsoft = Home > Input > SOFT, miss = Home > Terlewat
+  function goHome(tab) {   // tab (opsional): inputsoft = Home > Input > SOFT, miss = Home > Outstanding
     tab = typeof tab === 'string' ? tab : '';
     if (tab) lsSet('wipyd_hometab', tab); else lsDel('wipyd_hometab');
     if (IN_GAS) {
@@ -1965,11 +1965,11 @@
     if (b.getAttribute('data-sact') === 'edit') sfEdOpen(id); else sfDelete(id);
   });
 
-  /* ---------- Pintasan antar halaman: SOFT > Input SOFT (Home), Pack > Terlewat (Home) ---------- */
+  /* ---------- Pintasan antar halaman: SOFT > Input SOFT (Home), Pack > Outstanding (Home) ---------- */
   $('#btnSoftInput').addEventListener('click', function () { goHome('inputsoft'); });
   $('#btnPackMiss').addEventListener('click', function () { goHome('miss'); });
   if (MODE === 'viewer') $('#toolsSoft').hidden = true;                 // Input SOFT: Admin dan PC
-  if (MODE !== 'admin') $('#toolsPack').hidden = true;                  // Terlewat: hanya Admin
+  if (MODE !== 'admin') $('#toolsPack').hidden = true;                  // Outstanding: hanya Admin
 
   var startTab = '';   // tab awal: dari tombol SOFT di Input (window.WIPYD_TAB dari server, ?tab= di versi file, atau tanda di penyimpanan lokal)
   try { startTab = String(window.WIPYD_TAB || new URLSearchParams(location.search).get('tab') || lsGet('wipyd_p2tab') || '').toLowerCase(); } catch (e) { startTab = ''; }

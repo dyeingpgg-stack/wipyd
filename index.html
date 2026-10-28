@@ -1042,7 +1042,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
 
     <!-- ============ CELUP ============ -->
     <!-- ============ TERLEWAT ============ -->
-    <section id="viewMiss" class="view list admin-only" aria-label="Lot terlewat">
+    <section id="viewMiss" class="view list admin-only" aria-label="Lot outstanding">
       <div class="daterow">
         <button type="button" class="icon-btn" id="missPrev" aria-label="Hari sebelumnya">
           <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
@@ -1057,17 +1057,17 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <div class="stat"><small id="msPrevL">Lot sebelumnya</small><b id="msPrev">-</b></div>
         <div class="stat g"><small>Terdata hari ini</small><b id="msToday">-</b></div>
         <div class="stat a"><small>Sudah Pack (Finish)</small><b id="msPack">-</b></div>
-        <div class="stat r"><small>Terlewat</small><b id="msMiss">-</b></div>
+        <div class="stat r"><small>Outstanding</small><b id="msMiss">-</b></div>
       </div>
       <p class="sumnote" id="msNote"></p>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="input" id="qMiss" type="search" placeholder="Cari KIKC, warna, mesin, atau posisi" autocomplete="off" enterkeyhint="search" aria-label="Cari lot terlewat">
+        <input class="input" id="qMiss" type="search" placeholder="Cari KIKC, warna, mesin, atau posisi" autocomplete="off" enterkeyhint="search" aria-label="Cari lot outstanding">
       </div>
       <div class="dtools">
         <button type="button" class="btn-sm admin-only" id="btnSyncPack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg><span>Sinkron Tgl Pack</span></button>
         <button type="button" class="btn-sm" id="btnMissPack" title="Buka tab Pack di Page 2" aria-label="Buka tab Pack di Page 2">PACK &rarr;</button>
-        <button type="button" class="btn-sm" id="btnCsvMiss" aria-label="Unduh daftar lot terlewat sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh CSV</span></button>
+        <button type="button" class="btn-sm" id="btnCsvMiss" aria-label="Unduh daftar lot outstanding sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh CSV</span></button>
       </div>
       <div class="lstate" id="sMiss"></div>
       <div class="table-wrap hidden" id="wMiss">
@@ -1127,7 +1127,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     </button>
     <button type="button" class="tab admin-only" id="tabMiss" data-view="miss" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-      Terlewat<span class="bdg" id="missBadge" hidden></span>
+      Outstanding<span class="bdg" id="missBadge" hidden></span>
     </button>
     <button type="button" class="tab" id="tabMesin" data-view="mesin" aria-selected="false">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12" r="1.5"/></svg>
@@ -3231,7 +3231,7 @@ var Code128 = (function () {
     if (mqWide.addEventListener) mqWide.addEventListener('change', onWide); else if (mqWide.addListener) mqWide.addListener(onWide);
   }
 
-  /* ---------- Tab Terlewat: lot yang terdata kemarin tetapi tidak terdata hari ini ----------
+  /* ---------- Tab Outstanding: lot yang terdata kemarin tetapi tidak terdata hari ini ----------
      Lot yang sudah punya Tanggal Pack (sheet PACK kolom A menurut KIKC) dianggap Finish dan dikecualikan.
      Perhitungan dilakukan di server (getTerlewat): data Jawaban tanggal H-1 dibandingkan dengan tanggal terpilih. */
   var MS = { date: todayStr(), follow: true, data: null, loading: false, error: '', query: '', seq: 0, at: 0, sig: '' };
@@ -3240,7 +3240,7 @@ var Code128 = (function () {
     $('#missDate').max = t; $('#missDate').value = MS.date;
     $('#missNext').disabled = MS.date >= t;
     $('#missToday').classList.toggle('active', isT);
-    if (state.view === 'miss') $('#subtitle').textContent = 'Terlewat · ' + dateLabel(MS.date) + ' vs ' + dateLabel(shiftDate(MS.date, -1));
+    if (state.view === 'miss') $('#subtitle').textContent = 'Outstanding · ' + dateLabel(MS.date) + ' vs ' + dateLabel(shiftDate(MS.date, -1));
   }
   function setMissDate(s) {
     var t = todayStr();
@@ -3258,13 +3258,13 @@ var Code128 = (function () {
     var v = this.value; clearTimeout(tMiss);
     tMiss = setTimeout(function () { MS.query = v; renderMiss(); }, 150);
   });
-  // Notifikasi: angka merah di tab Terlewat (hanya untuk pemeriksaan tanggal hari ini) + pemberitahuan sekali per pembukaan aplikasi
+  // Notifikasi: angka merah di tab Outstanding (hanya untuk pemeriksaan tanggal hari ini) + pemberitahuan sekali per pembukaan aplikasi
   function setMissBadge(d) {
     var b = $('#missBadge');
     if (!d || d.date !== todayStr()) return;
     var n = d.counts ? d.counts.missing : 0;
     b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
-    if (n && !MS.notified) { MS.notified = true; toast(n + ' lot terlewat: pernah terdata tetapi belum terdata hari ini dan belum ada di sheet PACK. Lihat tab Terlewat.', 'warn', 8000); }
+    if (n && !MS.notified) { MS.notified = true; toast(n + ' lot outstanding: pernah terdata tetapi belum terdata hari ini dan belum ada di sheet PACK. Lihat tab Outstanding.', 'warn', 8000); }
   }
   function missState(html) { var el = $('#sMiss'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
   function missFiltered() {
@@ -3294,7 +3294,7 @@ var Code128 = (function () {
       wrap.classList.add('hidden');
       missState('<div class="state">' + (c.prev === 0
         ? 'Tidak ada data dalam ' + esc(pl) + ', jadi belum ada yang bisa dibandingkan.'
-        : 'Tidak ada lot terlewat. Semua lot yang terdata sebelumnya sudah terdata di ' + esc(tl) + ' atau sudah ada di sheet PACK.') + '</div>');
+        : 'Tidak ada lot outstanding. Semua lot yang terdata sebelumnya sudah terdata di ' + esc(tl) + ' atau sudah ada di sheet PACK.') + '</div>');
       return;
     }
     if (!rows.length) { wrap.classList.add('hidden'); missState('<div class="state">Tidak ada lot yang cocok dengan pencarian.</div>'); return; }
@@ -3315,7 +3315,7 @@ var Code128 = (function () {
     wrap.classList.remove('hidden');
   }
   function loadMiss(force) {
-    if (!isAdmin()) return Promise.resolve();   // Terlewat hanya untuk Admin (server juga menolak)
+    if (!isAdmin()) return Promise.resolve();   // Outstanding hanya untuk Admin (server juga menolak)
     if (!force && MS.data && MS.at && Date.now() - MS.at < LIST_FRESH && MS.dataDate === MS.date) return Promise.resolve();
     var my = ++MS.seq, dt = MS.date;
     MS.loading = true; MS.error = '';
@@ -3349,12 +3349,12 @@ var Code128 = (function () {
   });
   $('#btnCsvMiss').addEventListener('click', function () {
     var rows = missFiltered();
-    if (!rows.length) { toast('Tidak ada lot terlewat untuk diunduh.', 'warn'); return; }
+    if (!rows.length) { toast('Tidak ada lot outstanding untuk diunduh.', 'warn'); return; }
     var hd = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'LEWAT (HARI)', 'INPUT TERAKHIR'];
     var cell = function (v) { v = v === undefined || v === null ? '' : String(v); if (/^[=+@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
     var lines = [hd.map(cell).join(';')];
     rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.hari, r.waktu].map(cell).join(';')); });
-    var name = 'Lot_Terlewat_' + MS.date.replace(/-/g, '') + '.csv';
+    var name = 'Lot_Outstanding_' + MS.date.replace(/-/g, '') + '.csv';
     downloadBlob(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
     toast(rows.length + ' baris diunduh: ' + name, 'ok');
   });
@@ -3707,7 +3707,7 @@ var Code128 = (function () {
   function showView(name) {
     sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
     if (isPc()) name = 'form';   // mode PC: hanya Input SOFT
-    else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Terlewat hanya untuk mode Admin
+    else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Outstanding hanya untuk mode Admin
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
@@ -3843,7 +3843,7 @@ var Code128 = (function () {
       if (done === false) retryT = setTimeout(flushQueue, 8000);
       else if (sent) toast(sent > 1 ? sent + ' data tersimpan di Sheet.' : 'Tersimpan di Sheet.', 'ok', 2200);
       if (state.view === 'data') loadData();
-      if (sent) loadMiss(true);   // angka notifikasi Terlewat ikut diperbarui setelah input terkirim
+      if (sent) loadMiss(true);   // angka notifikasi Outstanding ikut diperbarui setelah input terkirim
     });
     return flushP;
   }
@@ -5501,7 +5501,7 @@ var Code128 = (function () {
   renderPill();
   syncModeUi();
   if (isAdmin()) {
-    var homeTab = '';   // tab awal dari tombol di Page 2: inputsoft = Input > SOFT, miss = Terlewat (window.WIPYD_HOMETAB dari server, ?tab= di versi file, atau tanda di penyimpanan lokal)
+    var homeTab = '';   // tab awal dari tombol di Page 2: inputsoft = Input > SOFT, miss = Outstanding (window.WIPYD_HOMETAB dari server, ?tab= di versi file, atau tanda di penyimpanan lokal)
     try { homeTab = String(window.WIPYD_HOMETAB || new URLSearchParams(location.search).get('tab') || lsGet('wipyd_hometab') || '').toLowerCase(); } catch (eHt) { homeTab = ''; }
     lsDel('wipyd_hometab');
     if (homeTab === 'inputsoft') { setInputKind('soft'); showView('form'); }
@@ -5513,7 +5513,7 @@ var Code128 = (function () {
     showView('data');                       // Viewer: langsung ke tab WIP; daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
-  setTimeout(function () { loadMiss(false); }, 2500);   // cek lot terlewat di latar belakang untuk notifikasi
+  setTimeout(function () { loadMiss(false); }, 2500);   // cek lot outstanding di latar belakang untuk notifikasi
   if (qLen()) flushQueue();
 })();
 </script>
