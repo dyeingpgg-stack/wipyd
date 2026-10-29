@@ -225,3 +225,7 @@ Mode ketiga selain Admin dan Viewer, untuk komputer di area SOFT. Tanpa login, d
 - GitHub / hosting: unggah juga `pc.html` dan `manifest-pc.webmanifest` (dipasang ke layar utama tetap terbuka sebagai PC).
 - `Kode.gs`: `saveSoft`, `updateSoft`, dan `deleteSoft` menerima mode Admin dan PC (`needSoft_`); fungsi ubah data lain tetap hanya Admin. Tempel ulang `Kode.gs`, lalu Deploy versi baru.
 - Seperti mode Viewer, pembatasan ini pengaman tampilan (tanpa login), bukan keamanan data: siapa pun yang tahu cara memakai `?mode=admin` tetap bisa membuka mode Admin.
+
+## v45 - Tab GRM
+- Tab GRM kembali membaca data dari spreadsheet GRM (ID di `GRM_LIST_SS_ID` pada `Kode.gs`), tab `Sheet2` (`GRM_LIST_SHEET`), kolom A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN. Kolom virtual TGL CELUP dan TGL PACK tetap.
+- Pasang: ganti `Kode.gs` lalu Deploy > Manage deployments > New version > Deploy. Akun yang menjalankan script harus punya akses ke spreadsheet GRM. `index.html` tidak berubah.
