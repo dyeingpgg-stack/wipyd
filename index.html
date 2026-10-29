@@ -250,6 +250,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .stats{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
   .stat{min-width:0;padding:8px 10px 9px;border-radius:14px;border:1px solid rgba(var(--c-rgb),.28);background:linear-gradient(180deg,rgba(var(--c-rgb),.08),rgba(var(--c-rgb),.02))}
   .stats2{grid-template-columns:repeat(2,1fr)}
+  .stats.hero{grid-template-columns:1fr 1fr}.stats.hero .big{grid-column:1/-1;padding:12px 16px 14px;border-color:rgba(var(--c-rgb),.5);background:linear-gradient(180deg,rgba(var(--c-rgb),.16),rgba(var(--c-rgb),.03))}.stats.hero .big small{font-size:13px;letter-spacing:.08em;text-transform:uppercase}.stats.hero .big b{font-size:clamp(38px,9vw,56px);line-height:1.05}
   .stat small{display:block;font-size:12.5px;color:var(--dim)}
   .stat b{display:block;font:700 24px/1.15 var(--display);color:var(--cyan);text-shadow:0 0 12px rgba(var(--c-rgb),.55);overflow-wrap:anywhere}
   button.stat{font:inherit;color:inherit;text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none}
@@ -850,9 +851,9 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         </button>
         <button type="button" class="btn-today" id="dateToday">Hari ini</button>
       </div>
-      <div class="stats" aria-live="polite">
-        <div class="stat"><small>Lot KIKC</small><b id="sLot">-</b></div>
-        <div class="stat"><small>Total Kg</small><b id="sKg">-</b></div>
+      <div class="stats hero" aria-live="polite">
+        <div class="stat big"><small id="sKgLbl">TOTAL KG</small><b id="sKg">-</b></div>
+        <div class="stat"><small>Total Lot</small><b id="sLot">-</b></div>
         <div class="stat"><small>Total Cone</small><b id="sCone">-</b></div>
       </div>
       <p class="sumnote" id="sumNote"></p>
@@ -4030,6 +4031,7 @@ var Code128 = (function () {
     });
     kg = Math.round(kg * 100) / 100;
     setStat('#sLot', fmtNum(lots)); setStat('#sKg', fmtNum(kg)); setStat('#sCone', fmtNum(cone));
+    $('#sKgLbl').textContent = 'TOTAL KG \u00b7 ' + (state.filterPos || 'SEMUA') + (searching ? ' (semua tanggal)' : '');
     var scope = (searching ? 'Semua tanggal' : dateLabel(state.date)) + (state.filterPos ? ', posisi ' + state.filterPos : ', semua posisi') + (state.filterPack === 'open' ? ', belum Pack' : state.filterPack === 'fin' ? ', sudah Pack' : '') + (state.query.trim() ? ', sesuai pencarian' : '');
     var finLots = 0, finSeen = {};
     rows.forEach(function (r) { if (r.kikc && r.tglPack && !finSeen[r.kikc]) { finSeen[r.kikc] = 1; finLots++; } });
