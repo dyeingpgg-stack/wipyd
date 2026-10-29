@@ -1,5 +1,5 @@
 /**
- * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v46: tab Celup sumbernya spreadsheet KIKCDB (ID di CLP_SRC_SS_ID) Sheet1 kolom B..CD, 11 kolom menurut CLP_SRC_PICK, sheet CLP lama tidak dipakai lagi; v45: tab GRM kembali membaca data dari spreadsheet GRM (ID di GRM_LIST_SS_ID) tab Sheet2 (bukan WOD); v44: tab WIP: Tgl Celup lot tanpa Plan dibaca langsung dari tab Celup (CLP) bila peta daftar tidak memuatnya; tab GRM sempat bersumber dari sheet WOD (JCONE = HANK), kini dikembalikan; v40: tab GRM: kolom virtual TGL CELUP dan TGL PACK + scorecard Belum Celup / Celup / Terpacking; v39: tab Plan/Mesin: Plan terakhir hanya dibawa ke hari ini sampai jam 10.00 lalu kosong sampai Create Plan baru, info "Belum ada Plan tanggal..." dihapus; v38: tab "Terlewat" diganti nama menjadi "Outstanding"; v37: tab SOFT Page 2 = Edit/Hapus baris (updateSoft, deleteSoft) + pintasan ke Input SOFT; Outstanding: lot yang disebut "EX.<KIKC>" di keterangan PACK dianggap sudah Pack; getPageUrl/doGet: tab awal Home (inputsoft, miss); v36: tab WIP: Tgl Celup = kolom CELUP Plan dulu, baru tab Celup; tab Plan: kolom virtual SISA ORDER / PENDING (sheet "Status Lot"); tombol SOFT di Input membuka tab SOFT Page 2; v35: tab SOFT di Page 2 = tabel data dari sheet SOFT (getSheetList 'soft'), daftar SUP selalu dibaca segar saat form SOFT dibuka; v34: sheet SUP = dua daftar terpisah (kolom A Benang, kolom B Supplier), form SOFT bisa menambah benang/supplier baru ke SUP; v33: laporan STOCK WIP SOFT WINDING HARIAN di Page 2 (getSoftHari); v32: form Input SOFT (sheet SUP -> sheet SOFT); v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Outstanding hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Outstanding (lot Pack tetap bisa diinput); Outstanding memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Outstanding = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
+ * DyePocket (dulu WIP Yarn Dyeing) - Kode.gs  (v47: tab Celup format tanggal DD/MM/YYYY + Shift P/S/M/N jadi Shift 1/2/3/kosong; tab WIP: Tgl Celup, Shift, Grup = tab Celup dulu, lalu Plan, lalu isian input; v46: tab Celup sumbernya spreadsheet KIKCDB (ID di CLP_SRC_SS_ID) Sheet1 kolom B..CD, 11 kolom menurut CLP_SRC_PICK, sheet CLP lama tidak dipakai lagi; v45: tab GRM kembali membaca data dari spreadsheet GRM (ID di GRM_LIST_SS_ID) tab Sheet2 (bukan WOD); v44: tab WIP: Tgl Celup lot tanpa Plan dibaca langsung dari tab Celup (CLP) bila peta daftar tidak memuatnya; tab GRM sempat bersumber dari sheet WOD (JCONE = HANK), kini dikembalikan; v40: tab GRM: kolom virtual TGL CELUP dan TGL PACK + scorecard Belum Celup / Celup / Terpacking; v39: tab Plan/Mesin: Plan terakhir hanya dibawa ke hari ini sampai jam 10.00 lalu kosong sampai Create Plan baru, info "Belum ada Plan tanggal..." dihapus; v38: tab "Terlewat" diganti nama menjadi "Outstanding"; v37: tab SOFT Page 2 = Edit/Hapus baris (updateSoft, deleteSoft) + pintasan ke Input SOFT; Outstanding: lot yang disebut "EX.<KIKC>" di keterangan PACK dianggap sudah Pack; getPageUrl/doGet: tab awal Home (inputsoft, miss); v36: tab WIP: Tgl Celup = kolom CELUP Plan dulu, baru tab Celup; tab Plan: kolom virtual SISA ORDER / PENDING (sheet "Status Lot"); tombol SOFT di Input membuka tab SOFT Page 2; v35: tab SOFT di Page 2 = tabel data dari sheet SOFT (getSheetList 'soft'), daftar SUP selalu dibaca segar saat form SOFT dibuka; v34: sheet SUP = dua daftar terpisah (kolom A Benang, kolom B Supplier), form SOFT bisa menambah benang/supplier baru ke SUP; v33: laporan STOCK WIP SOFT WINDING HARIAN di Page 2 (getSoftHari); v32: form Input SOFT (sheet SUP -> sheet SOFT); v31: referensi KIKC tab Input = WOD + RPH + GRM; v30: ganti nama jadi DyePocket, tab Data jadi WIP, tab Delivery (getDelivery) di Page 2; v29: Page 2: filter periode tanggal (default bulan berjalan) dan pencarian semua tanggal untuk Pack/RPH; v28: isian kosong di Plan Harian dilengkapi otomatis dari sheet Plan/WOD saat dibaca; pencarian Data/Plan/Mesin di semua tanggal (cariData, cariPlan); ubah Mesin di tab Data ikut alokasi mesin (tab Mesin/Plan); Page 2 (Pack, RPH): getSheetList, getPageUrl; v27: batas Sisa Order: CELUP kosong sampai pukul 09:00 hari sesudah tanggal Plan = "Sisa Order" (SISA_JAM); v26: tab Outstanding hanya untuk mode Admin (getTerlewat menolak permintaan tanpa tanda Admin); v25: sheet PACK hanya untuk kontrol tab Outstanding (lot Pack tetap bisa diinput); Outstanding memeriksa lot yang terdata dalam TERLEWAT_HARI hari sebelumnya; v24: tanggal tab Celup (CLP) tetap prioritas utama kolom CELUP; lot yang sudah celup sebelum tanggal planning tidak masuk Plan; v23: kolom CELUP tab Plan = tanggal Plan Harian terbaru yang sudah disusul input data (bukan "Sisa Order"); v22: kolom P "Tanggal Pack" di sheet Jawaban (diisi dari sheet PACK kolom A menurut KIKC) = tanda lot Finish; tab baru Outstanding = lot yang terdata kemarin tapi tidak terdata hari ini, kecuali sudah ada Tanggal Pack; v21: tab Plan menampilkan Plan terakhir bila tanggal itu belum dibuat, dan tanggal Plan asal lot Sisa Order; v20: label "Sisa Order" tetap tampil untuk lot sisa Plan hari sebelumnya yang masih ada di Plan hari ini (tab Plan, Plan Harian, Mesin); v19: tab Plan membaca sheet "Plan Harian"; Create > Get Plan (baca sheet Plan) > Save (simpan ke Plan Harian per tanggal); alokasi mesin per tanggal. v18: riwayat Plan harian di sheet baru "Plan Harian" (tab Plan bisa dilihat per tanggal); sheet "Plan" (importrange) tidak diubah. v17: kolom Supplier di tab Plan (setelah No Benang). v16: kapasitas mesin per siklus (MESIN_KAPASITAS) x 3 siklus (MESIN_SIKLUS) dikirim ke tab Mesin untuk unduh PDF/PNG HD. v15: mode Admin / Viewer tanpa login. v14: semua tanggal DD/MM/YYYY, tab baru Plan; kolom TANGGAL di tab WOD/GRM/CLP setelah KIKC; tab WOD, GRM, Plan, Celup hanya baca + terbaru di atas + cache cepat, WOD tanpa mesin BAK-, tanpa input Cone; antrean simpan, cache KIKC, KIKC baru manual, Posisi/QC tanpa nomor urut)
  *
  * Sumber referensi KIKC (dua sheet, WOD diutamakan):
  *   Sheet "WOD": C = KIKC | D = No Benang | E = Warna | F = Kg | G = Cone | I = Mesin | L = Keterangan KIKC
@@ -78,17 +78,17 @@ const WOD_HIDE_MESIN = 'BAK-';   // baris WOD dengan mesin berisi teks ini disem
 // Tab Celup (key 'clp') dibaca dari spreadsheet KIKCDB, sheet "Sheet1", blok kolom B..CD (81 kolom).
 // CLP_SRC_PICK = nomor kolom di dalam blok B..CD (B = 1, C = 2, ... CD = 81), URUTAN = urutan tampil di tab Celup:
 //   [KIKC, TANGGAL, NO BENANG, WARNA, MESIN, KG, CONE, SHIFT, GRUP, KET, kolom tambahan]
-//   19 = T | 1 = B | 9 = J | 11 = L | 13 = N | 33 = AH | 34 = AI | 21 = V | 20 = U | 26 = AA | 81 = CD
+//   1 = B (KIKC) | 19 = T (TANGGAL) | 9 = J | 11 = L | 13 = N | 33 = AH | 34 = AI | 21 = V (SHIFT) | 20 = U (GRUP) | 26 = AA (KET) | 81 = CD
 // Bila isi kolom tidak sesuai dengan judulnya, cukup tukar angka di CLP_SRC_PICK lalu Deploy versi baru.
 const CLP_SRC_SS_ID = '13Ajxvh1g7t32p_hFs8Iz5nLVTBKj2LhFpw9DuHZroiI';   // spreadsheet KIKCDB
 const CLP_SRC_SHEET = 'Sheet1';
 const CLP_SRC_FIRST_COL = 2;     // kolom B
 const CLP_SRC_WIDTH = 81;        // B..CD
-const CLP_SRC_PICK = [19, 1, 9, 11, 13, 33, 34, 21, 20, 26, 81];
+const CLP_SRC_PICK = [1, 19, 9, 11, 13, 33, 34, 21, 20, 26, 81];
 const CLP_SRC_HEADS = ['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'KET'];   // judul 10 kolom pertama (dipakai tab lain, jangan diubah); kolom ke-11 memakai judul dari baris 1 sheet sumber
 const PLAN_FIRST_COL = 1;        // kolom A = KIKC
 const PLAN_WIDTH = 8;            // A..H (H = CELUP)
-const DATE_TEXT_MDY = { clp: false, pack: false };   // sheet yang menyimpan tanggal sebagai TEKS MM/DD/YYYY (selain itu dibaca DD/MM/YYYY)
+const DATE_TEXT_MDY = { clp: true, pack: false };   // clp = sumber tab Celup (KIKCDB): teks tanggal dibaca MM/DD/YYYY; tanggal asli (Date) tidak terpengaruh   // sheet yang menyimpan tanggal sebagai TEKS MM/DD/YYYY (selain itu dibaca DD/MM/YYYY)
 const MAX_ROWS = 300;
 const TOKEN_SALT = 'wipyd-v1';
 const APP_PIN = '';              // OPSIONAL: isi mis. '2468'. Kosong = tanpa PIN.
@@ -539,7 +539,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst7_';
+const LIST_PREFIX = 'lst8_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -710,7 +710,15 @@ function buildList_(key) {
     if (!nm || headers.indexOf(nm) >= 0) nm = 'KOLOM ' + (i + 1);
     headers.push(nm);
   }
+  // Shift tab Celup: P = Shift 1, S = Shift 2, M = Shift 3, N = kosong; nilai lain apa adanya
+  const iSh = headers.indexOf('SHIFT');
+  if (iSh >= 0) rows.forEach(function (r) { r[iSh] = shiftName_(r[iSh]); });
   return listResult_(headers, rows);
+}
+
+function shiftName_(v) {
+  const t = str_(v).trim(), u = t.toUpperCase();
+  return u === 'P' ? 'Shift 1' : u === 'S' ? 'Shift 2' : u === 'M' ? 'Shift 3' : u === 'N' ? '' : t;
 }
 
 function listCacheGet_(key) {
@@ -2081,6 +2089,7 @@ function jawabanRows_(sheet, start, end, tz, keys, want) {
   const refs = refMaps_();   // referensi per KIKC: Celup, lalu Plan
   let cpm = {}; try { cpm = celupPlanMap_(); } catch (eCp) { cpm = {}; }   // tanggal Plan terbaru yang sudah disusul input data (kolom CELUP Plan)
   let packMap = {}; try { packMap = getPackMap_(false).map || {}; } catch (ePk) { packMap = {}; }   // Tanggal Pack dari sheet PACK (kosong bila sheet tidak ada)
+  let clpC = null;   // peta tab Celup menurut KIKC tanpa spasi/tanda baca (dibuat sekali)
   let clpF = null;   // peta CLP langsung dari sheet, dibuat hanya bila ada lot yang tanggalnya belum ketemu
   let alk = {}; try { alk = readAlokasi_().vals || {}; } catch (eAl) { alk = {}; }
   const kemarin = Utilities.formatDate(new Date(Date.now() - 86400000), tz, 'dd/MM/yyyy');   // TODAY()-1, dipakai untuk tanggal dari kolom Celup tab Plan
@@ -2091,15 +2100,19 @@ function jawabanRows_(sheet, start, end, tz, keys, want) {
     const r = padRow_(values[i], TOTAL_COLS);
     const id = str_(r[1]).trim();
     if (!id) continue;
-    const k = normKikc_(r[2]), cl = refs.clp[k] || {}, pl = refs.plan[k] || {};
+    const k = normKikc_(r[2]), pl = refs.plan[k] || {};
+    // Tab Celup dicocokkan dulu menurut KIKC apa adanya, lalu tanpa spasi/tanda baca (ZZN26J215 = ZZN-26J215)
+    if (!clpC) { clpC = Object.create(null); Object.keys(refs.clp).forEach(function (x) { const c = compactKikc_(x); if (c && !clpC[c]) clpC[c] = refs.clp[x]; }); }
+    const cl = refs.clp[k] || clpC[compactKikc_(k)] || {};
     const pick = function (f, own) { return cl[f] || pl[f] || own; };
     out.push({
       rowIndex: rowNo, tk: rowToken_(id), timestamp: fmtTs_(tsRaw[i][0], r[0], tz),
       kikc: r[2], noBenang: pick('noBenang', r[3]), warna: pick('warna', r[4]), mesin: alk[k] || pick('mesin', r[5]),
       kg: pick('kg', r[6]), cone: pick('cone', r[7]),
       shift: pick('shift', r[8]), grup: pick('grup', r[9]),
-      // Tgl Celup: 1) kolom CELUP di tab Plan (tanggal Plan yang sudah disusul input; atau isi tanggal di sheet Plan = TODAY()-1), 2) bila Plan tidak punya, tab Celup
-      tglCelup: cpm[k] || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : '') || cl.tanggal || (k ? (clpF || (clpF = clpFreshMap_()))[compactKikc_(k)] || '' : ''),   // 3) lot tanpa Plan: tab Celup (CLP), dibaca langsung bila peta daftar tidak memuatnya
+      // Tgl Celup: 1) tab Celup (KIKCDB) begitu lot itu sudah tercatat di sana, 2) bila belum / kosong: tanggal dari Plan (kolom CELUP Plan yang sudah disusul input; atau isi tanggal di sheet Plan = TODAY()-1),
+      // 3) cadangan terakhir: tab Celup dibaca langsung dari sheet (tanpa cache daftar). Shift dan Grup: tab Celup, lalu Plan, lalu isian input di sheet Jawaban (tidak dikosongkan).
+      tglCelup: cl.tanggal || cpm[k] || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : '') || (k ? (clpF || (clpF = clpFreshMap_()))[compactKikc_(k)] || '' : ''),
       tglPack: packMap[k] || fmtDmy_(r[COL_PACK - 1], r[COL_PACK - 1], tz, false),
       shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah)
       posisi: stripNum_(r[10]),
