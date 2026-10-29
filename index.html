@@ -222,10 +222,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .filters::-webkit-scrollbar{display:none}
   .fchip{flex:none;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 15px var(--body);cursor:pointer}
   .fchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
-  /* Tab GRM: filter motif (dari Keterangan) dan kelompok warna (dari kode di kolom Warna) */
-  .gf-lab{flex:none;margin:2px 2px 2px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
-  #grmFilters .fchip{min-height:34px;padding:0 13px;font-size:14px}
-  #grmFilters .fchip small{margin-left:6px;font:500 12px var(--body);opacity:.75}
   /* Tab Plan: baris Sisa Order diberi highlight; riwayat Plan hanya lihat */
   tbody tr.sisa td{background:rgba(var(--r-rgb),.13) !important}
   tbody tr.sisa td:first-child{box-shadow:inset 3px 0 0 var(--rose)}
@@ -935,12 +931,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="stat r" data-gs="belum" aria-pressed="false" title="Lot GRM yang belum punya Tanggal Celup. Ketuk untuk memfilter."><small>Belum Celup</small><b id="gsBelum">-</b></button>
         <button type="button" class="stat a" data-gs="celup" aria-pressed="false" title="Lot GRM yang sudah Celup tetapi belum Pack. Ketuk untuk memfilter."><small>Celup</small><b id="gsCelup">-</b></button>
         <button type="button" class="stat g" data-gs="pack" aria-pressed="false" title="Lot GRM yang sudah Terpacking. Ketuk untuk memfilter."><small>Terpacking</small><b id="gsPack">-</b></button>
-      </div>
-      <div id="grmFilters" hidden>
-        <div class="gf-lab">Motif</div>
-        <div class="filters" id="grmMotif" role="group" aria-label="Filter motif GRM"></div>
-        <div class="gf-lab">Kelompok warna</div>
-        <div class="filters" id="grmWarna" role="group" aria-label="Filter kelompok warna"></div>
       </div>
       <p class="lcount" id="nGrm" aria-live="polite"></p>
       <div class="lstate" id="sGrm"></div>
@@ -2426,57 +2416,6 @@ var Code128 = (function () {
     lst.grm.page = 1; lst.grm.rk = '';
     renderList('grm');
   });
-  /* Filter tab GRM: Motif = kode "GRM A / GRM C / ..." di kolom KETERANGAN; Kelompok warna = awalan huruf kode di kolom WARNA
-     (mis. AH10A/AP01A -> kelompok AH dan AP; satu baris bisa masuk lebih dari satu kelompok). Pilihan bisa lebih dari satu (ATAU);
-     baris harus cocok dengan pilihan Motif DAN pilihan Kelompok warna. */
-  var GRM_MOTIF_TETAP = ['A', 'C', 'D', 'I', 'K'];   // selalu tampil sebagai chip, walau jumlahnya 0
-  var grmMotifSel = {}, grmWarnaSel = {};
-  function grmMotifOf(ket) {
-    var m = String(ket || '').match(/GRM\s*[-.:]?\s*([A-Za-z])(?![A-Za-z])/i);
-    return m ? m[1].toUpperCase() : '';
-  }
-  function grmWarnaOf(w) {   // daftar kelompok (awalan huruf kode warna); tanpa kode = ['Lainnya']
-    var out = [], seen = {};
-    String(w || '').split(/[\/,;+&\s]+/).forEach(function (t) {
-      var m = t.trim().match(/^([A-Za-z]{1,3})\d/);
-      if (m) { var g = m[1].toUpperCase(); if (!seen[g]) { seen[g] = 1; out.push(g); } }
-    });
-    return out.length ? out : ['Lainnya'];
-  }
-  function grmSelCount(o) { return Object.keys(o).filter(function (x) { return o[x]; }).length; }
-  function grmFiltersKey() {
-    return Object.keys(grmMotifSel).filter(function (x) { return grmMotifSel[x]; }).sort().join(',') + '/' +
-      Object.keys(grmWarnaSel).filter(function (x) { return grmWarnaSel[x]; }).sort().join(',');
-  }
-  function grmChipsShow(show, mc, wc) {
-    var box = $('#grmFilters');
-    box.hidden = !show;
-    if (!show) return;
-    function chip(attr, val, label, n, on) {
-      return '<button type="button" class="fchip' + (on ? ' active' : '') + '" ' + attr + '="' + esc(val) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + (n === null ? '' : '<small>' + fmtNum(n) + '</small>') + '</button>';
-    }
-    var mk = GRM_MOTIF_TETAP.slice();
-    Object.keys(mc).forEach(function (x) { if (x !== '' && mk.indexOf(x) < 0) mk.push(x); });
-    mk.sort();
-    var mh = chip('data-gm', '*', 'Semua', null, !grmSelCount(grmMotifSel));
-    mk.forEach(function (x) { mh += chip('data-gm', x, 'GRM ' + x, mc[x] || 0, !!grmMotifSel[x]); });
-    if (mc['']) mh += chip('data-gm', '-', 'Tanpa motif', mc[''], !!grmMotifSel['-']);
-    $('#grmMotif').innerHTML = mh;
-    var wk = Object.keys(wc).filter(function (x) { return x !== 'Lainnya'; }).sort();
-    if (wc['Lainnya']) wk.push('Lainnya');
-    var wh = chip('data-gw', '*', 'Semua', null, !grmSelCount(grmWarnaSel));
-    wk.forEach(function (x) { wh += chip('data-gw', x, x, wc[x], !!grmWarnaSel[x]); });
-    $('#grmWarna').innerHTML = wh;
-  }
-  $('#grmFilters').addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('.fchip') : null;
-    if (!b) return;
-    var isM = b.hasAttribute('data-gm'), v = b.getAttribute(isM ? 'data-gm' : 'data-gw'), o = isM ? grmMotifSel : grmWarnaSel;
-    if (v === '*') { Object.keys(o).forEach(function (x) { delete o[x]; }); }
-    else if (o[v]) delete o[v]; else o[v] = true;
-    lst.grm.page = 1; lst.grm.rk = '';
-    renderList('grm');
-  });
   function renderList0(k) {
     var isPlan = k === 'plan';
     var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
@@ -2486,7 +2425,7 @@ var Code128 = (function () {
     var pd = planCur().split('-').reverse().join('/');
     if (!S.headers.length || !S.rows.length) {
       if (isPlan) { planStats(null, m.headers); renderResumePlan(); }
-      if (k === 'grm') { grmStatsShow(null); grmChipsShow(false); }
+      if (k === 'grm') grmStatsShow(null);
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
       if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
@@ -2496,31 +2435,19 @@ var Code128 = (function () {
     }
     if (isPlan && !psearch) planFillSisa(m);   // CELUP kosong lewat pukul 09:00 hari sesudah tanggal Plan = "Sisa Order"
     var ps = pageSize();
-    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|F' + grmFiltersKey() + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
+    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     var gsF = k === 'grm' ? grmFilter : '', gsC = { belum: 0, celup: 0, pack: 0 }, gC = k === 'grm' ? S.headers.indexOf('TGL CELUP') : -1, gP = k === 'grm' ? S.headers.indexOf('TGL PACK') : -1;
-    var gK = k === 'grm' ? S.headers.indexOf('KETERANGAN') : -1, gW = k === 'grm' ? S.headers.indexOf('WARNA') : -1;
-    var gmc = {}, gwc = {}, gmOn = k === 'grm' && grmSelCount(grmMotifSel) > 0, gwOn = k === 'grm' && grmSelCount(grmWarnaSel) > 0;
     S.rows.forEach(function (r, i) {
       if (q && nq(r.join(' ')).indexOf(q) < 0) return;
-      var gst = '', mOk = true, wOk = true, mot = '', wg = null;
       if (k === 'grm') {   // scorecard: Terpacking (ada Tgl Pack) > Celup (ada Tgl Celup, belum Pack) > Belum Celup
-        gst = gP >= 0 && r[gP] ? 'pack' : gC >= 0 && r[gC] ? 'celup' : 'belum';
-        mot = grmMotifOf(gK >= 0 ? r[gK] : '');
-        wg = grmWarnaOf(gW >= 0 ? r[gW] : '');
-        if (gmOn) mOk = !!grmMotifSel[mot || '-'];
-        if (gwOn) wOk = wg.some(function (g) { return grmWarnaSel[g]; });
-        // jumlah chip Motif mengikuti pilihan Kelompok warna + status, dan sebaliknya; scorecard mengikuti kedua filter
-        if (wOk && (!gsF || gsF === gst)) gmc[mot] = (gmc[mot] || 0) + 1;
-        if (mOk && (!gsF || gsF === gst)) wg.forEach(function (g) { gwc[g] = (gwc[g] || 0) + 1; });
-        if (!mOk || !wOk) return;
+        var gst = gP >= 0 && r[gP] ? 'pack' : gC >= 0 && r[gC] ? 'celup' : 'belum';
         gsC[gst]++;
         if (gsF && gsF !== gst) return;
       }
       rows.push(r); idx.push(i);
     });
-    if (k === 'grm') grmChipsShow(true, gmc, gwc);
     if (k === 'grm') grmStatsShow(gsC);
     if (isPlan) { planStats(psearch ? null : rows, S.headers); renderResumePlan(); }
     var pnote = psearch ? 'Pencarian semua tanggal Plan · ' : isPlan ? 'Plan ' + fmtDMY(planShown()) + (planCarried() ? ' (terakhir)' : planHistOn() ? ' (riwayat)' : '') + (m.savedAt ? ' · disimpan ' + m.savedAt : '') + ' · ' : '';
