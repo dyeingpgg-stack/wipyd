@@ -229,3 +229,8 @@ Mode ketiga selain Admin dan Viewer, untuk komputer di area SOFT. Tanpa login, d
 ## v45 - Tab GRM
 - Tab GRM kembali membaca data dari spreadsheet GRM (ID di `GRM_LIST_SS_ID` pada `Kode.gs`), tab `Sheet2` (`GRM_LIST_SHEET`), kolom A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN. Kolom virtual TGL CELUP dan TGL PACK tetap.
 - Pasang: ganti `Kode.gs` lalu Deploy > Manage deployments > New version > Deploy. Akun yang menjalankan script harus punya akses ke spreadsheet GRM. `index.html` tidak berubah.
+
+## v46 - Filter tab GRM
+- Tab GRM: dua baris chip filter di atas tabel. **Motif** = kode `GRM A / C / D / I / K` yang dibaca dari kolom KETERANGAN (chip A, C, D, I, K selalu tampil; motif lain yang ditemukan ikut muncul, plus "Tanpa motif"). **Kelompok warna** = awalan huruf kode di kolom WARNA (mis. `AH10A/AP01A` masuk kelompok AH dan AP; tanpa kode = "Lainnya").
+- Chip bisa dipilih lebih dari satu (ATAU di dalam satu baris, DAN antar baris), dan bisa dikombinasikan dengan scorecard Belum Celup/Celup/Terpacking serta pencarian. Angka di chip mengikuti filter lain.
+- Pasang: unggah `index.html` dan `sw.js` (cache v71). `Kode.gs` tidak berubah.
