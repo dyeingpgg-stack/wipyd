@@ -30,6 +30,18 @@
   var h = document.documentElement;
   h.setAttribute('data-mode', m);
   if (lock) h.setAttribute('data-lock', '1');
+  /* Viewer terbatas: ?mode=viewer&tabs=plan,mesin (atau tanda WIPYD_TABS dari server Apps Script) = hanya tab yang disebut yang tampil.
+     Nama tab: wod, grm, plan, data (WIP), mesin, clp (Celup). Hanya berlaku di mode Viewer. */
+  if (m === 'viewer') {
+    var tl = [];
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|data|mesin|clp)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    if (tl.length) {
+      h.setAttribute('data-tabs', tl.join(','));
+      var st = document.createElement('style');
+      st.textContent = '.tabbar .tab' + tl.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + ',#btnPage2{display:none !important}.tabbar{grid-template-columns:repeat(' + tl.length + ',1fr) !important}';
+      document.head.appendChild(st);
+    }
+  }
 })();
 </script>
 <meta name="description" content="Catat posisi dan QC benang Yarn Dyeing per KIKC">
@@ -40,7 +52,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* Link Viewer yang dipasang ke layar utama harus tetap terbuka sebagai Viewer: pakai manifest sendiri (start_url berisi ?mode=viewer) */
-if (document.documentElement.hasAttribute('data-lock')) document.querySelector('link[rel="manifest"]').setAttribute('href', document.documentElement.getAttribute('data-mode') === 'pc' ? 'manifest-pc.webmanifest' : 'manifest-viewer.webmanifest');
+if (document.documentElement.hasAttribute('data-lock')) document.querySelector('link[rel="manifest"]').setAttribute('href', document.documentElement.getAttribute('data-mode') === 'pc' ? 'manifest-pc.webmanifest' : (document.documentElement.getAttribute('data-tabs') === 'plan,mesin' ? 'manifest-planmesin.webmanifest' : 'manifest-viewer.webmanifest'));
 </script>
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -700,6 +712,9 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       </button>
       <button type="button" class="icon-btn admin-only" id="btnShare" aria-label="Bagikan link Viewer" title="Bagikan link Viewer (hanya lihat)">
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></svg>
+      </button>
+      <button type="button" class="icon-btn admin-only" id="btnSharePM" aria-label="Bagikan link Viewer tab Plan dan Mesin saja" title="Bagikan link Viewer: hanya tab Plan dan Mesin">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h8M8 18h5"/></svg>
       </button>
       <button type="button" class="icon-btn rot" id="btnRot" hidden aria-label="Rotasi layar potret atau lanskap" title="Rotasi layar (tahan untuk otomatis)">
         <svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="13" rx="1.6"/><path d="M12 12.5h.01"/><path d="M4.5 18.5a8.5 8.5 0 0 0 15 0"/><path d="M17 17l2.6 1.2L20.8 15.6"/></svg>
@@ -1525,6 +1540,7 @@ var Code128 = (function () {
   var ROOT = document.documentElement;
   var MODE_LOCKED = ROOT.hasAttribute('data-lock');   // dibuka dengan ?mode=viewer: tombol ganti mode disembunyikan
   function isAdmin() { return state.mode === 'admin'; }
+  var TABS = (document.documentElement.getAttribute('data-tabs') || '').split(',').filter(Boolean);   // Viewer terbatas: tab yang boleh dibuka (kosong = semua)
   function isPc() { return state.mode === 'pc'; }   // mode PC: hanya Input SOFT di Home (dan SOFT + RPH di Page 2); selain itu setara Viewer
   var MSG_VIEWER = 'Mode Viewer: data hanya bisa dilihat. Ketuk tombol mode di kanan atas untuk masuk mode Admin.';
 
@@ -3815,6 +3831,7 @@ var Code128 = (function () {
     sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
     if (isPc()) name = 'form';   // mode PC: hanya Input SOFT
     else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Outstanding hanya untuk mode Admin
+    if (TABS.length && TABS.indexOf(name) < 0) name = TABS[0];   // Viewer terbatas (?tabs=): hanya tab yang dibagikan
     state.view = name;
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
@@ -5529,18 +5546,18 @@ var Code128 = (function () {
   /* ---------- Bagikan link Viewer (hanya Admin) ---------- */
   (function () {
     var btn = $('#btnShare');
-    function localViewerUrl() {
+    function localViewerUrl(tabs) {
       var u = location.href.split('#')[0].split('?')[0];
-      if (/viewer\.html$/i.test(u)) return u;
-      if (/\/exec$/.test(u)) return u + '?mode=viewer';
-      return u.replace(/index\.html$/i, '').replace(/\/?$/, '/') + 'viewer.html';
+      if (/\/exec$/.test(u)) return u + '?mode=viewer' + (tabs ? '&tabs=' + tabs : '');
+      var base = u.replace(/(index|viewer|plan)\.html$/i, '').replace(/\/?$/, '/');
+      return tabs ? base + 'index.html?mode=viewer&tabs=' + tabs : base + 'viewer.html';
     }
-    function getUrl() {
+    function getUrl(tabs) {   // tabs (opsional) = Viewer terbatas, mis. 'plan,mesin'
       if (IN_GAS) {   // di dalam iframe Apps Script alamat halaman bukan alamat web app: minta ke server
-        return gs('getViewerUrl').then(function (u) { return u || ''; }).catch(function () { return ''; });
+        return gs('getViewerUrl', tabs || '').then(function (u) { return u || ''; }).catch(function () { return ''; });
       }
-      if (/^https:\/\/script\.google(usercontent)?\.com\/.*\/exec$/.test(location.href.split('?')[0]) ) return Promise.resolve(location.href.split('?')[0] + '?mode=viewer');
-      return Promise.resolve(localViewerUrl());
+      if (/^https:\/\/script\.google(usercontent)?\.com\/.*\/exec$/.test(location.href.split('?')[0]) ) return Promise.resolve(location.href.split('?')[0] + '?mode=viewer' + (tabs ? '&tabs=' + tabs : ''));
+      return Promise.resolve(localViewerUrl(tabs));
     }
     function copy(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
@@ -5552,20 +5569,24 @@ var Code128 = (function () {
         } catch (e) { rej(e); }
       });
     }
-    btn.addEventListener('click', function () {
-      if (!isAdmin()) return;
-      getUrl().then(function (url) {
-        if (!url) { toast('Alamat link Viewer tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
-        var data = { title: 'DyePocket (Viewer)', text: 'Link Viewer DyePocket (hanya lihat):', url: url };
-        var fallback = function () {
-          copy(url).then(function () { toast('Link Viewer disalin. Tempel ke WhatsApp atau pesan lain.', 'ok', 4000); })
-            .catch(function () { window.prompt('Salin link Viewer ini:', url); });
-        };
-        if (navigator.share) {
-          navigator.share(data).catch(function (e) { if (!e || e.name !== 'AbortError') fallback(); });
-        } else fallback();
+    function bind(button, tabs, label) {
+      button.addEventListener('click', function () {
+        if (!isAdmin()) return;
+        getUrl(tabs).then(function (url) {
+          if (!url) { toast('Alamat link ' + label + ' tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
+          var data = { title: 'DyePocket (' + label + ')', text: 'Link ' + label + ' DyePocket (hanya lihat):', url: url };
+          var fallback = function () {
+            copy(url).then(function () { toast('Link ' + label + ' disalin. Tempel ke WhatsApp atau pesan lain.', 'ok', 4000); })
+              .catch(function () { window.prompt('Salin link ' + label + ' ini:', url); });
+          };
+          if (navigator.share) {
+            navigator.share(data).catch(function (e) { if (!e || e.name !== 'AbortError') fallback(); });
+          } else fallback();
+        });
       });
-    });
+    }
+    bind(btn, '', 'Viewer');
+    bind($('#btnSharePM'), 'plan,mesin', 'Viewer Plan dan Mesin');
   })();
 
   /* ---------- Mulai ---------- */
@@ -5618,7 +5639,7 @@ var Code128 = (function () {
   } else if (isPc()) {
     setInputKind('soft'); showView('form'); // PC: langsung ke Input SOFT; daftar KIKC dan tab lain tidak dimuat
   } else {
-    showView('data');                       // Viewer: langsung ke tab WIP; daftar KIKC (untuk form Input) tidak perlu dimuat
+    showView(TABS.length ? TABS[0] : 'data');   // Viewer: langsung ke tab WIP (Viewer terbatas: tab pertama yang dibagikan); daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
   setTimeout(function () { loadMiss(false); }, 2500);   // cek lot outstanding di latar belakang untuk notifikasi

@@ -1,6 +1,6 @@
 /* Service worker DyePocket: cangkang aplikasi tersimpan agar cepat dibuka. Data selalu dari server. */
 const VER = 'wipyd-v71';
-const SHELL = ['./', 'index.html', 'page2.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'pc.html', 'manifest-pc.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
+const SHELL = ['./', 'index.html', 'page2.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'plan.html', 'manifest-planmesin.webmanifest', 'pc.html', 'manifest-pc.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VER).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
