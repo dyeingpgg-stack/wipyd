@@ -5574,7 +5574,7 @@ var Code128 = (function () {
         if (!isAdmin()) return;
         getUrl(tabs).then(function (url) {
           if (!url) { toast('Alamat link ' + label + ' tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
-          var data = { title: 'DyePocket (' + label + ')', text: 'Link ' + label + ' DyePocket (hanya lihat):', url: url };
+          var data = { title: 'DyePocket (' + label + ')', text: 'Link ' + label + ' DyePocket (hanya lihat):\n' + url };   // alamat web dimasukkan ke dalam teks (bukan field url), supaya WhatsApp dan aplikasi lain ikut membagikan alamatnya
           var fallback = function () {
             copy(url).then(function () { toast('Link ' + label + ' disalin. Tempel ke WhatsApp atau pesan lain.', 'ok', 4000); })
               .catch(function () { window.prompt('Salin link ' + label + ' ini:', url); });
