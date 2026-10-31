@@ -2588,12 +2588,14 @@ var Code128 = (function () {
   function clpInfo(kikc) { return clpMap()[String(kikc || '').trim().toUpperCase()] || null; }
   // Celup per baris Plan. Prioritas 1: tanggal di tab Celup (sheet CLP kolom A) menurut KIKC.
   // Prioritas 2 (aturan lama): kolom Celup di sheet Plan berisi tanggal (hasil input di tab Data) = ditampilkan TODAY()-1.
+  function dmyIso(t) { var p = String(t || '').split('/'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : ''; }
+  function clpAfter(ci) { var d = lst.plan && lst.plan.date, x = ci && ci.tgl ? dmyIso(ci.tgl) : ''; return !!(d && x && x > d); }   // celup terealisasi SESUDAH tanggal Plan yang ditampilkan
   function celupEff(headers, r) {
     var ik = headers.indexOf('KIKC'), c = headers.indexOf('CELUP');
     var ci = ik >= 0 ? clpInfo(r[ik]) : null;
     var kst = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '';
     if (kst && lst.plan.statusLot && lst.plan.statusLot[kst] === 'SISA') return { fin: false, date: '', src: '' };   // dicentang SISA ORDER di tab Plan: belum terealisasi celup
-    if (ci && ci.tgl) return { fin: true, date: ci.tgl, src: 'CLP' };   // 1) tab Celup (CLP) = master data produksi, prioritas utama
+    if (ci && ci.tgl) return clpAfter(ci) ? { fin: false, date: '', src: '' } : { fin: true, date: ci.tgl, src: 'CLP' };   // 1) tab Celup (CLP) = master data produksi, prioritas utama
     // 2) tanggal Plan terbaru yang sudah disusul input data (dihitung server, lihat celupPlanMap_ di Kode.gs)
     var kp = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '', cpm = lst.plan.celupPlan;
     if (kp && cpm && cpm[kp]) return { fin: true, date: cpm[kp], src: 'PLAN' };
@@ -2655,7 +2657,7 @@ var Code128 = (function () {
       if (first) { seen[k] = 1; lot++; }
       if (ig >= 0) kg += parseNum(r[ig]);
       if (ic >= 0) cone += parseNum(r[ic]);
-      if (first) { var ci = clpInfo(k); if (ci) real += ci.kg; else if (celupEff(hd, r).fin) real += ig >= 0 ? parseNum(r[ig]) : 0; }   // Realisasi = Kg celup di tab Celup (CLP); bila lot Finish menurut aturan Plan tetapi belum ada di CLP, dipakai Kg Plan. Sama dengan PDF Order Celup Harian
+      if (first) { var ci = clpInfo(k); if (ci) { if (!clpAfter(ci)) real += ci.kg; } else if (celupEff(hd, r).fin) real += ig >= 0 ? parseNum(r[ig]) : 0; }   // Realisasi = Kg celup di tab Celup (CLP); bila lot Finish menurut aturan Plan tetapi belum ada di CLP, dipakai Kg Plan. Sama dengan PDF Order Celup Harian
       if (iz >= 0 && isSisaTxt(r[iz])) { sisa += ig >= 0 ? parseNum(r[ig]) : 0; sisaLot++; var sf0 = lst.plan.sisaFrom && lst.plan.sisaFrom[k]; if (sf0) sisaFrom[sf0] = 1; }
     });
     setStat('#pLot', fmtNum(lot)); setStat('#pKg', fmtNum(kg)); setStat('#pCone', fmtNum(cone));
@@ -4777,7 +4779,7 @@ var Code128 = (function () {
       var mc = { name: b.mesin || 'TANPA MESIN', stop: b.stop, lots: [], load: b.kg, cap: kapTotal(b.mesin) };
       T.nMc++; if (b.open) T.nAct++;
       b.lots.forEach(function (it) {
-        var ci = clpInfo(it.kikc);
+        var ci = clpInfo(it.kikc); if (ci && clpAfter(ci)) ci = null;
         var row = {
           it: it, sup: it.sup || supplierOf(it.kikc), ket: ketKikcOf(it.kikc, it.ket), std: it.cone > 0 ? it.kg / it.cone : null,
           real: ci ? ci.kg : (it.fin ? it.kg : 0), realCone: ci ? ci.cone : (it.fin ? it.cone : 0), sh: ci ? shiftNo(ci.shift) : '', grup: ci ? ci.grup : '', has: !!ci, est: !ci && !!it.fin   // belum ada di CLP tetapi Finish menurut aturan Plan: Kg Plan dipakai
