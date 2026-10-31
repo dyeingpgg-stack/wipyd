@@ -236,8 +236,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .fchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
   /* Tab GRM: filter motif (dari Keterangan) dan kelompok warna (dari kode di kolom Warna) */
   .gf-lab{flex:none;margin:2px 2px 2px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
-  #grmFilters .fchip{min-height:34px;padding:0 13px;font-size:14px}
-  #grmFilters .fchip small{margin-left:6px;font:500 12px var(--body);opacity:.75}
   /* Tab Plan: baris Sisa Order diberi highlight; riwayat Plan hanya lihat */
   tbody tr.sisa td{background:rgba(var(--r-rgb),.13) !important}
   tbody tr.sisa td:first-child{box-shadow:inset 3px 0 0 var(--rose)}
@@ -275,6 +273,10 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .stat .stat-sub{margin-top:1px;font-size:12px;font-weight:600;color:var(--amber)}
   .carry-note{flex:none;margin:0 0 10px;padding:8px 12px;border-radius:12px;border:1px solid rgba(var(--c-rgb),.35);background:rgba(var(--c-rgb),.08);font:600 13.5px/1.35 var(--body);color:var(--soft);max-width:480px}
   .carry-note b{color:var(--cyan)}
+  .sh-item{display:grid;gap:6px;margin:0 0 14px}.sh-item b{font:700 16px var(--display);color:var(--cyan)}.sh-item small{color:var(--dim);font:500 13px var(--body)}
+  .sh-act{display:flex;gap:8px}
+  .newlot{flex:none;margin:0 0 10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(var(--a-rgb),.6);background:rgba(var(--a-rgb),.1);font:600 13.5px/1.4 var(--body);color:var(--soft);max-width:640px}
+  .newlot b{color:var(--amber)}.newlot .nl-act{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   .stats.s4{grid-template-columns:repeat(2,1fr)}
   @media(min-width:600px){.stats.s4{grid-template-columns:repeat(4,1fr)}}
   .stat.g{border-color:rgba(var(--g-rgb),.4)}.stat.g b{color:var(--lime);text-shadow:0 0 12px rgba(var(--g-rgb),.5)}
@@ -710,11 +712,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <button type="button" class="icon-btn install" id="btnInstall" hidden aria-label="Pasang aplikasi" title="Pasang aplikasi">
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
       </button>
-      <button type="button" class="icon-btn admin-only" id="btnShare" aria-label="Bagikan link Viewer" title="Bagikan link Viewer (hanya lihat)">
+      <button type="button" class="icon-btn admin-only" id="btnShare" aria-label="Bagikan link Viewer dan PC" title="Bagikan link Viewer dan PC">
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/></svg>
-      </button>
-      <button type="button" class="icon-btn admin-only" id="btnSharePM" aria-label="Bagikan link Viewer tab Plan dan Mesin saja" title="Bagikan link Viewer: hanya tab Plan dan Mesin">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h8M8 18h5"/></svg>
       </button>
       <button type="button" class="icon-btn rot" id="btnRot" hidden aria-label="Rotasi layar potret atau lanskap" title="Rotasi layar (tahan untuk otomatis)">
         <svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="13" rx="1.6"/><path d="M12 12.5h.01"/><path d="M4.5 18.5a8.5 8.5 0 0 0 15 0"/><path d="M17 17l2.6 1.2L20.8 15.6"/></svg>
@@ -951,12 +950,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="stat a" data-gs="celup" aria-pressed="false" title="Lot GRM yang sudah Celup tetapi belum Pack. Ketuk untuk memfilter."><small>Celup</small><b id="gsCelup">-</b></button>
         <button type="button" class="stat g" data-gs="pack" aria-pressed="false" title="Lot GRM yang sudah Terpacking. Ketuk untuk memfilter."><small>Terpacking</small><b id="gsPack">-</b></button>
       </div>
-      <div id="grmFilters" hidden>
-        <div class="gf-lab">Motif</div>
-        <div class="filters" id="grmMotif" role="group" aria-label="Filter motif GRM"></div>
-        <div class="gf-lab">Kelompok warna</div>
-        <div class="filters" id="grmWarna" role="group" aria-label="Filter kelompok warna"></div>
-      </div>
       <p class="lcount" id="nGrm" aria-live="polite"></p>
       <div class="lstate" id="sGrm"></div>
       <div class="table-wrap hidden" id="wGrm">
@@ -987,6 +980,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-today active" id="planToday">Hari ini</button>
       </div>
       <div class="carry-note" id="planCarry" hidden></div>
+      <div class="newlot admin-only" id="planNew" hidden></div>
       <div class="pcreate admin-only" id="planCreate" hidden>
         <div class="pc-row"><input class="input" id="pcDate" type="date" aria-label="Tanggal planning"></div>
         <div class="pc-row">
@@ -1050,6 +1044,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-today active" id="mesinToday">Hari ini</button>
       </div>
       <div class="carry-note" id="mesinCarry" hidden></div>
+      <div class="newlot admin-only" id="mesinNew" hidden></div>
       <div class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qMesin" type="search" placeholder="Cari KIKC, warna, atau mesin" autocomplete="off" enterkeyhint="search" aria-label="Cari di alokasi mesin">
@@ -1148,7 +1143,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     </button>
     <button type="button" class="tab" id="tabPlan" data-view="plan" aria-selected="false">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
-      Plan
+      Plan<span class="bdg" id="planBadge" hidden></span>
     </button>
     <button type="button" class="tab active admin-only pc-ok" id="tabForm" data-view="form" aria-selected="true">
       <svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L11 16l-4 1 1-4Z"/></svg>
@@ -1298,6 +1293,14 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   </div>
 
   <!-- ============ KONFIRMASI MASUK MODE ADMIN ============ -->
+  <div class="sheet-backdrop" id="shareSheet" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="sheet">
+      <h2 id="shareTitle">Bagikan link</h2>
+      <div class="sh-item" data-k="viewer"><b>Viewer</b><small>Hanya lihat data</small><input class="input" id="shUrlViewer" type="text" readonly aria-label="Link Viewer"><div class="sh-act"><button type="button" class="btn-sm" data-sh="copy" data-k="viewer"><span>Salin</span></button><button type="button" class="btn-sm primary" data-sh="share" data-k="viewer"><span>Bagikan</span></button></div></div>
+      <div class="sh-item" data-k="pc"><b>PC</b><small>Input SOFT dan RPH</small><input class="input" id="shUrlPc" type="text" readonly aria-label="Link PC"><div class="sh-act"><button type="button" class="btn-sm" data-sh="copy" data-k="pc"><span>Salin</span></button><button type="button" class="btn-sm primary" data-sh="share" data-k="pc"><span>Bagikan</span></button></div></div>
+      <div class="actions"><button type="button" class="btn btn-ghost" id="shareClose">Tutup</button></div>
+    </div>
+  </div>
   <div class="sheet-backdrop" id="modeSheet" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
     <div class="sheet">
       <h2 id="modeTitle">Masuk mode Admin?</h2>
@@ -2442,57 +2445,6 @@ var Code128 = (function () {
     lst.grm.page = 1; lst.grm.rk = '';
     renderList('grm');
   });
-  /* Filter tab GRM: Motif = kode "GRM A / GRM C / ..." di kolom KETERANGAN; Kelompok warna = awalan huruf kode di kolom WARNA
-     (mis. AH10A/AP01A -> kelompok AH dan AP; satu baris bisa masuk lebih dari satu kelompok). Pilihan bisa lebih dari satu (ATAU);
-     baris harus cocok dengan pilihan Motif DAN pilihan Kelompok warna. */
-  var GRM_MOTIF_TETAP = ['A', 'C', 'D', 'I', 'K'];   // selalu tampil sebagai chip, walau jumlahnya 0
-  var grmMotifSel = {}, grmWarnaSel = {};
-  function grmMotifOf(ket) {
-    var m = String(ket || '').match(/GRM\s*[-.:]?\s*([A-Za-z])(?![A-Za-z])/i);
-    return m ? m[1].toUpperCase() : '';
-  }
-  function grmWarnaOf(w) {   // daftar kelompok (awalan huruf kode warna); tanpa kode = ['Lainnya']
-    var out = [], seen = {};
-    String(w || '').split(/[\/,;+&\s]+/).forEach(function (t) {
-      var m = t.trim().match(/^([A-Za-z]{1,3})\d/);
-      if (m) { var g = m[1].toUpperCase(); if (!seen[g]) { seen[g] = 1; out.push(g); } }
-    });
-    return out.length ? out : ['Lainnya'];
-  }
-  function grmSelCount(o) { return Object.keys(o).filter(function (x) { return o[x]; }).length; }
-  function grmFiltersKey() {
-    return Object.keys(grmMotifSel).filter(function (x) { return grmMotifSel[x]; }).sort().join(',') + '/' +
-      Object.keys(grmWarnaSel).filter(function (x) { return grmWarnaSel[x]; }).sort().join(',');
-  }
-  function grmChipsShow(show, mc, wc) {
-    var box = $('#grmFilters');
-    box.hidden = !show;
-    if (!show) return;
-    function chip(attr, val, label, n, on) {
-      return '<button type="button" class="fchip' + (on ? ' active' : '') + '" ' + attr + '="' + esc(val) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + (n === null ? '' : '<small>' + fmtNum(n) + '</small>') + '</button>';
-    }
-    var mk = GRM_MOTIF_TETAP.slice();
-    Object.keys(mc).forEach(function (x) { if (x !== '' && mk.indexOf(x) < 0) mk.push(x); });
-    mk.sort();
-    var mh = chip('data-gm', '*', 'Semua', null, !grmSelCount(grmMotifSel));
-    mk.forEach(function (x) { mh += chip('data-gm', x, 'GRM ' + x, mc[x] || 0, !!grmMotifSel[x]); });
-    if (mc['']) mh += chip('data-gm', '-', 'Tanpa motif', mc[''], !!grmMotifSel['-']);
-    $('#grmMotif').innerHTML = mh;
-    var wk = Object.keys(wc).filter(function (x) { return x !== 'Lainnya'; }).sort();
-    if (wc['Lainnya']) wk.push('Lainnya');
-    var wh = chip('data-gw', '*', 'Semua', null, !grmSelCount(grmWarnaSel));
-    wk.forEach(function (x) { wh += chip('data-gw', x, x, wc[x], !!grmWarnaSel[x]); });
-    $('#grmWarna').innerHTML = wh;
-  }
-  $('#grmFilters').addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('.fchip') : null;
-    if (!b) return;
-    var isM = b.hasAttribute('data-gm'), v = b.getAttribute(isM ? 'data-gm' : 'data-gw'), o = isM ? grmMotifSel : grmWarnaSel;
-    if (v === '*') { Object.keys(o).forEach(function (x) { delete o[x]; }); }
-    else if (o[v]) delete o[v]; else o[v] = true;
-    lst.grm.page = 1; lst.grm.rk = '';
-    renderList('grm');
-  });
   function renderList0(k) {
     var isPlan = k === 'plan';
     var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
@@ -2502,7 +2454,7 @@ var Code128 = (function () {
     var pd = planCur().split('-').reverse().join('/');
     if (!S.headers.length || !S.rows.length) {
       if (isPlan) { planStats(null, m.headers); renderResumePlan(); }
-      if (k === 'grm') { grmStatsShow(null); grmChipsShow(false); }
+      if (k === 'grm') grmStatsShow(null);
       m.rk = ''; wrap.classList.add('hidden'); pager.hidden = true; note.textContent = '';
       if (m.loading) listState(k, '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>');
       else if (m.error) listState(k, '<div class="state">' + esc(m.error) + '<br><button type="button" class="btn-sm" data-retry="1">Coba lagi</button></div>');
@@ -2510,33 +2462,21 @@ var Code128 = (function () {
       else listState(k, '');
       return;
     }
-    if (isPlan && !psearch) planFillSisa(m);   // CELUP kosong lewat pukul 09:00 hari sesudah tanggal Plan = "Sisa Order"
     var ps = pageSize();
-    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|F' + grmFiltersKey() + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
+    var rk = S.sig + (psearch ? '|S' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     var gsF = k === 'grm' ? grmFilter : '', gsC = { belum: 0, celup: 0, pack: 0 }, gC = k === 'grm' ? S.headers.indexOf('TGL CELUP') : -1, gP = k === 'grm' ? S.headers.indexOf('TGL PACK') : -1;
-    var gK = k === 'grm' ? S.headers.indexOf('KETERANGAN') : -1, gW = k === 'grm' ? S.headers.indexOf('WARNA') : -1;
-    var gmc = {}, gwc = {}, gmOn = k === 'grm' && grmSelCount(grmMotifSel) > 0, gwOn = k === 'grm' && grmSelCount(grmWarnaSel) > 0;
     S.rows.forEach(function (r, i) {
       if (q && nq(r.join(' ')).indexOf(q) < 0) return;
-      var gst = '', mOk = true, wOk = true, mot = '', wg = null;
+      var gst = '';
       if (k === 'grm') {   // scorecard: Terpacking (ada Tgl Pack) > Celup (ada Tgl Celup, belum Pack) > Belum Celup
         gst = gP >= 0 && r[gP] ? 'pack' : gC >= 0 && r[gC] ? 'celup' : 'belum';
-        mot = grmMotifOf(gK >= 0 ? r[gK] : '');
-        wg = grmWarnaOf(gW >= 0 ? r[gW] : '');
-        if (gmOn) mOk = !!grmMotifSel[mot || '-'];
-        if (gwOn) wOk = wg.some(function (g) { return grmWarnaSel[g]; });
-        // jumlah chip Motif mengikuti pilihan Kelompok warna + status, dan sebaliknya; scorecard mengikuti kedua filter
-        if (wOk && (!gsF || gsF === gst)) gmc[mot] = (gmc[mot] || 0) + 1;
-        if (mOk && (!gsF || gsF === gst)) wg.forEach(function (g) { gwc[g] = (gwc[g] || 0) + 1; });
-        if (!mOk || !wOk) return;
         gsC[gst]++;
         if (gsF && gsF !== gst) return;
       }
       rows.push(r); idx.push(i);
     });
-    if (k === 'grm') grmChipsShow(true, gmc, gwc);
     if (k === 'grm') grmStatsShow(gsC);
     if (isPlan) { planStats(psearch ? null : rows, S.headers); renderResumePlan(); }
     var pnote = psearch ? 'Pencarian semua tanggal Plan · ' : isPlan ? 'Plan ' + fmtDMY(planShown()) + (planCarried() ? ' (terakhir)' : planHistOn() ? ' (riwayat)' : '') + (m.savedAt ? ' · disimpan ' + m.savedAt : '') + ' · ' : '';
@@ -2809,6 +2749,46 @@ var Code128 = (function () {
     if (state.view === 'plan') $('#subtitle').textContent = 'Plan · ' + ptxt + (!car && planHistOn() ? ' (riwayat)' : '');
     else if (state.view === 'mesin') $('#subtitle').textContent = 'Alokasi mesin · ' + ptxt + (!car && planHistOn() ? ' (riwayat)' : '');
   }
+  /* ---------- Lot baru di sheet Plan setelah Create Plan: pemberitahuan + tombol Tambahkan (tanpa Create ulang; Plan, alokasi, dan status yang sudah ada tidak berubah) ---------- */
+  var PN = { n: 0, busy: false, told: 0, date: '' };
+  function pnShow(n, list, dt) {
+    PN.n = n; PN.date = dt || '';
+    var html = '';
+    if (n > 0) {
+      var names = (list || []).slice(0, 8).map(function (x) { return esc(x.kikc); }).join(', ') + (n > 8 ? ' dan ' + (n - 8) + ' lot lain' : '');
+      html = '<b>' + n + ' lot baru</b> di sheet Plan belum masuk Plan ' + esc(fmtDMY(dt)) + ': ' + names +
+        '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="add"><span>Tambahkan ' + n + ' lot</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>';
+    }
+    ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !n; });
+    var bd = $('#planBadge'); bd.hidden = !n; bd.textContent = n > 99 ? '99+' : String(n);
+    if (n > PN.told) toast(n + ' lot baru di sheet Plan belum masuk Plan ' + fmtDMY(dt) + '. Ketuk Tambahkan di tab Plan.', 'warn', 9000);
+    PN.told = n;
+  }
+  function pnCheck(force) {
+    if (!isAdmin() || PN.busy) return;
+    var m = lst.plan, dt = m.date;
+    if (!dt || dt < todayStr() || planCarried() || !m.rows.length || (!force && state.view !== 'plan' && state.view !== 'mesin')) { if (PN.n) pnShow(0, [], dt); return; }
+    PN.busy = true;
+    gs('planBaruCek', dt, state.mode).then(function (r) {
+      if (dt !== lst.plan.date) return;
+      pnShow(r && r.success ? (r.baru || 0) : 0, (r && r.list) || [], dt);
+    }).catch(function () { /* pemeriksaan berikutnya mencoba lagi */ }).then(function () { PN.busy = false; });
+  }
+  function pnClick(e) {
+    var b = e.target.closest ? e.target.closest('[data-pn]') : null;
+    if (!b || !isAdmin()) return;
+    if (b.getAttribute('data-pn') === 'cek') { pnCheck(true); return; }
+    var dt = PN.date; b.disabled = true;
+    gs('planTambahBaru', dt, state.mode).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      toast((r.added || 0) + ' lot baru ditambahkan ke Plan ' + fmtDMY(dt) + '.', 'ok');
+      PN.told = 0; pnShow(0, [], dt);
+      loadPlanDay(true);
+    }).catch(function (er) { b.disabled = false; toast('Gagal menambahkan lot baru. ' + errMsg(er), 'err', 7000); });
+  }
+  $('#planNew').addEventListener('click', pnClick); $('#mesinNew').addEventListener('click', pnClick);
+  setInterval(function () { if (!document.hidden && (state.view === 'plan' || state.view === 'mesin')) pnCheck(false); }, 150000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) pnCheck(false); });
   function setPlanDate(s) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return;
     planSel = s === todayStr() ? '' : s;
@@ -2866,7 +2846,7 @@ var Code128 = (function () {
       if (m.rows.length) toast('Gagal memperbarui, menampilkan data tersimpan. ' + errMsg(e), 'err', 6000);
     }).then(function () {
       if (my !== planReq) return;
-      m.loading = false; stopSpin(); m.rk = ''; renderList('plan'); planSyncUi();
+      m.loading = false; stopSpin(); m.rk = ''; renderList('plan'); planSyncUi(); pnCheck(true);
     });
   }
   $('#planDate').addEventListener('change', function () { setPlanDate(this.value); });
@@ -3077,7 +3057,7 @@ var Code128 = (function () {
     var ix = {};
     headers.forEach(function (h, i) { ix[String(h).toUpperCase()] = i; });
     var items = [];
-    var hasCelup = planSisaLewat(lst.plan.date);   // batas pukul 09:00 hari sesudah tanggal Plan: yang belum celup = Sisa Order
+    var hasCelup = false;   // Sisa Order hanya dari label yang tersimpan di Plan tanggal berikutnya (lot belum celup di Plan sebelumnya); tanggal Plan awal tidak berubah jadi Sisa Order
     var iCel = ix['CELUP'];   // label "Sisa Order" tersimpan di Plan Harian (termasuk lot sisa dari Plan hari sebelumnya) ikut menentukan, sama dengan tab Plan
     rows.forEach(function (r, i) {
       var eff = celupEff(headers, r);   // Finish = ada tanggal di tab Celup (CLP), atau (aturan lama) kolom CELUP Plan berisi tanggal
@@ -3833,6 +3813,7 @@ var Code128 = (function () {
     else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Outstanding hanya untuk mode Admin
     if (TABS.length && TABS.indexOf(name) < 0) name = TABS[0];   // Viewer terbatas (?tabs=): hanya tab yang dibagikan
     state.view = name;
+    if (name === 'plan' || name === 'mesin') setTimeout(function () { pnCheck(false); }, 300);
     var isList = !!LISTS[name], isMesin = name === 'mesin';
     $('#viewMesin').classList.toggle('active', isMesin);
     $('#viewMiss').classList.toggle('active', name === 'miss');
@@ -5543,21 +5524,18 @@ var Code128 = (function () {
   $('#sfGoSoft').addEventListener('click', function () { openPage2('soft'); });
   $('#btnMissPack').addEventListener('click', function () { openPage2('pack'); });
 
-  /* ---------- Bagikan link Viewer (hanya Admin) ---------- */
+  /* ---------- Bagikan link Viewer dan PC (hanya Admin): tombol Share membuka daftar dua link; alamat web ikut dalam teks yang dibagikan ---------- */
   (function () {
-    var btn = $('#btnShare');
-    function localViewerUrl(tabs) {
+    var URLS = { viewer: '', pc: '' }, LAB = { viewer: 'Viewer', pc: 'PC' };
+    function localUrls() {
       var u = location.href.split('#')[0].split('?')[0];
-      if (/\/exec$/.test(u)) return u + '?mode=viewer' + (tabs ? '&tabs=' + tabs : '');
-      var base = u.replace(/(index|viewer|plan)\.html$/i, '').replace(/\/?$/, '/');
-      return tabs ? base + 'index.html?mode=viewer&tabs=' + tabs : base + 'viewer.html';
+      if (/\/exec$/.test(u)) return { viewer: u + '?mode=viewer', pc: u + '?mode=pc' };
+      var base = u.replace(/(index|viewer|pc|plan)\.html$/i, '').replace(/\/?$/, '/');
+      return { viewer: base + 'viewer.html', pc: base + 'pc.html' };
     }
-    function getUrl(tabs) {   // tabs (opsional) = Viewer terbatas, mis. 'plan,mesin'
-      if (IN_GAS) {   // di dalam iframe Apps Script alamat halaman bukan alamat web app: minta ke server
-        return gs('getViewerUrl', tabs || '').then(function (u) { return u || ''; }).catch(function () { return ''; });
-      }
-      if (/^https:\/\/script\.google(usercontent)?\.com\/.*\/exec$/.test(location.href.split('?')[0]) ) return Promise.resolve(location.href.split('?')[0] + '?mode=viewer' + (tabs ? '&tabs=' + tabs : ''));
-      return Promise.resolve(localViewerUrl(tabs));
+    function getUrls() {
+      if (IN_GAS) return gs('getShareUrls').then(function (u) { return u || {}; }).catch(function () { return {}; });   // di dalam iframe Apps Script alamat halaman bukan alamat web app: minta ke server
+      return Promise.resolve(localUrls());
     }
     function copy(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
@@ -5569,24 +5547,31 @@ var Code128 = (function () {
         } catch (e) { rej(e); }
       });
     }
-    function bind(button, tabs, label) {
-      button.addEventListener('click', function () {
-        if (!isAdmin()) return;
-        getUrl(tabs).then(function (url) {
-          if (!url) { toast('Alamat link ' + label + ' tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
-          var data = { title: 'DyePocket (' + label + ')', text: 'Link ' + label + ' DyePocket (hanya lihat):\n' + url };   // alamat web dimasukkan ke dalam teks (bukan field url), supaya WhatsApp dan aplikasi lain ikut membagikan alamatnya
-          var fallback = function () {
-            copy(url).then(function () { toast('Link ' + label + ' disalin. Tempel ke WhatsApp atau pesan lain.', 'ok', 4000); })
-              .catch(function () { window.prompt('Salin link ' + label + ' ini:', url); });
-          };
-          if (navigator.share) {
-            navigator.share(data).catch(function (e) { if (!e || e.name !== 'AbortError') fallback(); });
-          } else fallback();
-        });
+    function closeShare() { $('#shareSheet').classList.remove('show'); }
+    $('#btnShare').addEventListener('click', function () {
+      if (!isAdmin()) return;
+      getUrls().then(function (u) {
+        if (!u.viewer && !u.pc) { toast('Alamat link tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
+        URLS = { viewer: u.viewer || '', pc: u.pc || '' };
+        $('#shUrlViewer').value = URLS.viewer; $('#shUrlPc').value = URLS.pc;
+        $('#shareSheet').classList.add('show');
       });
-    }
-    bind(btn, '', 'Viewer');
-    bind($('#btnSharePM'), 'plan,mesin', 'Viewer Plan dan Mesin');
+    });
+    $('#shareClose').addEventListener('click', closeShare);
+    $('#shareSheet').addEventListener('click', function (e) {
+      if (e.target === this) { closeShare(); return; }
+      var b = e.target.closest ? e.target.closest('[data-sh]') : null;
+      if (!b) return;
+      var k = b.getAttribute('data-k'), url = URLS[k], label = LAB[k];
+      if (!url) return;
+      var text = 'Link ' + label + ' DyePocket:\n' + url;   // alamat web ikut di dalam teks, supaya WhatsApp dan aplikasi lain ikut membagikannya
+      var fallback = function () {
+        copy(text).then(function () { toast('Link ' + label + ' disalin beserta alamat web. Tempel ke WhatsApp atau pesan lain.', 'ok', 4000); })
+          .catch(function () { window.prompt('Salin link ' + label + ' ini:', text); });
+      };
+      if (b.getAttribute('data-sh') === 'copy' || !navigator.share) fallback();
+      else navigator.share({ title: 'DyePocket (' + label + ')', text: text }).catch(function (er) { if (!er || er.name !== 'AbortError') fallback(); });
+    });
   })();
 
   /* ---------- Mulai ---------- */
