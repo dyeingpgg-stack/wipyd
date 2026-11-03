@@ -364,6 +364,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   th.l-s0,td.l-s0{left:0}
   td.date{white-space:nowrap;color:var(--dim)}
   td.chkc{text-align:center}
+  .rl{font:700 12px var(--body);padding:2px 9px;border-radius:999px;border:1px solid var(--edge-strong)}.rl.t{color:var(--lime);border-color:rgba(var(--g-rgb),.6)}.rl.f{color:var(--rose);border-color:rgba(var(--r-rgb),.5)}
+  tr.pend td{opacity:.45}tr.pend td.chkc{opacity:1}
   .stchk{width:22px;height:22px;margin:0;cursor:pointer;accent-color:var(--cyan)}
   .stchk:disabled{cursor:default;opacity:.55}
   th.l-last,td.l-last{box-shadow:8px 0 14px -8px rgba(var(--c-rgb),.45)}
@@ -1008,6 +1010,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <div class="lhead">
         <p class="lcount" id="nPlan" aria-live="polite"></p>
         <div class="lbtns">
+          <button type="button" class="btn-sm admin-only" id="btnPlanNotif" hidden aria-label="Ada lot baru di sheet Plan" title="Ada lot baru di sheet Plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span id="planNotifN">0</span></button>
           <button type="button" class="btn-sm admin-only" id="btnPlanCreate" aria-expanded="false" aria-controls="planCreate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Create</span></button>
           <button type="button" class="btn-sm" id="btnResumePlan" aria-expanded="false" aria-controls="resumePlan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
           <button type="button" class="btn-sm admin-only" id="rsPlan" aria-label="Reset semua alokasi mesin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span>Reset Alokasi</span></button>
@@ -2504,13 +2507,14 @@ var Code128 = (function () {
     var stCols = isPlan && !psearch && iK >= 0;   // kolom virtual SISA ORDER dan PENDING (centang) hanya di tab Plan per tanggal
     var stEdit = stCols && isAdmin() && planEditable();
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('') +
-      (stCols ? '<th title="Centang: order lot ini di Plan belum terealisasi celup (Sisa Order)">SISA ORDER</th><th title="Centang: lot batal diplan / ditarik. Jika di hari lain diplan lagi, statusnya baru (bukan Sisa Order)">PENDING</th>' : '');
+      (stCols ? '<th title="Otomatis dari kolom CELUP: true = CELUP berisi tanggal, false = CELUP kosong / Sisa Order">REAL</th><th title="Centang: lot batal / ditarik dari Plan. Kg dan Cone lot ini tidak dihitung dan bukan Sisa Order">PENDING</th>' : '');
     var out = [];
     var alokJ = (isPlan && !psearch && planEditable() && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // tanggal lewat atau Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
       var r = shown[i], tr = '<tr>';
       var sisa = iCel >= 0 && isSisaTxt(r[iCel]);   // CELUP tersimpan di Plan Harian; "Sisa Order": seluruh baris diberi highlight
-      if (sisa) tr = '<tr class="sisa">';
+      var pendRow = stCols && (m.statusLot || {})[String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase()] === 'PENDING';
+      if (pendRow) tr = '<tr class="pend">'; else if (sisa) tr = '<tr class="sisa">';
       for (var p = 0; p < order.length; p++) {
         var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
         if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
@@ -2519,9 +2523,9 @@ var Code128 = (function () {
       }
       if (stCols) {
         var kst2 = String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase(), cur = (m.statusAll || {})[kst2] || '';
-        ['SISA', 'PENDING'].forEach(function (sk) {
-          tr += '<td class="chkc"><input type="checkbox" class="stchk" data-st="' + sk + '" data-k="' + esc(kst2) + '"' + (cur === sk ? ' checked' : '') + (stEdit && kst2 ? '' : ' disabled') + ' aria-label="' + (sk === 'SISA' ? 'Sisa Order ' : 'Pending ') + esc(kst2) + '"></td>';
-        });
+        var cvv = iCel >= 0 ? String(r[iCel] === undefined || r[iCel] === null ? '' : r[iCel]).trim() : '', realOk = /^\d{2}\/\d{2}\/\d{4}$/.test(cvv);
+        tr += '<td class="chkc">' + (pendRow ? '<span class="dim">-</span>' : '<span class="rl ' + (realOk ? 't' : 'f') + '">' + (realOk ? 'true' : 'false') + '</span>') + '</td>';
+        tr += '<td class="chkc"><input type="checkbox" class="stchk" data-st="PENDING" data-k="' + esc(kst2) + '"' + (cur === 'PENDING' ? ' checked' : '') + (stEdit && kst2 ? '' : ' disabled') + ' aria-label="Pending ' + esc(kst2) + '"></td>';
       }
       out.push(tr + '</tr>');
     }
@@ -2594,7 +2598,6 @@ var Code128 = (function () {
     var ik = headers.indexOf('KIKC'), c = headers.indexOf('CELUP');
     var ci = ik >= 0 ? clpInfo(r[ik]) : null;
     var kst = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '';
-    if (kst && lst.plan.statusLot && lst.plan.statusLot[kst] === 'SISA') return { fin: false, date: '', src: '' };   // dicentang SISA ORDER di tab Plan: belum terealisasi celup
     if (ci && ci.tgl) return clpAfter(ci) ? { fin: false, date: '', src: '' } : { fin: true, date: ci.tgl, src: 'CLP' };   // 1) tab Celup (CLP) = master data produksi, prioritas utama
     // 2) tanggal Plan terbaru yang sudah disusul input data (dihitung server, lihat celupPlanMap_ di Kode.gs)
     var kp = ik >= 0 ? String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase() : '', cpm = lst.plan.celupPlan;
@@ -2653,6 +2656,7 @@ var Code128 = (function () {
     var seen = {}, lot = 0, kg = 0, cone = 0, real = 0, sisa = 0, sisaLot = 0, sisaFrom = {};
     rows.forEach(function (r) {
       var k = String(ik >= 0 ? r[ik] : '').replace(/\s+/g, ' ').trim().toUpperCase();
+      if (k && lst.plan.statusLot && lst.plan.statusLot[k] === 'PENDING') return;   // PENDING = batal: tidak dihitung
       var first = k && !seen[k];
       if (first) { seen[k] = 1; lot++; }
       if (ig >= 0) kg += parseNum(r[ig]);
@@ -2752,18 +2756,20 @@ var Code128 = (function () {
     else if (state.view === 'mesin') $('#subtitle').textContent = 'Alokasi mesin · ' + ptxt + (!car && planHistOn() ? ' (riwayat)' : '');
   }
   /* ---------- Lot baru di sheet Plan setelah Create Plan: pemberitahuan + tombol Tambahkan (tanpa Create ulang; Plan, alokasi, dan status yang sudah ada tidak berubah) ---------- */
-  var PN = { n: 0, busy: false, told: 0, date: '' };
+  var PN = { n: 0, busy: false, told: 0, date: '', open: false, list: [] };
   function pnShow(n, list, dt) {
-    PN.n = n; PN.date = dt || '';
+    PN.n = n; PN.date = dt || ''; PN.list = list || [];
+    if (!n) PN.open = false;
     var html = '';
     if (n > 0) {
       var names = (list || []).slice(0, 8).map(function (x) { return esc(x.kikc); }).join(', ') + (n > 8 ? ' dan ' + (n - 8) + ' lot lain' : '');
       html = '<b>' + n + ' lot baru</b> di sheet Plan belum masuk Plan ' + esc(fmtDMY(dt)) + ': ' + names +
         '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="add"><span>Tambahkan ' + n + ' lot</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>';
     }
-    ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !n; });
+    ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !(n && PN.open); });
+    $('#btnPlanNotif').hidden = !n; $('#planNotifN').textContent = n > 99 ? '99+' : String(n);
     var bd = $('#planBadge'); bd.hidden = !n; bd.textContent = n > 99 ? '99+' : String(n);
-    if (n > PN.told) toast(n + ' lot baru di sheet Plan belum masuk Plan ' + fmtDMY(dt) + '. Ketuk Tambahkan di tab Plan.', 'warn', 9000);
+    if (n > PN.told) toast(n + ' lot baru di sheet Plan. Ketuk ikon lonceng di samping Create.', 'warn', 9000);
     PN.told = n;
   }
   function pnCheck(force) {
@@ -2788,6 +2794,7 @@ var Code128 = (function () {
       loadPlanDay(true);
     }).catch(function (er) { b.disabled = false; toast('Gagal menambahkan lot baru. ' + errMsg(er), 'err', 7000); });
   }
+  $('#btnPlanNotif').addEventListener('click', function () { PN.open = !PN.open; pnShow(PN.n, PN.list, PN.date); });
   $('#planNew').addEventListener('click', pnClick); $('#mesinNew').addEventListener('click', pnClick);
   setInterval(function () { if (!document.hidden && (state.view === 'plan' || state.view === 'mesin')) pnCheck(false); }, 150000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) pnCheck(false); });
@@ -2808,9 +2815,9 @@ var Code128 = (function () {
     var before = m.statusAll[k] || '';
     if (want) m.statusAll[k] = want; else delete m.statusAll[k];   // satu KIKC hanya satu status: mencentang yang satu melepas yang lain
     m.rk = ''; renderList('plan');
-    gs('setStatusLot', k, want, state.mode).then(function (r) {
+    gs('setStatusLot', k, want, state.mode, m.date || planCur()).then(function (r) {
       if (r && r.error) throw new Error(r.error);
-      toast(want === 'SISA' ? k + ': Sisa Order dicentang.' : want === 'PENDING' ? k + ': Pending dicentang.' : k + ': status dilepas.', 'ok', 2500);
+      toast(want === 'PENDING' ? k + ': Pending dicentang (tidak dihitung).' : k + ': Pending dilepas.', 'ok', 2500);
       return loadPlanDay(true);   // muat ulang Plan: kolom CELUP mengikuti status
     }).catch(function (err) {
       if (before) m.statusAll[k] = before; else delete m.statusAll[k];
@@ -2930,6 +2937,7 @@ var Code128 = (function () {
       toast('Plan ' + dt.split('-').reverse().join('/') + ' disimpan (' + r.saved + ' baris).', 'ok');
       pcToggle(false); pcReset();
       planDatesAt = 0; loadPlanDates(true);
+      PN.told = 0; pnShow(0, [], dt);
       setPlanDate(dt);
     }).catch(function (e) {
       $('#pcMsg').textContent = ''; b.disabled = false;
@@ -3066,6 +3074,7 @@ var Code128 = (function () {
       var fin = eff.fin;
       var kikc = String(r[ix['KIKC']] || '').trim();
       if (!kikc) return;
+      if (lst.plan.statusLot && lst.plan.statusLot[kikc.replace(/\s+/g, ' ').toUpperCase()] === 'PENDING') return;   // PENDING: batal, tidak masuk perhitungan order mesin
       var m0 = normMesin(r[ix['MESIN']]);
       var al = ix['ALOKASI'] === undefined ? '' : normMesin(r[ix['ALOKASI']]);
       if (/^\d+$/.test(al)) al = 'A' + al;   // ketik 9 = A9
@@ -4261,6 +4270,7 @@ var Code128 = (function () {
     m.rows.forEach(function (r) {
       var kk = String(r[ik] || '').trim().toUpperCase();
       if (!kk) return;
+      if (m.statusLot && m.statusLot[String(r[ik] || '').replace(/\s+/g, ' ').trim().toUpperCase()] === 'PENDING') return;   // PENDING: tidak dihitung
       var name = String(ib >= 0 ? r[ib] : '').trim() || '(tanpa no benang)';
       var kg = ig >= 0 ? parseNum(r[ig]) : 0, cone = ic >= 0 ? parseNum(r[ic]) : 0;
       var al = ia >= 0 ? String(r[ia] || '').trim() : '';
