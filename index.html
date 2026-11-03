@@ -2757,13 +2757,16 @@ var Code128 = (function () {
   }
   /* ---------- Lot baru di sheet Plan setelah Create Plan: pemberitahuan + tombol Tambahkan (tanpa Create ulang; Plan, alokasi, dan status yang sudah ada tidak berubah) ---------- */
   var PN = { n: 0, busy: false, told: 0, date: '', open: false, list: [] };
-  function pnShow(n, list, dt) {
-    PN.n = n; PN.date = dt || ''; PN.list = list || [];
+  function pnShow(n, list, dt, noPlan) {
+    PN.n = n; PN.date = dt || ''; PN.list = list || []; PN.noPlan = !!noPlan;
     if (!n) PN.open = false;
     var html = '';
     if (n > 0) {
       var names = (list || []).slice(0, 8).map(function (x) { return esc(x.kikc); }).join(', ') + (n > 8 ? ' dan ' + (n - 8) + ' lot lain' : '');
-      html = '<b>' + n + ' lot baru</b> di sheet Plan belum masuk Plan ' + esc(fmtDMY(dt)) + ': ' + names +
+      html = noPlan
+        ? '<b>' + n + ' lot baru</b> di sheet Plan sejak Plan terakhir (belum ada Plan ' + esc(fmtDMY(dt)) + '): ' + names +
+          '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="create"><span>Create Plan</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>'
+        : '<b>' + n + ' lot baru</b> di sheet Plan belum masuk Plan ' + esc(fmtDMY(dt)) + ': ' + names +
         '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="add"><span>Tambahkan ' + n + ' lot</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>';
     }
     ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !(n && PN.open); });
@@ -2774,18 +2777,19 @@ var Code128 = (function () {
   }
   function pnCheck(force) {
     if (!isAdmin() || PN.busy) return;
-    var m = lst.plan, dt = m.date;
-    if (!dt || dt < todayStr() || planCarried() || !m.rows.length || (!force && state.view !== 'plan' && state.view !== 'mesin')) { if (PN.n) pnShow(0, [], dt); return; }
+    var dt = planCur();
+    if (!dt || dt < todayStr() || (!force && state.view !== 'plan' && state.view !== 'mesin')) { if (PN.n) pnShow(0, [], dt); return; }
     PN.busy = true;
     gs('planBaruCek', dt, state.mode).then(function (r) {
-      if (dt !== lst.plan.date) return;
-      pnShow(r && r.success ? (r.baru || 0) : 0, (r && r.list) || [], dt);
+      if (dt !== planCur()) return;
+      pnShow(r && r.success ? (r.baru || 0) : 0, (r && r.list) || [], dt, !!(r && r.noPlan));
     }).catch(function () { /* pemeriksaan berikutnya mencoba lagi */ }).then(function () { PN.busy = false; });
   }
   function pnClick(e) {
     var b = e.target.closest ? e.target.closest('[data-pn]') : null;
     if (!b || !isAdmin()) return;
     if (b.getAttribute('data-pn') === 'cek') { pnCheck(true); return; }
+    if (b.getAttribute('data-pn') === 'create') { PN.open = false; pnShow(PN.n, PN.list, PN.date, PN.noPlan); $('#btnPlanCreate').click(); return; }
     var dt = PN.date; b.disabled = true;
     gs('planTambahBaru', dt, state.mode).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
