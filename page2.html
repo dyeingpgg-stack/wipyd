@@ -24,6 +24,18 @@
   var h = document.documentElement;
   h.setAttribute('data-mode', q === 'viewer' || q === 'pc' ? q : 'admin');   // pc = mode PC: hanya tab SOFT dan RPH (Input SOFT ada di Home)
   if (q === 'viewer' || q === 'pc') h.setAttribute('data-lock', '1');
+  /* Viewer terbatas: ?mode=viewer&tabs=pack,rph (atau tanda WIPYD_TABS dari server) = hanya tab yang dibagikan */
+  if (q === 'viewer' || q === 'admin') {
+    var tl = [];
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    if (tl.length) {
+      h.setAttribute('data-tabs', tl.join(','));
+      var pt = tl.filter(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); });
+      var css = '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
+      if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';
+      var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+    }
+  }
 })();
 </script>
 <meta name="description" content="DyePocket Page 2: RPH, Pack, dan Delivery">
@@ -999,13 +1011,14 @@
     tab = typeof tab === 'string' ? tab : '';
     if (tab) lsSet('wipyd_hometab', tab); else lsDel('wipyd_hometab');
     if (IN_GAS) {
-      gs('getPageUrl', 1, MODE, tab).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Home tidak ditemukan.', 'warn', 5000); })
+      gs('getPageUrl', 1, MODE, tab, TABS.join(',')).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Home tidak ditemukan.', 'warn', 5000); })
         .catch(function (e) { toast('Home gagal dibuka. ' + errMsg(e), 'err', 6000); });
       return;
     }
     var q = [];
     if (MODE !== 'admin') q.push('mode=' + MODE);
     if (tab) q.push('tab=' + tab);
+    if (TABS.length) { if (MODE === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
     location.href = 'index.html' + (q.length ? '?' + q.join('&') : '');
   }
   $('#btnHome').addEventListener('click', function () { goHome(''); });
@@ -1846,8 +1859,10 @@
       .then(function () { sfBusy(b, false, 'Unduh PDF'); });
   });
 
+  var TABS = (ROOT.getAttribute('data-tabs') || '').split(',').filter(Boolean), P2TABS = TABS.filter(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); });
   function showView(name) {
     if (MODE === 'pc' && name !== 'rph' && name !== 'soft') name = 'soft';   // mode PC: hanya tab SOFT dan RPH
+    if (P2TABS.length && P2TABS.indexOf(name) < 0) name = P2TABS[0];   // Viewer terbatas: hanya tab yang dibagikan
     view = name;
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
     $('#viewDelivery').classList.toggle('active', name === 'delivery');
@@ -1975,6 +1990,7 @@
   try { startTab = String(window.WIPYD_TAB || new URLSearchParams(location.search).get('tab') || lsGet('wipyd_p2tab') || '').toLowerCase(); } catch (e) { startTab = ''; }
   lsDel('wipyd_p2tab');
   if (!/^(rph|pack|delivery|soft)$/.test(startTab)) startTab = MODE === 'pc' ? 'soft' : 'rph';
+  if (P2TABS.length && P2TABS.indexOf(startTab) < 0) startTab = P2TABS[0];
   showView(startTab);
   if (MODE !== 'pc') setTimeout(function () { loadList('pack'); }, 1200);   // Pack disiapkan di latar belakang
 })();

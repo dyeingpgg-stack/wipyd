@@ -32,13 +32,17 @@
   if (lock) h.setAttribute('data-lock', '1');
   /* Viewer terbatas: ?mode=viewer&tabs=plan,mesin (atau tanda WIPYD_TABS dari server Apps Script) = hanya tab yang disebut yang tampil.
      Nama tab: wod, grm, plan, data (WIP), mesin, clp (Celup). Hanya berlaku di mode Viewer. */
-  if (m === 'viewer') {
+  if (q === 'viewer' || q === 'admin') {
     var tl = [];
-    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|data|mesin|clp)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
+      var hm = tl.filter(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); });
+      var css = '.tabbar .tab' + hm.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(hm.length, 1) + ',1fr) !important}';
+      if (hm.indexOf('miss') >= 0) css += 'html[data-mode="viewer"] .tabbar #tabMiss{display:flex !important}';
+      if (!tl.some(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); })) css += '#btnPage2{display:none !important}';
       var st = document.createElement('style');
-      st.textContent = '.tabbar .tab' + tl.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + ',#btnPage2{display:none !important}.tabbar{grid-template-columns:repeat(' + tl.length + ',1fr) !important}';
+      st.textContent = css;
       document.head.appendChild(st);
     }
   }
@@ -275,6 +279,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .carry-note b{color:var(--cyan)}
   .sh-item{display:grid;gap:6px;margin:0 0 14px}.sh-item b{font:700 16px var(--display);color:var(--cyan)}.sh-item small{color:var(--dim);font:500 13px var(--body)}
   .sh-act{display:flex;gap:8px}
+  .sh-tabs{display:flex;flex-wrap:wrap;gap:6px}.sh-tabs .fchip{min-height:34px;padding:0 12px;font-size:13.5px}
   .newlot{flex:none;margin:0 0 10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(var(--a-rgb),.6);background:rgba(var(--a-rgb),.1);font:600 13.5px/1.4 var(--body);color:var(--soft);max-width:640px}
   .newlot b{color:var(--amber)}.newlot .nl-act{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   .stats.s4{grid-template-columns:repeat(2,1fr)}
@@ -283,6 +288,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .stat.a{border-color:rgba(var(--a-rgb),.4)}.stat.a b{color:var(--amber);text-shadow:0 0 12px rgba(var(--a-rgb),.5)}
   .stat.r{border-color:rgba(var(--r-rgb),.45)}.stat.r b{color:var(--rose);text-shadow:0 0 12px rgba(var(--r-rgb),.5)}
   .dtools{flex:none;display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+  .dn{min-width:20px;padding:0 6px;border-radius:999px;background:rgba(var(--w-rgb),.14);color:var(--soft);font:700 11px/20px var(--body);text-align:center}
+  #btnDup.has .dn{background:var(--rose);color:#fff}#btnDup[aria-pressed="true"]{border-color:var(--rose);color:var(--rose)}
   .dtools .btn-sm{display:inline-flex;align-items:center;gap:6px;margin:0;min-height:36px;padding:0 14px;font-size:14px}
   .dtools .btn-sm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .resume{flex:none;display:flex;flex-direction:column;max-height:40vh;overflow:hidden;margin:0 0 10px;padding:8px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface)}
@@ -887,6 +894,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-sm" id="btnPdf" aria-label="Unduh data hari ini sebagai PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
         <button type="button" class="btn-sm" id="btnPng" aria-label="Unduh data hari ini sebagai gambar PNG resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
         <button type="button" class="btn-sm" id="btnWa" aria-label="Kirim data hari ini ke WhatsApp sebagai gambar yang tetap jelas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-4.2A8 8 0 1 1 8.4 18.8L4 20z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5.5 5.5l1-1.5-2-1-.8.8c-1-.4-1.9-1.3-2.3-2.3l.8-.8-1-2L9 9.5z"/></svg><span>Kirim WA</span></button>
+        <button type="button" class="btn-sm" id="btnDup" aria-pressed="false" title="Tampilkan hanya data ganda (KIKC dan posisi sama)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Data Ganda</span><b class="dn" id="dupN">0</b></button>
       </div>
       <div class="resume" id="resume" hidden></div>
       <div id="tableState"></div>
@@ -1299,7 +1307,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   <div class="sheet-backdrop" id="shareSheet" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
     <div class="sheet">
       <h2 id="shareTitle">Bagikan link</h2>
-      <div class="sh-item" data-k="viewer"><b>Viewer</b><small>Hanya lihat data</small><input class="input" id="shUrlViewer" type="text" readonly aria-label="Link Viewer"><div class="sh-act"><button type="button" class="btn-sm" data-sh="copy" data-k="viewer"><span>Salin</span></button><button type="button" class="btn-sm primary" data-sh="share" data-k="viewer"><span>Bagikan</span></button></div></div>
+      <div class="sh-item" data-k="viewer"><b>Viewer</b><small>Pilih tab yang dibagikan (boleh lebih dari satu). Tanpa Input = hanya lihat.</small><div class="sh-tabs" id="shTabs"></div><small id="shWarn" hidden style="color:var(--amber)">Tab Input dipilih: link ini berupa akses Admin pada tab terpilih (bisa simpan, ubah, hapus).</small><input class="input" id="shUrlViewer" type="text" readonly aria-label="Link Viewer"><div class="sh-act"><button type="button" class="btn-sm" data-sh="copy" data-k="viewer"><span>Salin</span></button><button type="button" class="btn-sm primary" data-sh="share" data-k="viewer"><span>Bagikan</span></button></div></div>
       <div class="sh-item" data-k="pc"><b>PC</b><small>Input SOFT dan RPH</small><input class="input" id="shUrlPc" type="text" readonly aria-label="Link PC"><div class="sh-act"><button type="button" class="btn-sm" data-sh="copy" data-k="pc"><span>Salin</span></button><button type="button" class="btn-sm primary" data-sh="share" data-k="pc"><span>Bagikan</span></button></div></div>
       <div class="actions"><button type="button" class="btn btn-ghost" id="shareClose">Tutup</button></div>
     </div>
@@ -1546,7 +1554,9 @@ var Code128 = (function () {
   var ROOT = document.documentElement;
   var MODE_LOCKED = ROOT.hasAttribute('data-lock');   // dibuka dengan ?mode=viewer: tombol ganti mode disembunyikan
   function isAdmin() { return state.mode === 'admin'; }
-  var TABS = (document.documentElement.getAttribute('data-tabs') || '').split(',').filter(Boolean);   // Viewer terbatas: tab yang boleh dibuka (kosong = semua)
+  var TABS = (document.documentElement.getAttribute('data-tabs') || '').split(',').filter(Boolean);   // Viewer terbatas: tab yang dibagikan (kosong = semua)
+  var HOME_TABS = TABS.filter(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); });   // sisanya (rph, pack, delivery, soft) ada di Page 2
+  function missOk() { return isAdmin() || TABS.indexOf('miss') >= 0; }   // Outstanding: Admin atau link yang membagikan tab ini
   function isPc() { return state.mode === 'pc'; }   // mode PC: hanya Input SOFT di Home (dan SOFT + RPH di Page 2); selain itu setara Viewer
   var MSG_VIEWER = 'Mode Viewer: data hanya bisa dilihat. Ketuk tombol mode di kanan atas untuk masuk mode Admin.';
 
@@ -2507,7 +2517,7 @@ var Code128 = (function () {
     var stCols = isPlan && !psearch && iK >= 0;   // kolom virtual SISA ORDER dan PENDING (centang) hanya di tab Plan per tanggal
     var stEdit = stCols && isAdmin() && planEditable();
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('') +
-      (stCols ? '<th title="Otomatis dari kolom CELUP: true = CELUP berisi tanggal, false = CELUP kosong / Sisa Order">REAL</th><th title="Centang: lot batal / ditarik dari Plan. Kg dan Cone lot ini tidak dihitung dan bukan Sisa Order">PENDING</th>' : '');
+      (stCols ? '<th title="Centang: lot batal / ditarik dari Plan. Kg dan Cone lot ini tidak dihitung dan bukan Sisa Order">PENDING</th>' : '');
     var out = [];
     var alokJ = (isPlan && !psearch && planEditable() && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // tanggal lewat atau Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
@@ -2523,8 +2533,6 @@ var Code128 = (function () {
       }
       if (stCols) {
         var kst2 = String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase(), cur = (m.statusAll || {})[kst2] || '';
-        var cvv = iCel >= 0 ? String(r[iCel] === undefined || r[iCel] === null ? '' : r[iCel]).trim() : '', realOk = /^\d{2}\/\d{2}\/\d{4}$/.test(cvv);
-        tr += '<td class="chkc">' + (pendRow ? '<span class="dim">-</span>' : '<span class="rl ' + (realOk ? 't' : 'f') + '">' + (realOk ? 'true' : 'false') + '</span>') + '</td>';
         tr += '<td class="chkc"><input type="checkbox" class="stchk" data-st="PENDING" data-k="' + esc(kst2) + '"' + (cur === 'PENDING' ? ' checked' : '') + (stEdit && kst2 ? '' : ' disabled') + ' aria-label="Pending ' + esc(kst2) + '"></td>';
       }
       out.push(tr + '</tr>');
@@ -2757,9 +2765,11 @@ var Code128 = (function () {
   }
   /* ---------- Lot baru di sheet Plan setelah Create Plan: pemberitahuan + tombol Tambahkan (tanpa Create ulang; Plan, alokasi, dan status yang sudah ada tidak berubah) ---------- */
   var PN = { n: 0, busy: false, told: 0, date: '', open: false, list: [] };
-  function pnShow(n, list, dt, noPlan) {
-    PN.n = n; PN.date = dt || ''; PN.list = list || []; PN.noPlan = !!noPlan;
-    if (!n) PN.open = false;
+  function pnShow(n, list, dt, noPlan, hilang, listH) {
+    hilang = hilang || 0;
+    PN.n = n; PN.date = dt || ''; PN.list = list || []; PN.noPlan = !!noPlan; PN.h = hilang; PN.listH = listH || [];
+    var tot = n + hilang;
+    if (!tot) PN.open = false;
     var html = '';
     if (n > 0) {
       var names = (list || []).slice(0, 8).map(function (x) { return esc(x.kikc); }).join(', ') + (n > 8 ? ' dan ' + (n - 8) + ' lot lain' : '');
@@ -2767,13 +2777,18 @@ var Code128 = (function () {
         ? '<b>' + n + ' lot baru</b> di sheet Plan sejak Plan terakhir (belum ada Plan ' + esc(fmtDMY(dt)) + '): ' + names +
           '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="create"><span>Create Plan</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>'
         : '<b>' + n + ' lot baru</b> di sheet Plan belum masuk Plan ' + esc(fmtDMY(dt)) + ': ' + names +
-        '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="add"><span>Tambahkan ' + n + ' lot</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>';
+          '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="add"><span>Tambahkan ' + n + ' lot</span></button><button type="button" class="btn-sm" data-pn="cek"><span>Cek lagi</span></button></div>';
     }
-    ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !(n && PN.open); });
-    $('#btnPlanNotif').hidden = !n; $('#planNotifN').textContent = n > 99 ? '99+' : String(n);
-    var bd = $('#planBadge'); bd.hidden = !n; bd.textContent = n > 99 ? '99+' : String(n);
-    if (n > PN.told) toast(n + ' lot baru di sheet Plan. Ketuk ikon lonceng di samping Create.', 'warn', 9000);
-    PN.told = n;
+    if (hilang > 0) {
+      var nh = (listH || []).slice(0, 8).map(function (x) { return esc(x.kikc); }).join(', ') + (hilang > 8 ? ' dan ' + (hilang - 8) + ' lot lain' : '');
+      html += '<div' + (html ? ' style="margin-top:10px;padding-top:10px;border-top:1px solid var(--edge)"' : '') + '><b>' + hilang + ' lot hilang</b> dari sheet Plan (masih ada di Plan ' + esc(fmtDMY(dt)) + ', belum celup): ' + nh +
+        '<div class="nl-act"><button type="button" class="btn-sm primary" data-pn="h-pending"><span>Batalkan (Pending)</span></button><button type="button" class="btn-sm" data-pn="h-hapus"><span>Hapus dari Plan</span></button><button type="button" class="btn-sm" data-pn="h-abaikan"><span>Biarkan</span></button></div></div>';
+    }
+    ['#planNew', '#mesinNew'].forEach(function (id) { var el = $(id); el.innerHTML = html; el.hidden = !(tot && PN.open); });
+    $('#btnPlanNotif').hidden = !tot; $('#planNotifN').textContent = tot > 99 ? '99+' : String(tot);
+    var bd = $('#planBadge'); bd.hidden = !tot; bd.textContent = tot > 99 ? '99+' : String(tot);
+    if (tot > PN.told) toast((n ? n + ' lot baru' : '') + (n && hilang ? ' dan ' : '') + (hilang ? hilang + ' lot hilang' : '') + ' di sheet Plan. Ketuk ikon lonceng di samping Create.', 'warn', 9000);
+    PN.told = tot;
   }
   function pnCheck(force) {
     if (!isAdmin() || PN.busy) return;
@@ -2782,14 +2797,27 @@ var Code128 = (function () {
     PN.busy = true;
     gs('planBaruCek', dt, state.mode).then(function (r) {
       if (dt !== planCur()) return;
-      pnShow(r && r.success ? (r.baru || 0) : 0, (r && r.list) || [], dt, !!(r && r.noPlan));
+      pnShow(r && r.success ? (r.baru || 0) : 0, (r && r.list) || [], dt, !!(r && r.noPlan), r && r.success ? (r.hilang || 0) : 0, (r && r.listHilang) || []);
     }).catch(function () { /* pemeriksaan berikutnya mencoba lagi */ }).then(function () { PN.busy = false; });
   }
   function pnClick(e) {
     var b = e.target.closest ? e.target.closest('[data-pn]') : null;
     if (!b || !isAdmin()) return;
     if (b.getAttribute('data-pn') === 'cek') { pnCheck(true); return; }
-    if (b.getAttribute('data-pn') === 'create') { PN.open = false; pnShow(PN.n, PN.list, PN.date, PN.noPlan); $('#btnPlanCreate').click(); return; }
+    if (b.getAttribute('data-pn') === 'create') { PN.open = false; pnShow(PN.n, PN.list, PN.date, PN.noPlan, PN.h, PN.listH); $('#btnPlanCreate').click(); return; }
+    var pa = b.getAttribute('data-pn');
+    if (/^h-/.test(pa)) {   // lot hilang dari sheet Plan: pending / hapus dari Plan Harian / biarkan
+      var aksi = pa.slice(2), dh = PN.date;
+      if (aksi === 'hapus' && !window.confirm('Hapus ' + PN.h + ' lot ini dari Plan ' + fmtDMY(dh) + '? Alokasi mesin lot tersebut ikut tidak tampil.')) return;
+      b.disabled = true;
+      gs('planHilangTindak', dh, state.mode, aksi).then(function (r) {
+        if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+        toast(aksi === 'pending' ? r.n + ' lot dibatalkan (Pending).' : aksi === 'hapus' ? r.n + ' lot dihapus dari Plan.' : 'Lot dibiarkan di Plan.', 'ok');
+        PN.told = 0; pnShow(0, [], dh);
+        return loadPlanDay(true);
+      }).catch(function (er) { b.disabled = false; toast('Gagal memproses lot hilang. ' + errMsg(er), 'err', 7000); });
+      return;
+    }
     var dt = PN.date; b.disabled = true;
     gs('planTambahBaru', dt, state.mode).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
@@ -2798,7 +2826,7 @@ var Code128 = (function () {
       loadPlanDay(true);
     }).catch(function (er) { b.disabled = false; toast('Gagal menambahkan lot baru. ' + errMsg(er), 'err', 7000); });
   }
-  $('#btnPlanNotif').addEventListener('click', function () { PN.open = !PN.open; pnShow(PN.n, PN.list, PN.date); });
+  $('#btnPlanNotif').addEventListener('click', function () { PN.open = !PN.open; pnShow(PN.n, PN.list, PN.date, PN.noPlan, PN.h, PN.listH); });
   $('#planNew').addEventListener('click', pnClick); $('#mesinNew').addEventListener('click', pnClick);
   setInterval(function () { if (!document.hidden && (state.view === 'plan' || state.view === 'mesin')) pnCheck(false); }, 150000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) pnCheck(false); });
@@ -3433,13 +3461,13 @@ var Code128 = (function () {
     wrap.classList.remove('hidden');
   }
   function loadMiss(force) {
-    if (!isAdmin()) return Promise.resolve();   // Outstanding hanya untuk Admin (server juga menolak)
+    if (!missOk()) return Promise.resolve();   // Outstanding hanya untuk Admin atau link yang membagikannya (server juga memeriksa)
     if (!force && MS.data && MS.at && Date.now() - MS.at < LIST_FRESH && MS.dataDate === MS.date) return Promise.resolve();
     var my = ++MS.seq, dt = MS.date;
     MS.loading = true; MS.error = '';
     if (state.view === 'miss') $('#btnRefresh').classList.add('spin');
     if (!MS.data) renderMiss();
-    return gs('getTerlewat', dt, !!force, state.mode).then(function (r) {
+    return gs('getTerlewat', dt, !!force, isAdmin() ? state.mode : 'miss').then(function (r) {
       if (my !== MS.seq) return;
       if (!r) throw new Error('Server tidak mengembalikan data.');
       if (r.error) throw new Error(r.error);
@@ -3825,8 +3853,8 @@ var Code128 = (function () {
   function showView(name) {
     sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
     if (isPc()) name = 'form';   // mode PC: hanya Input SOFT
-    else if ((name === 'form' || name === 'miss') && !isAdmin()) name = 'data';   // tab Input dan Outstanding hanya untuk mode Admin
-    if (TABS.length && TABS.indexOf(name) < 0) name = TABS[0];   // Viewer terbatas (?tabs=): hanya tab yang dibagikan
+    else if ((name === 'form' && !isAdmin()) || (name === 'miss' && !missOk())) name = 'data';   // tab Input dan Outstanding hanya untuk mode Admin
+    if (TABS.length && HOME_TABS.length && HOME_TABS.indexOf(name) < 0) name = HOME_TABS[0];   // Viewer terbatas (?tabs=): hanya tab yang dibagikan
     state.view = name;
     if (name === 'plan' || name === 'mesin') setTimeout(function () { pnCheck(false); }, 300);
     var isList = !!LISTS[name], isMesin = name === 'mesin';
@@ -3908,7 +3936,7 @@ var Code128 = (function () {
     } else if (!state.kikc.length) {
       loadKikc();                                       // Viewer tidak memuat daftar KIKC; dimuat saat masuk Admin
     }
-    if (isAdmin()) loadMiss(false);
+    if (missOk()) loadMiss(false);
     if (state.view === 'data') renderRows();
     else if (state.view === 'miss') renderMiss();
     else if (LISTS[state.view]) renderList(state.view);
@@ -4147,6 +4175,7 @@ var Code128 = (function () {
     syncDateUi();
     loadData();
   }
+  $('#btnDup').addEventListener('click', function () { state.filterDup = !state.filterDup; renderRows(); });
   $('#dateInput').addEventListener('change', function () { setDate(this.value); });
   $('#datePrev').addEventListener('click', function () { setDate(shiftDate(state.date, -1)); });
   $('#dateNext').addEventListener('click', function () { setDate(shiftDate(state.date, 1)); });
@@ -4159,18 +4188,25 @@ var Code128 = (function () {
     var searching = !!(q && state.srows);   // ada kata kunci: pencarian menelusuri SEMUA tanggal (server: cariData)
     dupWithDate = searching;
     var base = searching ? state.srows : (q && state.sBusy ? [] : state.rows);   // selama mencari: jangan tampilkan data satu hari sebagai hasil
-    var rows = base.filter(function (r) {
-      if (state.filterPos && r.posisi !== state.filterPos) return false;
-      if (state.filterPack === 'open' && r.tglPack) return false;
-      if (state.filterPack === 'fin' && !r.tglPack) return false;
-      if (!q) return true;
-      return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, (isAdmin() ? r.noteQc : ''), r.keterangan].join(' ')).indexOf(q) >= 0;
-    });
     var dupInfo = { cnt: {}, kp: {} };   // dihitung dari semua data hari itu, bukan hanya yang lolos filter
     base.forEach(function (r) {
       if (!r.kikc) return;
       dupInfo.cnt[r.kikc] = (dupInfo.cnt[r.kikc] || 0) + 1;
       var k = dupKey(r); dupInfo.kp[k] = (dupInfo.kp[k] || 0) + 1;
+    });
+    var dupLots = {}, dupKeyN = 0, dupExtra = 0;   // data ganda = KIKC dan posisi sama; hitung lot (KIKC berbeda) dan baris berlebih
+    Object.keys(dupInfo.kp).forEach(function (kk) { if (dupInfo.kp[kk] > 1) { dupKeyN++; dupExtra += dupInfo.kp[kk] - 1; dupLots[kk.split('|')[0]] = 1; } });
+    var dupLotN = Object.keys(dupLots).length;
+    if (!dupLotN) state.filterDup = false;
+    $('#dupN').textContent = String(dupLotN); $('#btnDup').classList.toggle('has', dupLotN > 0); $('#btnDup').setAttribute('aria-pressed', state.filterDup ? 'true' : 'false');
+    $('#btnDup').title = dupLotN ? dupLotN + ' lot punya data ganda (' + dupExtra + ' baris berlebih). Ketuk untuk menampilkan hanya data ganda.' : 'Tidak ada data ganda';
+    var rows = base.filter(function (r) {
+      if (state.filterDup && !(dupInfo.kp[dupKey(r)] > 1)) return false;
+      if (state.filterPos && r.posisi !== state.filterPos) return false;
+      if (state.filterPack === 'open' && r.tglPack) return false;
+      if (state.filterPack === 'fin' && !r.tglPack) return false;
+      if (!q) return true;
+      return nq([r.kikc, r.warna, r.noBenang, r.mesin, r.ketKikc, r.tglCelup, (isAdmin() ? r.noteQc : ''), r.keterangan].join(' ')).indexOf(q) >= 0;
     });
     renderSummary(rows, dupInfo, searching);
     if (searching && state.sInfo) $('#sumNote').textContent += ' ' + state.sInfo;
@@ -5526,7 +5562,7 @@ var Code128 = (function () {
   function openPage2(tab) {   // tab (opsional): rph | pack | delivery | soft = tab awal Page 2
     if (tab) lsSet('wipyd_p2tab', tab); else lsDel('wipyd_p2tab');
     if (IN_GAS) {   // di Apps Script: alamat Page 2 diminta ke server
-      gs('getPageUrl', 2, state.mode, tab || '').then(function (u) {
+      gs('getPageUrl', 2, state.mode, tab || '', TABS.join(',')).then(function (u) {
         if (u) window.open(u, '_top'); else toast('Alamat Page 2 tidak ditemukan. Buka aplikasi lewat alamat aslinya.', 'warn', 6000);
       }).catch(function (e) { toast('Page 2 gagal dibuka. ' + errMsg(e), 'err', 6000); });
       return;
@@ -5534,6 +5570,7 @@ var Code128 = (function () {
     var q = [];
     if (state.mode === 'viewer' || state.mode === 'pc') q.push('mode=' + state.mode);
     if (tab) q.push('tab=' + tab);
+    if (TABS.length) { if (state.mode === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
     location.href = 'page2.html' + (q.length ? '?' + q.join('&') : '');
   }
   $('#btnPage2').addEventListener('click', function () { openPage2(''); });
@@ -5542,16 +5579,34 @@ var Code128 = (function () {
 
   /* ---------- Bagikan link Viewer dan PC (hanya Admin): tombol Share membuka daftar dua link; alamat web ikut dalam teks yang dibagikan ---------- */
   (function () {
-    var URLS = { viewer: '', pc: '' }, LAB = { viewer: 'Viewer', pc: 'PC' };
-    function localUrls() {
-      var u = location.href.split('#')[0].split('?')[0];
-      if (/\/exec$/.test(u)) return { viewer: u + '?mode=viewer', pc: u + '?mode=pc' };
-      var base = u.replace(/(index|viewer|pc|plan)\.html$/i, '').replace(/\/?$/, '/');
-      return { viewer: base + 'viewer.html', pc: base + 'pc.html' };
+    var URLS = { viewer: '', pc: '' }, LAB = { viewer: 'Viewer', pc: 'PC' }, SB = { gas: false, base: '', pc: '' };
+    var TAB_DEFS = [['wod', 'WOD'], ['grm', 'GRM'], ['plan', 'Plan'], ['form', 'Input'], ['data', 'WIP'], ['miss', 'Outstanding'], ['mesin', 'Mesin'], ['clp', 'Celup'], ['soft', 'SOFT'], ['pack', 'Pack'], ['delivery', 'Delivery'], ['rph', 'RPH']];
+    var SEL = {};
+    function homeTab(x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); }
+    function viewerLink() {   // tab Input dipilih = link Admin terbatas (?mode=admin&tabs=); selain itu Viewer. Semua tab (kecuali Input) = link Viewer biasa
+      var tl = TAB_DEFS.map(function (t) { return t[0]; }).filter(function (x) { return SEL[x]; });
+      if (!tl.length) return '';
+      var withForm = !!SEL.form, all = tl.length === TAB_DEFS.length, allNoForm = !withForm && tl.length === TAB_DEFS.length - 1, noHome = !tl.some(homeTab);
+      var mode = withForm ? 'admin' : 'viewer';
+      if (SB.gas) return all ? SB.base : SB.base + '?mode=' + mode + (allNoForm ? '' : '&tabs=' + tl.join(',') + (noHome ? '&page=2' : ''));
+      if (all) return SB.base + 'index.html';
+      if (allNoForm) return SB.base + 'viewer.html';
+      return SB.base + (noHome ? 'page2.html' : 'index.html') + '?mode=' + mode + '&tabs=' + tl.join(',');
+    }
+    function renderTabs() {
+      var n = TAB_DEFS.filter(function (t) { return SEL[t[0]]; }).length;
+      $('#shTabs').innerHTML = TAB_DEFS.map(function (t) { return '<button type="button" class="fchip' + (SEL[t[0]] ? ' active' : '') + '" data-tb="' + t[0] + '" aria-pressed="' + (!!SEL[t[0]]) + '">' + t[1] + '</button>'; }).join('') +
+        '<button type="button" class="fchip" data-tb="*">' + (n === TAB_DEFS.length ? 'Kosongkan' : 'Pilih semua') + '</button>';
+      URLS.viewer = viewerLink();
+      $('#shUrlViewer').value = URLS.viewer || 'Pilih minimal satu tab';
+      $('#shWarn').hidden = !SEL.form; LAB.viewer = SEL.form ? 'Admin terbatas' : 'Viewer';
     }
     function getUrls() {
       if (IN_GAS) return gs('getShareUrls').then(function (u) { return u || {}; }).catch(function () { return {}; });   // di dalam iframe Apps Script alamat halaman bukan alamat web app: minta ke server
-      return Promise.resolve(localUrls());
+      var u = location.href.split('#')[0].split('?')[0];
+      if (/\/exec$/.test(u)) return Promise.resolve({ viewer: u + '?mode=viewer', pc: u + '?mode=pc' });
+      var base = u.replace(/(index|viewer|pc|plan|page2)\.html$/i, '').replace(/\/?$/, '/');
+      return Promise.resolve({ viewer: base + 'viewer.html', pc: base + 'pc.html', base: base });
     }
     function copy(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
@@ -5568,14 +5623,24 @@ var Code128 = (function () {
       if (!isAdmin()) return;
       getUrls().then(function (u) {
         if (!u.viewer && !u.pc) { toast('Alamat link tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
-        URLS = { viewer: u.viewer || '', pc: u.pc || '' };
-        $('#shUrlViewer').value = URLS.viewer; $('#shUrlPc').value = URLS.pc;
+        var vu = u.viewer || '';
+        SB = { gas: /\?mode=viewer/.test(vu), base: /\?mode=viewer/.test(vu) ? vu.split('?')[0] : (u.base || vu.replace(/viewer\.html$/i, '')), pc: u.pc || '' };
+        TAB_DEFS.forEach(function (t) { SEL[t[0]] = t[0] !== 'form'; });   // awal: semua tab kecuali Input
+        URLS.pc = u.pc || ''; $('#shUrlPc').value = URLS.pc;
+        renderTabs();
         $('#shareSheet').classList.add('show');
       });
     });
     $('#shareClose').addEventListener('click', closeShare);
     $('#shareSheet').addEventListener('click', function (e) {
       if (e.target === this) { closeShare(); return; }
+      var tb = e.target.closest ? e.target.closest('[data-tb]') : null;
+      if (tb) {
+        var x = tb.getAttribute('data-tb');
+        if (x === '*') { var allOn = TAB_DEFS.every(function (t) { return SEL[t[0]]; }); TAB_DEFS.forEach(function (t) { SEL[t[0]] = !allOn; }); }
+        else SEL[x] = !SEL[x];
+        renderTabs(); return;
+      }
       var b = e.target.closest ? e.target.closest('[data-sh]') : null;
       if (!b) return;
       var k = b.getAttribute('data-k'), url = URLS[k], label = LAB[k];
@@ -5636,11 +5701,12 @@ var Code128 = (function () {
     lsDel('wipyd_hometab');
     if (homeTab === 'inputsoft') { setInputKind('soft'); showView('form'); }
     else if (homeTab === 'miss') showView('miss');
+    else if (HOME_TABS.length && HOME_TABS.indexOf('form') < 0) showView(HOME_TABS[0]);   // link Admin terbatas tanpa tab Input
     loadKikc().then(function () { setTimeout(prefetchLists, 0); });
   } else if (isPc()) {
     setInputKind('soft'); showView('form'); // PC: langsung ke Input SOFT; daftar KIKC dan tab lain tidak dimuat
   } else {
-    showView(TABS.length ? TABS[0] : 'data');   // Viewer: langsung ke tab WIP (Viewer terbatas: tab pertama yang dibagikan); daftar KIKC (untuk form Input) tidak perlu dimuat
+    showView(HOME_TABS.length ? HOME_TABS[0] : 'data');   // Viewer: langsung ke tab WIP (Viewer terbatas: tab pertama yang dibagikan); daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
   setTimeout(function () { loadMiss(false); }, 2500);   // cek lot outstanding di latar belakang untuk notifikasi
