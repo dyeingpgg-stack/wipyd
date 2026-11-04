@@ -1312,6 +1312,16 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <div class="actions"><button type="button" class="btn btn-ghost" id="shareClose">Tutup</button></div>
     </div>
   </div>
+  <div class="sheet-backdrop" id="dupSheet" role="dialog" aria-modal="true" aria-labelledby="dupTitle">
+    <div class="sheet">
+      <h2 id="dupTitle">Lot sudah diinput hari ini</h2>
+      <p id="dupBody"></p>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="dupNo">Batal</button>
+        <button type="button" class="btn btn-primary" id="dupYes">Tetap simpan</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet-backdrop" id="modeSheet" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
     <div class="sheet">
       <h2 id="modeTitle">Masuk mode Admin?</h2>
@@ -4042,11 +4052,56 @@ var Code128 = (function () {
       noteQc: $('#noteQc').value.trim(), keterangan: $('#keterangan').value.trim()
     };
     // Simpan lewat antrean: form langsung siap untuk input berikutnya, pengiriman ke Sheet berjalan di latar belakang.
-    payload.cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    enqueue(payload);
-    resetForm();
-    toast('Data diterima, dikirim ke Sheet di latar belakang.', 'ok', 2500);
+    function proceed() {
+      payload.cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      enqueue(payload);
+      resetForm();
+      toast('Data diterima, dikirim ke Sheet di latar belakang.', 'ok', 2500);
+    }
+    // Periksa dulu: lot ini sudah diinput hari ini? (data di Sheet, antrean yang belum terkirim, dan data hari ini di layar)
+    state.saving = true; renderSubmit();
+    todayInputs(payload.kikc).then(function (found) {
+      state.saving = false; renderSubmit();
+      if (!found.length) proceed(); else askDup(payload, found, proceed);
+    });
   });
+
+  /* ---------- Peringatan lot yang sudah diinput hari ini ---------- */
+  function todayInputs(kikc) {
+    var key = String(kikc || '').replace(/\s+/g, ' ').trim().toUpperCase(), out = [];
+    function norm(x) { return String(x || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+    try { qRead().forEach(function (it) { if (norm(it.kikc) === key) out.push({ posisi: stripNum(it.posisi), qc: stripNum(it.qc), waktu: '', antre: true }); }); } catch (e) { /* abaikan */ }
+    var timeout = new Promise(function (res) { setTimeout(function () { res(null); }, 6000); });
+    return Promise.race([gs('getData', todayStr()).catch(function () { return null; }), timeout]).then(function (r) {
+      if (r && r.data) r.data.forEach(function (x) {
+        if (norm(x.kikc) !== key) return;
+        var m = /(\d{1,2}:\d{2})/.exec(String(x.timestamp || ''));
+        out.push({ posisi: stripNum(x.posisi), qc: stripNum(x.qc), waktu: m ? m[1] : '' });
+      });
+      else if (state.date === todayStr()) state.rows.forEach(function (x) {   // server tidak terjangkau: pakai data hari ini yang sudah ada di layar
+        if (norm(x.kikc) !== key) return;
+        var m = /(\d{1,2}:\d{2})/.exec(String(x.timestamp || ''));
+        out.push({ posisi: stripNum(x.posisi), qc: stripNum(x.qc), waktu: m ? m[1] : '' });
+      });
+      return out;
+    });
+  }
+  var DUPASK = null;
+  function closeDupAsk() { $('#dupSheet').classList.remove('show'); DUPASK = null; }
+  function askDup(payload, found, proceed) {
+    var pos = payload.posisi || '-';
+    var list = found.map(function (f) {
+      return '<li><b>' + esc(f.posisi || '-') + '</b>' + (f.qc ? ' · QC ' + esc(f.qc) : '') + (f.waktu ? ' · pukul ' + esc(f.waktu) : '') + (f.antre ? ' · belum terkirim (antrean)' : '') + '</li>';
+    }).join('');
+    var same = found.some(function (f) { return f.posisi === payload.posisi; });
+    $('#dupBody').innerHTML = 'Lot <b>' + esc(payload.kikc) + '</b> sudah diinput hari ini dengan posisi:<ul style="margin:8px 0 8px 18px">' + list + '</ul>' +
+      (same ? 'Posisi yang sama (<b>' + esc(pos) + '</b>) akan tercatat dua kali.' : 'Anda akan menyimpan lagi dengan posisi <b>' + esc(pos) + '</b>.') + ' Tetap simpan?';
+    DUPASK = proceed;
+    $('#dupSheet').classList.add('show');
+  }
+  $('#dupNo').addEventListener('click', closeDupAsk);
+  $('#dupYes').addEventListener('click', function () { var f = DUPASK; closeDupAsk(); if (f) f(); });
+  $('#dupSheet').addEventListener('click', function (e) { if (e.target === this) closeDupAsk(); });
 
   /* ---------- Tabel data ---------- */
   function qcClass(v) {
@@ -5660,6 +5715,7 @@ var Code128 = (function () {
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if ($('#scanner').classList.contains('show')) { closeScanner(); return; }
+    if ($('#dupSheet').classList.contains('show')) { closeDupAsk(); return; }
     if ($('#modeSheet').classList.contains('show')) { closeModeSheet(); return; }
     if ($('#delSheet').classList.contains('show')) closeDel();
     else if ($('#editSheet').classList.contains('show') && !state.savingEdit) closeEdit();
