@@ -894,7 +894,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <button type="button" class="btn-sm" id="btnPdf" aria-label="Unduh data hari ini sebagai PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg><span>Unduh PDF</span></button>
         <button type="button" class="btn-sm" id="btnPng" aria-label="Unduh data hari ini sebagai gambar PNG resolusi tinggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg><span>Unduh PNG</span></button>
         <button type="button" class="btn-sm" id="btnWa" aria-label="Kirim data hari ini ke WhatsApp sebagai gambar yang tetap jelas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-4.2A8 8 0 1 1 8.4 18.8L4 20z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5.5 5.5l1-1.5-2-1-.8.8c-1-.4-1.9-1.3-2.3-2.3l.8-.8-1-2L9 9.5z"/></svg><span>Kirim WA</span></button>
-        <button type="button" class="btn-sm" id="btnDup" aria-pressed="false" title="Tampilkan hanya data ganda (KIKC dan posisi sama)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Data Ganda</span><b class="dn" id="dupN">0</b></button>
+        <button type="button" class="btn-sm" id="btnDup" aria-pressed="false" title="Tampilkan hanya data ganda (KIKC sama di tanggal input yang sama)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Data Ganda</span><b class="dn" id="dupN">0</b></button>
       </div>
       <div class="resume" id="resume" hidden></div>
       <div id="tableState"></div>
@@ -4119,7 +4119,7 @@ var Code128 = (function () {
   }
   // Kg dan Cone dihitung satu kali per KIKC (satu lot bisa diinput di beberapa posisi dalam sehari)
   var dupWithDate = false;   // mode pencarian semua tanggal: data ganda dihitung per tanggal input
-  function dupKey(r) { return r.kikc + '|' + r.posisi + (dupWithDate ? '|' + String(r.timestamp || '').slice(0, 10) : ''); }
+  function dupKey(r) { return r.kikc + (dupWithDate ? '|' + String(r.timestamp || '').slice(0, 10) : ''); }
   function renderSummary(rows, dupInfo, searching) {
     // Lot: satu KIKC dihitung satu lot walau diinput di beberapa posisi. Kg dan Cone dijumlahkan per posisi
     // (KIKC dan posisi sama = data ganda, dihitung sekali), dibatasi tidak melebihi total lot di sheet WOD/GRM.
@@ -4154,7 +4154,7 @@ var Code128 = (function () {
     $('#sumNote').textContent = rows.length
       ? scope + ': ' + rows.length + ' input, ' + lots + ' lot KIKC' + (rows.length > lots ? ' (KIKC sama beda posisi dihitung satu lot).' : '.') +
         (finLots ? ' ' + finLots + ' lot sudah ada Tgl Pack (Finish).' : '') +
-        (dupN ? ' ' + dupN + ' data ganda (KIKC dan posisi sama) disorot merah.' : '')
+        (dupN ? ' ' + dupN + ' data ganda (KIKC sama di tanggal input yang sama) disorot merah.' : '')
       : scope + ': belum ada input.';
   }
 
@@ -4230,7 +4230,7 @@ var Code128 = (function () {
           '<button type="button" class="icon-btn sm" data-act="edit" data-row="' + r.rowIndex + '" aria-label="Ubah ' + esc(r.kikc) + '" title="Ubah">' + ICON_EDIT + '</button>' +
           '<button type="button" class="icon-btn sm danger" data-act="del" data-row="' + r.rowIndex + '" aria-label="Hapus ' + esc(r.kikc) + '" title="Hapus">' + ICON_TRASH + '</button>' +
         '</div></td>') +
-        '<td class="sticky c-kikc">' + esc(r.kikc) + (n > 1 ? '<span class="dupbadge" title="KIKC dan posisi ini diinput ' + n + ' kali">GANDA \u00d7' + n + '</span>' : '') + '</td>' +
+        '<td class="sticky c-kikc">' + esc(r.kikc) + (n > 1 ? '<span class="dupbadge" title="KIKC ini diinput ' + n + ' kali di tanggal yang sama">GANDA \u00d7' + n + '</span>' : '') + '</td>' +
         '<td>' + esc(r.noBenang) + '</td>' +
         '<td>' + esc(r.warna) + '</td>' +
         '<td>' + esc(r.mesin) + '</td>' +
