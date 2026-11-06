@@ -70,7 +70,7 @@ function rspSyncResep() {
 // 4. Booking <- total JML bahan (RESEP kolom F) dari lot yang ada di C.dbb
 //    Lot cocok bila NO_KIKC = wod_no, KODE_RESEP = dye_rec_no, NO_BON = no_bon (3 kunci, baris C.dbb ganda dihitung sekali).
 //    Item cocok menurut nama: Booking kolom C = RESEP kolom E (Item Kamus), huruf besar/kecil dan spasi diabaikan.
-//    Hasil ditulis ke Booking kolom D (total JML, satuan sama dengan JML di RESEP) dan kolom E (D / 1000). Kolom A..C tidak disentuh.
+//    Hasil ditulis ke Booking kolom D (total JML dalam GRAM, sama dengan RESEP) dan kolom E (Kg = D / 1000). Kolom A..C tidak disentuh.
 function rspSyncBooking() {
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
   const norm = v => String(v).replace(/\s+/g, " ").trim().toUpperCase();
@@ -98,7 +98,7 @@ function rspSyncBooking() {
 
   const sh = ss.getSheetByName("Booking");
   const last = sh.getLastRow();
-  if (last < 2) return;
+  if (last < 2) return { item: 0, terisi: 0 };
   const items = sh.getRange(2, 3, last - 1, 1).getValues();
   const out = items.map(r => {
     const k = norm(r[0]);
@@ -108,6 +108,7 @@ function rspSyncBooking() {
   });
   sh.getRange(1, 4, 1, 2).setValues([["Booking", "Booking (Kg)"]]);
   sh.getRange(2, 4, out.length, 2).setValues(out);
+  return { item: out.filter(x => x[0] !== "").length, terisi: out.filter(x => x[0] > 0).length };
 }
 
 // Urutan penting: Kamus dulu, lalu C.dbb, RESEP, terakhir Booking

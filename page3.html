@@ -313,6 +313,7 @@
   .tag.warn{color:var(--amber);border-color:rgba(var(--a-rgb),.65)}
   .tag.bad{color:var(--rose);border-color:rgba(var(--r-rgb),.65)}
   .dim{color:var(--dim)}
+  .bkbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
   #tableState{flex:1}
   .state{padding:36px 12px;text-align:center;color:var(--dim);font-size:15px}
   .skeleton{height:48px;border-radius:12px;margin-bottom:10px;background:linear-gradient(90deg,rgba(var(--w-rgb),.04),rgba(var(--c-rgb),.09),rgba(var(--w-rgb),.04));background-size:200% 100%;animation:shimmer 1.4s linear infinite}
@@ -751,6 +752,16 @@
       <div class="lnote" id="nKamus"></div><div class="lstate" id="sKamus"></div>
       <div class="table-wrap hidden" id="wKamus"><table><thead><tr id="hKamus"></tr></thead><tbody id="bKamus"></tbody></table></div>
     </section>
+    <section class="view list" id="viewBooking" aria-label="Booking">
+      <div class="bkbar" id="bkBar">
+        <button type="button" class="btn-sm" id="btnHitung">Hitung Booking</button>
+        <button type="button" class="btn-sm" id="btnSemua">Sinkron semua &amp; hitung</button>
+      </div>
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qBooking" type="search" placeholder="Cari item Booking" autocomplete="off" aria-label="Cari Booking"></div>
+      <div class="lnote" id="nBooking"></div><div class="lstate" id="sBooking"></div>
+      <div class="table-wrap hidden" id="wBooking"><table><thead><tr id="hBooking"></tr></thead><tbody id="bBooking"></tbody></table></div>
+    </section>
   </main>
 
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
@@ -759,6 +770,7 @@
     <button type="button" class="tab" data-view="resep" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg>Resep</button>
     <button type="button" class="tab" data-view="conf" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Lot Confirmed</button>
     <button type="button" class="tab" data-view="kamus" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>Kamus</button>
+    <button type="button" class="tab" data-view="booking" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M8 12h8M8 16h5"/></svg>Booking</button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -869,7 +881,7 @@
   }
   $('#btnHome').addEventListener('click', function () { goHome(''); });
   var TABS = [];
-  var KIM = { resep: null, conf: null, kamus: null }, KQ = { lot: '' }, LOTSEL = '';
+  var KIM = { resep: null, conf: null, kamus: null, booking: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
   function loadKim(k, force) {
@@ -896,7 +908,7 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['kamus', 'Kamus']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['kamus', 'Kamus'], ['booking', 'Booking']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (KIM[p[0]]) showTable(p[0], p[1], $('#q' + p[1]).value); }, 150); });
   });
@@ -938,9 +950,9 @@
     var c = e.target.closest ? e.target.closest('[data-lot]') : null;
     if (c) { LOTSEL = c.getAttribute('data-lot'); $('#qLot').value = LOTSEL; lotRender(); return; }
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
-    if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.kamus = null; showView(k); }
+    if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', kamus: 'Kamus' }, curView = 'lot';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', kamus: 'Kamus', booking: 'Booking' }, curView = 'lot';
   function showView(name) {
     curView = name;
     Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
@@ -949,9 +961,25 @@
   }
   $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); }); });
   $('#btnRefresh').addEventListener('click', function () {
-    KIM.resep = KIM.conf = KIM.kamus = null;
-    Promise.all(['resep', 'conf', 'kamus'].map(function (k) { return loadKim(k, true).catch(function () { /* ditampilkan saat tab dibuka */ }); })).then(function () { showView(curView); toast('Data Kimia diperbarui.', 'ok', 2000); });
+    KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
+    Promise.all(['resep', 'conf', 'kamus', 'booking'].map(function (k) { return loadKim(k, true).catch(function () { /* ditampilkan saat tab dibuka */ }); })).then(function () { showView(curView); toast('Data Kimia diperbarui.', 'ok', 2000); });
   });
+  /* Tombol Booking: jalankan skrip hitung dari aplikasi (Admin) */
+  if (MODE !== 'admin') $('#bkBar').style.display = 'none';
+  function runBooking(semua) {
+    var b1 = $('#btnHitung'), b2 = $('#btnSemua');
+    b1.disabled = b2.disabled = true;
+    toast(semua ? 'Sinkron semua dan hitung Booking, mohon tunggu...' : 'Menghitung Booking...', 'ok', 60000);
+    gs('hitungBooking', MODE, !!semua).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
+      toast('Selesai.' + (r.item !== undefined ? ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking.' : ''), 'ok', 5000);
+      return loadKim('booking', true).then(function () { showTable('booking', 'Booking', $('#qBooking').value); });
+    }).catch(function (e) { toast('Gagal. ' + errMsg(e), 'err', 8000); })
+      .then(function () { b1.disabled = b2.disabled = false; });
+  }
+  $('#btnHitung').addEventListener('click', function () { runBooking(false); });
+  $('#btnSemua').addEventListener('click', function () { runBooking(true); });
   showView('lot');
 })();
 </script>
