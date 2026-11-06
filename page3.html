@@ -690,6 +690,10 @@
   .sfed-err{margin:12px 0 0;padding:8px 12px;border-radius:12px;border:1px solid var(--rose);color:var(--alert-ink);background:rgba(var(--r-rgb),.12);font:600 14px/1.35 var(--body)}
   .sfed-err[hidden]{display:none}
   @media (max-width:480px){.sfed-grid{grid-template-columns:1fr 1fr}}
+  .lnote{color:var(--dim);font-size:13px;margin:2px 2px 8px}.chips{display:flex;flex-wrap:wrap;gap:8px}
+  .lotcard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px;margin-bottom:12px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface)}
+  .lotcard .lc small{display:block;color:var(--dim);font-size:12px;margin-bottom:2px}.lotcard .lc span{font-weight:700;font-size:16px}
+  .dim{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -722,14 +726,40 @@
   </header>
 
   <main id="main" class="is-data">
-    <!-- Page 3 (Kimia): kerangka kosong. Tambahkan <section class="view list" id="view..."> per tab di sini. -->
-    <section class="view list active" id="viewKimia" aria-label="Kimia">
-      <div class="state">Page Kimia masih kosong. Tab-tab sedang disusun.</div>
+    <section class="view list active" id="viewLot" aria-label="Resep per lot">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qLot" type="search" placeholder="Ketik KIKC lot (mis. AHN26K073)" autocomplete="off" enterkeyhint="search" aria-label="Cari lot">
+      </div>
+      <div class="lstate" id="lotBody"><div class="state">Ketik KIKC untuk melihat info lot dan daftar bahan resepnya.</div></div>
+    </section>
+    <section class="view list" id="viewResep" aria-label="Resep">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qResep" type="search" placeholder="Cari KIKC atau item resep" autocomplete="off" aria-label="Cari resep"></div>
+      <div class="lnote" id="nResep"></div><div class="lstate" id="sResep"></div>
+      <div class="table-wrap hidden" id="wResep"><table><thead><tr id="hResep"></tr></thead><tbody id="bResep"></tbody></table></div>
+    </section>
+    <section class="view list" id="viewConf" aria-label="Lot Confirmed">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
+      <div class="lnote" id="nConf"></div><div class="lstate" id="sConf"></div>
+      <div class="table-wrap hidden" id="wConf"><table><thead><tr id="hConf"></tr></thead><tbody id="bConf"></tbody></table></div>
+    </section>
+    <section class="view list" id="viewKamus" aria-label="Kamus">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qKamus" type="search" placeholder="Cari di Kamus" autocomplete="off" aria-label="Cari Kamus"></div>
+      <div class="lnote" id="nKamus"></div><div class="lstate" id="sKamus"></div>
+      <div class="table-wrap hidden" id="wKamus"><table><thead><tr id="hKamus"></tr></thead><tbody id="bKamus"></tbody></table></div>
     </section>
   </main>
 
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
-  <nav class="tabbar" aria-label="Menu Page 3"></nav>
+  <nav class="tabbar" aria-label="Menu Page 3">
+    <button type="button" class="tab active" data-view="lot" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Resep per Lot</button>
+    <button type="button" class="tab" data-view="resep" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg>Resep</button>
+    <button type="button" class="tab" data-view="conf" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Lot Confirmed</button>
+    <button type="button" class="tab" data-view="kamus" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>Kamus</button>
+  </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
@@ -838,8 +868,91 @@
     location.href = 'index.html' + (q.length ? '?' + q.join('&') : '');
   }
   $('#btnHome').addEventListener('click', function () { goHome(''); });
-  var TABS = [];   // Page 3 belum memakai pembatasan tab
-  $('#btnRefresh').addEventListener('click', function () { location.reload(); });
+  var TABS = [];
+  var KIM = { resep: null, conf: null, kamus: null }, KQ = { lot: '' }, LOTSEL = '';
+  var MAXROWS = 300;
+  function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+  function loadKim(k, force) {
+    if (KIM[k] && !force) return Promise.resolve(KIM[k]);
+    return gs('getKimia', k, !!force).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      KIM[k] = r; return r;
+    });
+  }
+  function showTable(k, id, query) {
+    var d = KIM[k], q = nq(query.trim());
+    var rows = d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    $('#h' + id).innerHTML = d.headers.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(h) + '</th>'; }).join('');
+    $('#b' + id).innerHTML = rows.slice(0, MAXROWS).map(function (r) {
+      return '<tr>' + d.headers.map(function (_, i) { var c = r[i] || ''; return '<td' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    $('#n' + id).textContent = (q ? rows.length + ' dari ' + d.rows.length : d.rows.length) + ' baris' + (rows.length > MAXROWS ? ' (menampilkan ' + MAXROWS + ' pertama, persempit pencarian)' : '');
+    $('#s' + id).style.display = rows.length ? 'none' : '';
+    $('#s' + id).innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
+    $('#w' + id).classList.toggle('hidden', !rows.length);
+  }
+  function openTable(k, id) {
+    $('#s' + id).style.display = ''; $('#s' + id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
+      .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
+  }
+  [['resep', 'Resep'], ['conf', 'Conf'], ['kamus', 'Kamus']].forEach(function (p) {
+    var t = null;
+    $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (KIM[p[0]]) showTable(p[0], p[1], $('#q' + p[1]).value); }, 150); });
+  });
+  /* Resep per Lot: ketik KIKC, kartu info (dari Lot Confirmed) + daftar bahan (dari Resep) */
+  function lotRender() {
+    var q = key($('#qLot').value), el = $('#lotBody');
+    if (!q) { el.innerHTML = '<div class="state">Ketik KIKC untuk melihat info lot dan daftar bahan resepnya.</div>'; return; }
+    var R = KIM.resep, C = KIM.conf;
+    if (!R || !C) { el.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>'; return; }
+    var lots = {}, order = [];
+    [R, C].forEach(function (d) { d.rows.forEach(function (r) { var k = key(r[0]); if (k && k.indexOf(q) >= 0 && !lots[k]) { lots[k] = 1; order.push(k); } }); });
+    if (!order.length) { el.innerHTML = '<div class="state">Lot tidak ditemukan di Resep maupun Lot Confirmed.</div>'; return; }
+    var exact = order.indexOf(q) >= 0 ? q : (order.length === 1 ? order[0] : (LOTSEL && lots[LOTSEL] ? LOTSEL : ''));
+    if (!exact) {
+      el.innerHTML = '<div class="lnote">' + order.length + ' lot cocok. Ketuk salah satu:</div><div class="chips">' +
+        order.slice(0, 40).map(function (k) { return '<button type="button" class="fchip" data-lot="' + esc(k) + '">' + esc(k) + '</button>'; }).join('') + '</div>';
+      return;
+    }
+    var info = C.rows.filter(function (r) { return key(r[0]) === exact; })[0];
+    var items = R.rows.filter(function (r) { return key(r[0]) === exact; });
+    var h = '<div class="lotcard"><div class="lc"><small>' + esc(C.headers[0] || 'KIKC') + '</small><span>' + esc(exact) + '</span></div>';
+    if (info) C.headers.forEach(function (hd, i) { if (i) h += '<div class="lc"><small>' + esc(hd) + '</small><span>' + (info[i] ? esc(info[i]) : '-') + '</span></div>'; });
+    else h += '<div class="lc"><small>Status</small><span class="tag warn">Belum Confirmed</span></div>';
+    h += '</div>';
+    if (items.length) {
+      h += '<div class="lnote">' + items.length + ' baris resep</div><div class="table-wrap"><table><thead><tr><th>#</th>' + R.headers.slice(1).map(function (x) { return '<th>' + esc(x) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        items.map(function (r, n) { return '<tr><td class="dim">' + (n + 1) + '</td>' + r.slice(1).map(function (c) { return '<td>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    } else h += '<div class="state">Belum ada resep untuk lot ini di sheet RESEP.</div>';
+    el.innerHTML = h;
+  }
+  function openLot() {
+    lotRender();
+    Promise.all([loadKim('resep'), loadKim('conf')]).then(lotRender)
+      .catch(function (e) { $('#lotBody').innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="lot">Coba lagi</button></div>'; });
+  }
+  var lt = null;
+  $('#qLot').addEventListener('input', function () { LOTSEL = ''; clearTimeout(lt); lt = setTimeout(lotRender, 150); });
+  document.addEventListener('click', function (e) {
+    var c = e.target.closest ? e.target.closest('[data-lot]') : null;
+    if (c) { LOTSEL = c.getAttribute('data-lot'); $('#qLot').value = LOTSEL; lotRender(); return; }
+    var r = e.target.closest ? e.target.closest('[data-retry]') : null;
+    if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.kamus = null; showView(k); }
+  });
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', kamus: 'Kamus' }, curView = 'lot';
+  function showView(name) {
+    curView = name;
+    Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
+    $$('.tab').forEach(function (b) { var on = b.getAttribute('data-view') === name; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+    if (name === 'lot') openLot(); else openTable(name, VIEWS[name]);
+  }
+  $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); }); });
+  $('#btnRefresh').addEventListener('click', function () {
+    KIM.resep = KIM.conf = KIM.kamus = null;
+    Promise.all(['resep', 'conf', 'kamus'].map(function (k) { return loadKim(k, true).catch(function () { /* ditampilkan saat tab dibuka */ }); })).then(function () { showView(curView); toast('Data Kimia diperbarui.', 'ok', 2000); });
+  });
+  showView('lot');
 })();
 </script>
 </body>
