@@ -777,6 +777,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
           <p class="hint-sm" id="newNote" hidden style="margin:6px 2px 0;color:var(--lime)">KIKC baru (tidak ada di sheet WOD/RPH/GRM): No benang, Warna, Kg, Cone, dan Keterangan KIKC dikosongkan. Mesin bisa diisi manual.</p>
           <div class="hud" id="hud">
             <div class="cell w3"><small>No benang</small><span data-f="noBenang" class="empty">-</span></div>
+            <div class="cell w3"><small>Supplier</small><span data-f="supplier" class="empty">-</span></div>
             <div class="cell w3"><small>Warna</small><span data-f="warna" class="empty">-</span></div>
             <div class="cell w3"><small>Kg</small><span data-f="kg" class="empty">-</span></div>
             <div class="cell w3"><small>Cone</small><span data-f="cone" class="empty">-</span></div>
@@ -1117,7 +1118,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <div class="table-wrap hidden" id="wMiss">
         <table>
           <thead><tr>
-            <th class="l-s l-s0 l-last">KIKC</th><th>No benang</th><th>Warna</th><th>Mesin</th><th>Kg</th><th>Cone</th><th>Shift</th><th>Grup</th><th>Tgl Celup</th><th>Posisi terakhir</th><th>QC</th><th>Keterangan</th><th>Lewat</th><th>Input terakhir</th>
+            <th class="l-s l-s0 l-last">KIKC</th><th>No benang</th><th>Supplier</th><th>Warna</th><th>Mesin</th><th>Kg</th><th>Cone</th><th>Shift</th><th>Grup</th><th>Tgl Celup</th><th>Posisi terakhir</th><th>QC</th><th>Keterangan</th><th>Lewat</th><th>Input terakhir</th>
           </tr></thead>
           <tbody id="bMiss"></tbody>
         </table>
@@ -1239,6 +1240,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
           <div class="label"><span>Ikut KIKC</span><span class="opt">tidak bisa diubah langsung</span></div>
           <div class="hud" id="eHud">
             <div class="cell w3"><small>No benang</small><span data-f="noBenang" class="empty">-</span></div>
+            <div class="cell w3"><small>Supplier</small><span data-f="supplier" class="empty">-</span></div>
             <div class="cell w3"><small>Warna</small><span data-f="warna" class="empty">-</span></div>
             <div class="cell w3"><small>Kg</small><span data-f="kg" class="empty">-</span></div>
             <div class="cell w3"><small>Cone</small><span data-f="cone" class="empty">-</span></div>
@@ -3448,7 +3450,7 @@ var Code128 = (function () {
   function missFiltered() {
     var q = nq(MS.query.trim()), d = MS.data;
     return (d && d.rows ? d.rows : []).filter(function (r) {
-      return !q || nq([r.kikc, r.noBenang, r.warna, r.mesin, r.posisi, r.qc, r.keterangan].join(' ')).indexOf(q) >= 0;
+      return !q || nq([r.kikc, r.noBenang, r.supplier, r.warna, r.mesin, r.posisi, r.qc, r.keterangan].join(' ')).indexOf(q) >= 0;
     });
   }
   function renderMiss() {
@@ -3480,7 +3482,7 @@ var Code128 = (function () {
     $('#bMiss').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
       return '<tr><td class="l-s l-s0 l-last">' + esc(r.kikc) + '</td>' +
-        '<td>' + esc(r.noBenang) + '</td><td>' + esc(r.warna) + '</td><td>' + esc(r.mesin) + '</td>' +
+        '<td>' + esc(r.noBenang) + '</td><td>' + esc(r.supplier) + '</td><td>' + esc(r.warna) + '</td><td>' + esc(r.mesin) + '</td>' +
         '<td class="num">' + esc(r.kg) + '</td><td class="num">' + esc(r.cone) + '</td>' +
         '<td>' + esc(shiftLabel(r.shift)) + '</td><td>' + esc(r.grup) + '</td>' +
         '<td class="date">' + esc(r.tglCelup) + '</td>' +
@@ -3528,10 +3530,10 @@ var Code128 = (function () {
   $('#btnCsvMiss').addEventListener('click', function () {
     var rows = missFiltered();
     if (!rows.length) { toast('Tidak ada lot outstanding untuk diunduh.', 'warn'); return; }
-    var hd = ['KIKC', 'NO BENANG', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'LEWAT (HARI)', 'INPUT TERAKHIR'];
+    var hd = ['KIKC', 'NO BENANG', 'SUPPLIER', 'WARNA', 'MESIN', 'KG', 'CONE', 'SHIFT', 'GRUP', 'TGL CELUP', 'POSISI TERAKHIR', 'QC', 'KETERANGAN', 'LEWAT (HARI)', 'INPUT TERAKHIR'];
     var cell = function (v) { v = v === undefined || v === null ? '' : String(v); if (/^[=+@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
     var lines = [hd.map(cell).join(';')];
-    rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.hari, r.waktu].map(cell).join(';')); });
+    rows.forEach(function (r) { lines.push([r.kikc, r.noBenang, r.supplier, r.warna, r.mesin, r.kg, r.cone, shiftLabel(r.shift), r.grup, r.tglCelup, r.posisi, r.qc, r.keterangan, r.hari, r.waktu].map(cell).join(';')); });
     var name = 'Lot_Outstanding_' + MS.date.replace(/-/g, '') + '.csv';
     downloadBlob(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), name);
     toast(rows.length + ' baris diunduh: ' + name, 'ok');
