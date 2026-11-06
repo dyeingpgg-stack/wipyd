@@ -1339,7 +1339,7 @@
   function dvBase() {
     var q = nq(dv.query).trim();
     if (!q) return dv.rows;
-    return dv.rows.filter(function (r) { return nq([r.kikc, r.noBenang, r.warna, r.mesin, r.celup, r.pack].join(' ')).indexOf(q) >= 0; });
+    return dv.rows.filter(function (r) { return nq([r.kikc, r.noBenang, r.supplier, r.warna, r.mesin, r.celup, r.pack].join(' ')).indexOf(q) >= 0; });
   }
   function dvStats(rows) {
     var c = { tepat: 0, toleransi: 0, telat: 0, cek: 0 }, kg = { tepat: 0, toleransi: 0, telat: 0 }, n = 0, sum = 0, max = 0;
@@ -1403,11 +1403,11 @@
     if (dv.page > pages) dv.page = pages;
     if (dv.page < 1) dv.page = 1;
     var start = (dv.page - 1) * ps, shown = list.slice(start, start + ps);
-    $('#hDlv').innerHTML = '<th class="l-s l-s0 l-last">KIKC</th><th>NO BENANG</th><th>WARNA</th><th>MESIN</th><th class="r">KG</th><th>TGL CELUP</th><th>TGL PACK</th><th class="r">LAMA (HARI)</th><th class="r">LEWAT BATAS</th><th>STATUS</th>';
+    $('#hDlv').innerHTML = '<th class="l-s l-s0 l-last">KIKC</th><th>NO BENANG</th><th>SUPPLIER</th><th>WARNA</th><th>MESIN</th><th class="r">KG</th><th>TGL CELUP</th><th>TGL PACK</th><th class="r">LAMA (HARI)</th><th class="r">LEWAT BATAS</th><th>STATUS</th>';
     $('#bDlv').innerHTML = shown.map(function (r) {
       var dash = '<span class="dim">-</span>', over = r.status !== 'cek' && r.hari > dv.batas ? '+' + (r.hari - dv.batas) : '';
       return '<tr><td class="l-s l-s0 l-last">' + esc(r.kikc) + '</td>' +
-        '<td>' + (r.noBenang ? esc(r.noBenang) : dash) + '</td><td>' + (r.warna ? esc(r.warna) : dash) + '</td><td>' + (r.mesin ? esc(r.mesin) : dash) + '</td>' +
+        '<td>' + (r.noBenang ? esc(r.noBenang) : dash) + '</td><td>' + (r.supplier ? esc(r.supplier) : dash) + '</td><td>' + (r.warna ? esc(r.warna) : dash) + '</td><td>' + (r.mesin ? esc(r.mesin) : dash) + '</td>' +
         '<td class="r num">' + (r.kg ? fmtNum(r.kg) : dash) + '</td>' +
         '<td class="date">' + (r.celup ? esc(r.celup) : dash) + '</td><td class="date">' + esc(r.pack) + '</td>' +
         '<td class="r num">' + (r.hari === null ? dash : r.hari) + '</td><td class="r num">' + (over || dash) + '</td>' +

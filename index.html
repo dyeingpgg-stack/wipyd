@@ -2416,7 +2416,7 @@ var Code128 = (function () {
   });
 
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
-  function listCacheKey(k) { return 'wipyd_list4_' + k; }
+  function listCacheKey(k) { return 'wipyd_list5_' + k; }
   function restoreList(k) {
     if (k === 'plan') return;   // Plan per tanggal dari sheet Plan Harian: tidak disimpan di HP
     var m = lst[k];
