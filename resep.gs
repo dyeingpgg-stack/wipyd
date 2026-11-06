@@ -67,10 +67,12 @@ function rspSyncResep() {
   rspTulis_(ss.getSheetByName("RESEP"), [header].concat(rows), 6);
 }
 
-// 4. Booking <- total JML bahan (RESEP kolom F) dari lot yang ada di C.dbb
-//    Lot cocok bila NO_KIKC = wod_no, KODE_RESEP = dye_rec_no, NO_BON = no_bon (3 kunci, baris C.dbb ganda dihitung sekali).
+// 4. Booking <- total JML bahan (RESEP kolom F, satuan GRAM) dari lot yang ada di C.dbb
+//    Lot cocok bila NO_KIKC = wod_no, KODE_RESEP = dye_rec_no dan NO_BON = no_bon. Jika no_bon lot itu tidak ada di RESEP
+//    (nomor bon bisa beda antara RESEP dan C.dbb), dipakai pasangan wod_no + dye_rec_no saja. Baris RESEP dihitung sekali.
 //    Item cocok menurut nama: Booking kolom C = RESEP kolom E (Item Kamus), huruf besar/kecil dan spasi diabaikan.
-//    Hasil ditulis ke Booking kolom D (total JML dalam GRAM, sama dengan RESEP) dan kolom E (Kg = D / 1000). Kolom A..C tidak disentuh.
+//    Hasil: Booking kolom D (gram) dan kolom E (Kg = D / 1000). Kolom A..C tidak disentuh.
+//    Mengembalikan ringkasan (dipakai tombol di Page 3 untuk menunjukkan apa yang cocok).
 function rspSyncBooking() {
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
   const norm = v => String(v).replace(/\s+/g, " ").trim().toUpperCase();
@@ -80,35 +82,57 @@ function rspSyncBooking() {
     return isNaN(n) ? 0 : n;
   };
 
-  // lot yang dihitung: dari C.dbb (wod_no, dye_rec_no, no_bon)
-  const lot = new Set();
-  ss.getSheetByName("C.dbb").getDataRange().getValues().slice(1).forEach(r => {
-    if (String(r[0]).trim() === "") return;
-    lot.add([norm(r[0]), norm(r[1]), norm(r[2])].join("||"));
+  const cdbb = ss.getSheetByName("C.dbb").getDataRange().getValues().slice(1).filter(r => String(r[0]).trim() !== "");
+  const resep = ss.getSheetByName("RESEP").getDataRange().getValues().slice(1);
+
+  // indeks RESEP: kunci 3 (kikc||resep||bon) dan kunci 2 (kikc||resep) => daftar nomor baris
+  const k3 = {}, k2 = {};
+  resep.forEach((r, i) => {
+    const a = norm(r[0]), c = norm(r[2]), bn = norm(r[1]);
+    (k3[a + "||" + c + "||" + bn] = k3[a + "||" + c + "||" + bn] || []).push(i);
+    (k2[a + "||" + c] = k2[a + "||" + c] || []).push(i);
   });
 
-  // jumlahkan JML per item dari RESEP (A = NO_KIKC, B = NO_BON, C = KODE_RESEP, E = Item, F = JML)
+  const pakai = new Set();   // nomor baris RESEP yang dihitung (tiap baris sekali)
+  let lotCocok = 0;
+  const lotSeen = new Set();
+  cdbb.forEach(r => {
+    const a = norm(r[0]), c = norm(r[1]), bn = norm(r[2]);
+    const key = a + "||" + c + "||" + bn;
+    if (lotSeen.has(key)) return;
+    lotSeen.add(key);
+    const rows = k3[key] || k2[a + "||" + c] || [];
+    if (rows.length) lotCocok++;
+    rows.forEach(i => pakai.add(i));
+  });
+
   const total = {};
-  ss.getSheetByName("RESEP").getDataRange().getValues().slice(1).forEach(r => {
-    if (!lot.has([norm(r[0]), norm(r[2]), norm(r[1])].join("||"))) return;
-    const item = norm(r[4]);
+  pakai.forEach(i => {
+    const item = norm(resep[i][4]);
     if (!item) return;
-    total[item] = (total[item] || 0) + angka(r[5]);
+    total[item] = (total[item] || 0) + angka(resep[i][5]);
   });
 
   const sh = ss.getSheetByName("Booking");
   const last = sh.getLastRow();
-  if (last < 2) return { item: 0, terisi: 0 };
+  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [] };
+  if (last < 2) return ringkas;
   const items = sh.getRange(2, 3, last - 1, 1).getValues();
+  const dikenal = new Set();
   const out = items.map(r => {
     const k = norm(r[0]);
     if (!k) return ["", ""];
+    dikenal.add(k);
     const t = Math.round((total[k] || 0) * 100) / 100;
     return [t, Math.round(t * 10) / 10000];
   });
   sh.getRange(1, 4, 1, 2).setValues([["Booking", "Booking (Kg)"]]);
   sh.getRange(2, 4, out.length, 2).setValues(out);
-  return { item: out.filter(x => x[0] !== "").length, terisi: out.filter(x => x[0] > 0).length };
+  ringkas.item = out.filter(x => x[0] !== "").length;
+  ringkas.terisi = out.filter(x => x[0] > 0).length;
+  // item yang dipakai di resep tetapi namanya tidak ada di sheet Booking (maks. 5 contoh)
+  Object.keys(total).forEach(k => { if (!dikenal.has(k) && ringkas.tanpaItem.length < 5) ringkas.tanpaItem.push(k); });
+  return ringkas;
 }
 
 // Urutan penting: Kamus dulu, lalu C.dbb, RESEP, terakhir Booking

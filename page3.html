@@ -973,7 +973,11 @@
     gs('hitungBooking', MODE, !!semua).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
-      toast('Selesai.' + (r.item !== undefined ? ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking.' : ''), 'ok', 5000);
+      var msg = 'Selesai.';
+      if (r.item !== undefined) msg += ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking. Lot C.dbb: ' + r.lot + ', ketemu di RESEP: ' + r.lotCocok + ', baris resep dihitung: ' + r.baris + '.';
+      if (r.item !== undefined && !r.terisi) msg += ' Tidak ada yang cocok.';
+      if (r.tanpaItem && r.tanpaItem.length) msg += ' Item resep yang tidak ada di sheet Booking: ' + r.tanpaItem.join(', ') + '.';
+      toast(msg, r.terisi ? 'ok' : 'warn', 15000);
       return loadKim('booking', true).then(function () { showTable('booking', 'Booking', $('#qBooking').value); });
     }).catch(function (e) { toast('Gagal. ' + errMsg(e), 'err', 8000); })
       .then(function () { b1.disabled = b2.disabled = false; });
