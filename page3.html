@@ -757,6 +757,7 @@
         <button type="button" class="btn-sm" id="btnHitung">Hitung Booking</button>
         <button type="button" class="btn-sm" id="btnSemua">Sinkron semua &amp; hitung</button>
       </div>
+      <div class="lnote" id="bkInfo" style="display:none;line-height:1.5"></div>
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qBooking" type="search" placeholder="Cari item Booking" autocomplete="off" aria-label="Cari Booking"></div>
       <div class="lnote" id="nBooking"></div><div class="lstate" id="sBooking"></div>
@@ -974,10 +975,15 @@
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
       var msg = 'Selesai.';
-      if (r.item !== undefined) msg += ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking. Lot C.dbb: ' + r.lot + ', ketemu di RESEP: ' + r.lotCocok + ', baris resep dihitung: ' + r.baris + '.';
-      if (r.item !== undefined && !r.terisi) msg += ' Tidak ada yang cocok.';
-      if (r.tanpaItem && r.tanpaItem.length) msg += ' Item resep yang tidak ada di sheet Booking: ' + r.tanpaItem.join(', ') + '.';
-      toast(msg, r.terisi ? 'ok' : 'warn', 15000);
+      if (r.item !== undefined) {
+        if (r.versi !== '3') msg = 'PERHATIAN: file resep.gs di Apps Script masih versi lama. Ganti isinya dengan resep.gs terbaru, lalu Deploy versi baru. ';
+        msg += ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking.';
+        if (r.lot !== undefined) msg += ' Lot C.dbb: ' + r.lot + ', ketemu di RESEP: ' + r.lotCocok + ', baris resep dihitung: ' + r.baris + '.';
+        if (r.contoh) msg += ' Contoh lot tak cocok: ' + r.contoh + '.';
+        if (r.tanpaItem && r.tanpaItem.length) msg += ' Item resep yang tidak ada di sheet Booking: ' + r.tanpaItem.join(', ') + '.';
+      }
+      var bi = $('#bkInfo'); bi.textContent = msg; bi.style.display = '';
+      toast(msg, r.terisi ? 'ok' : 'warn', 8000);
       return loadKim('booking', true).then(function () { showTable('booking', 'Booking', $('#qBooking').value); });
     }).catch(function (e) { toast('Gagal. ' + errMsg(e), 'err', 8000); })
       .then(function () { b1.disabled = b2.disabled = false; });

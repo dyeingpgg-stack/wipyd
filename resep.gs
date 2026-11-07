@@ -85,24 +85,32 @@ function rspSyncBooking() {
   const cdbb = ss.getSheetByName("C.dbb").getDataRange().getValues().slice(1).filter(r => String(r[0]).trim() !== "");
   const resep = ss.getSheetByName("RESEP").getDataRange().getValues().slice(1);
 
-  // indeks RESEP: kunci 3 (kikc||resep||bon) dan kunci 2 (kikc||resep) => daftar nomor baris
-  const k3 = {}, k2 = {};
-  resep.forEach((r, i) => {
-    const a = norm(r[0]), c = norm(r[2]), bn = norm(r[1]);
-    (k3[a + "||" + c + "||" + bn] = k3[a + "||" + c + "||" + bn] || []).push(i);
-    (k2[a + "||" + c] = k2[a + "||" + c] || []).push(i);
-  });
+  // indeks RESEP per KIKC (tanpa spasi/tanda baca). Lot cocok bila KIKC sama DAN kode resep sama (atau salah satunya awalan dari yang lain,
+  // mis. 10 vs 12 karakter) DAN no bon sama. Jika no bon tidak cocok, cukup KIKC + kode resep. Tiap baris RESEP dihitung sekali.
+  const kc = v => String(v).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const porsiSama = (x, y) => x !== "" && y !== "" && (x === y || x.indexOf(y) === 0 || y.indexOf(x) === 0);
+  const byKikc = {};
+  resep.forEach((r, i) => { (byKikc[kc(r[0])] = byKikc[kc(r[0])] || []).push(i); });
 
-  const pakai = new Set();   // nomor baris RESEP yang dihitung (tiap baris sekali)
-  let lotCocok = 0;
+  const pakai = new Set();   // nomor baris RESEP yang dihitung
+  let lotCocok = 0, contoh = "";
   const lotSeen = new Set();
   cdbb.forEach(r => {
-    const a = norm(r[0]), c = norm(r[1]), bn = norm(r[2]);
+    const a = kc(r[0]), c = kc(r[1]), bn = kc(r[2]);
     const key = a + "||" + c + "||" + bn;
     if (lotSeen.has(key)) return;
     lotSeen.add(key);
-    const rows = k3[key] || k2[a + "||" + c] || [];
+    const kand = (byKikc[a] || []).filter(i => porsiSama(kc(resep[i][2]), c));
+    const rows = kand.filter(i => kc(resep[i][1]) === bn).length ? kand.filter(i => kc(resep[i][1]) === bn) : kand;
     if (rows.length) lotCocok++;
+    else if (!contoh) {   // contoh lot pertama yang tidak cocok, untuk diagnosa
+      const ada = byKikc[a] || [];
+      contoh = String(r[0]).trim() + " / " + String(r[1]).trim() + " / " + String(r[2]).trim() + ": " +
+        (ada.length ? "KIKC ada di RESEP (" + ada.length + " baris), kode resep di RESEP: " +
+          Array.from(new Set(ada.map(i => String(resep[i][2]).trim()))).slice(0, 3).join(", ") + "; bon: " +
+          Array.from(new Set(ada.map(i => String(resep[i][1]).trim()))).slice(0, 3).join(", ")
+          : "KIKC tidak ada di RESEP");
+    }
     rows.forEach(i => pakai.add(i));
   });
 
@@ -115,7 +123,7 @@ function rspSyncBooking() {
 
   const sh = ss.getSheetByName("Booking");
   const last = sh.getLastRow();
-  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [] };
+  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [], contoh: contoh, versi: "3" };
   if (last < 2) return ringkas;
   const items = sh.getRange(2, 3, last - 1, 1).getValues();
   const dikenal = new Set();
