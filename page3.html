@@ -1024,9 +1024,23 @@
     if (name === 'lot') openLot(); else openTable(name, VIEWS[name]);
   }
   $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); }); });
+  var refreshing = false;
   $('#btnRefresh').addEventListener('click', function () {
-    KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
-    Promise.all(['resep', 'conf', 'kamus', 'booking'].map(function (k) { return loadKim(k, true).catch(function () { /* ditampilkan saat tab dibuka */ }); })).then(function () { showView(curView); toast('Data Kimia diperbarui.', 'ok', 2000); });
+    if (refreshing) return;
+    refreshing = true;
+    var btn = $('#btnRefresh'); btn.disabled = true;
+    toast('Memuat ulang data...', 'ok', 60000);
+    var need = curView === 'lot' ? ['resep', 'conf'] : [curView];   // hanya data tab yang sedang dibuka (RESEP besar, jadi tidak semua dimuat)
+    Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
+      showView(curView); toast('Data diperbarui.', 'ok', 2500);
+    }).catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
+      .then(function () { refreshing = false; btn.disabled = false; });
+  });
+  // Ketuk dua kali logo / judul: tampil / ubah URL server (aplikasi di hosting statis), sama seperti Home dan Page 2
+  $('.brand').addEventListener('dblclick', function () {
+    if (IN_GAS) return;
+    if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
+    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null; showView(curView); }
   });
   /* Tombol Booking: jalankan skrip hitung dari aplikasi (Admin) */
   if (MODE !== 'admin') $('#bkBar').style.display = 'none';
