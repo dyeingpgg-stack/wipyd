@@ -313,6 +313,10 @@
   .tag.warn{color:var(--amber);border-color:rgba(var(--a-rgb),.65)}
   .tag.bad{color:var(--rose);border-color:rgba(var(--r-rgb),.65)}
   .dim{color:var(--dim)}
+  .scrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}.scrow[hidden]{display:none}
+  .sc{padding:12px 14px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);min-width:0}
+  .sc small{display:block;color:var(--dim);font-size:12px;letter-spacing:.04em}.sc b{display:block;font:700 24px var(--display);color:var(--cyan);margin-top:2px;word-break:break-all}
+  .sc span{display:block;color:var(--dim);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bkbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
   #tableState{flex:1}
   .state{padding:36px 12px;text-align:center;color:var(--dim);font-size:15px}
@@ -750,6 +754,11 @@
     <section class="view list" id="viewConf" aria-label="Lot Confirmed">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
+      <div class="scrow" id="scConf" hidden>
+        <div class="sc"><small>LOTS</small><b id="scLots">0</b><span id="scItem"></span></div>
+        <div class="sc"><small>JUMLAH GRAM</small><b id="scGram">0</b></div>
+        <div class="sc"><small>JUMLAH KG</small><b id="scKg">0</b></div>
+      </div>
       <div class="lnote" id="nConf"></div><div class="lstate" id="sConf"></div>
       <div class="table-wrap hidden" id="wConf"><table><thead><tr id="hConf"></tr></thead><tbody id="bConf"></tbody></table></div>
       <div class="pager" id="pConf" hidden>
@@ -920,10 +929,69 @@
     var n = parseFloat(s);
     return isNaN(n) ? 0 : n;
   }
+  var fmtId = function (n, d) { return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toLocaleString('id-ID', { maximumFractionDigits: d }); };
+  /* Lot Confirmed: bila kata cari cocok dengan NAMA KIMIA di RESEP, tampilkan lot Confirmed yang resepnya memakai bahan itu + total gramnya */
+  var RIDX = null;
+  function resepIndex() {
+    if (RIDX && RIDX.src === KIM.resep) return RIDX;
+    var byK = {}, names = {};
+    KIM.resep.rows.forEach(function (r, i) { var k = kc(r[0]); (byK[k] = byK[k] || []).push(i); names[r[4]] = 1; });
+    RIDX = { src: KIM.resep, byK: byK, names: Object.keys(names) };
+    return RIDX;
+  }
+  function kc(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function prefSama(x, y) { return x !== '' && y !== '' && (x === y || x.indexOf(y) === 0 || y.indexOf(x) === 0); }
+  function confByItem(q) {
+    var ix = resepIndex(), R = KIM.resep.rows;
+    var hit = ix.names.filter(function (n) { return nq(n).indexOf(q) >= 0; });
+    if (!hit.length) return null;
+    var isHit = {}; hit.forEach(function (n) { isHit[n] = 1; });
+    var used = {}, seen = {}, out = [], lots = {}, total = 0;
+    KIM.conf.rows.forEach(function (r) {
+      var a = kc(r[0]), c = kc(r[1]), bn = kc(r[2]), key = a + '|' + c + '|' + bn;
+      if (!a || seen[key]) return;
+      seen[key] = 1;
+      var kand = (ix.byK[a] || []).filter(function (i) { return prefSama(kc(R[i][2]), c); });
+      var tepat = kand.filter(function (i) { return kc(R[i][1]) === bn; });
+      var g = 0, any = false;
+      (tepat.length ? tepat : kand).forEach(function (i) {
+        if (used[i]) return;
+        used[i] = 1;
+        if (isHit[R[i][4]]) { g += numId(R[i][5]); any = true; }
+      });
+      if (!any) return;
+      lots[a] = 1; total += g;
+      out.push(r.concat([fmtId(g, 2)]));
+    });
+    return { rows: out, lots: Object.keys(lots).length, gram: total, names: hit };
+  }
+  function resepBlocksNewestFirst(rows) {   // lot terbaru (blok paling bawah) di atas, urutan baris di dalam lot tetap seperti di sheet
+    var blocks = [], cur = null, key = null;
+    rows.forEach(function (r) {
+      var k = r[0] + '|' + r[1] + '|' + r[2];
+      if (k !== key) { cur = []; blocks.push(cur); key = k; }
+      cur.push(r);
+    });
+    var out = [];
+    for (var i = blocks.length - 1; i >= 0; i--) for (var j = 0; j < blocks[i].length; j++) out.push(blocks[i][j]);
+    return out;
+  }
   function showTable(k, id, query) {
-    var d = KIM[k], q = nq(query.trim()), hd = d.headers;
+    var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
+    if (k === 'conf' && q.length >= 3 && KIM.resep) { info = confByItem(q); if (info) hd = hd.concat(['GRAM']); }
+    var sc = $('#scConf');
+    if (sc) {
+      sc.hidden = !info;
+      if (info) {
+        $('#scLots').textContent = fmtId(info.lots, 0);
+        $('#scGram').textContent = fmtId(info.gram, 2);
+        $('#scKg').textContent = fmtId(info.gram / 1000, 3);
+        $('#scItem').textContent = info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok';
+      }
+    }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
-    var rows = d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    if (k === 'resep') rows = resepBlocksNewestFirst(rows);
     var heads = null, missingCols = false;   // judul tampil per kolom (khusus Booking)
     if (k === 'booking') {   // hanya yang ada Booking, terbesar di atas, nomor urut virtual (kolom No di sheet disembunyikan)
       var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
@@ -966,7 +1034,11 @@
   }
   [['resep', 'Resep'], ['conf', 'Conf'], ['kamus', 'Kamus'], ['booking', 'Booking']].forEach(function (p) {
     var t = null;
-    $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { PG[p[0]] = 1; if (KIM[p[0]]) showTable(p[0], p[1], $('#q' + p[1]).value); }, 150); });
+    $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
+      PG[p[0]] = 1;
+      if (KIM[p[0]]) showTable(p[0], p[1], $('#q' + p[1]).value);
+      if (p[0] === 'conf' && $('#q' + p[1]).value.trim().length >= 3 && !KIM.resep) loadKim('resep').then(function () { showTable('conf', 'Conf', $('#qConf').value); }).catch(function () { /* tetap pencarian biasa */ });
+    }, 150); });
   });
   /* Resep per Lot: ketik KIKC, kartu info (dari Lot Confirmed) + daftar bahan (dari Resep) */
   function lotRender() {
