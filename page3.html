@@ -901,10 +901,16 @@
   var KIM = { resep: null, conf: null, kamus: null, booking: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+  var LABEL = {
+    resep: ['KIKC', 'NO DBB', 'KODE RESEP', 'KODE BRG', 'NAMA KIMIA', 'GRAM'],
+    conf: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS']
+  };
+  function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
   function loadKim(k, force) {
     if (KIM[k] && !force) return Promise.resolve(KIM[k]);
     return gs('getKimia', k, !!force).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      r.headers = (r.headers || []).map(function (h, i) { return relabel(k, h, i); });
       KIM[k] = r; return r;
     });
   }
@@ -918,18 +924,22 @@
     var d = KIM[k], q = nq(query.trim()), hd = d.headers;
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    var hl = hd.slice();   // judul tampil per kolom
     if (k === 'booking') {   // hanya yang ada Booking, terbesar di atas, nomor urut virtual (kolom No di sheet disembunyikan)
-      var ib = hd.findIndex(function (h) { return /^booking$/i.test(h); }), ino = hd.findIndex(function (h) { return /^no\.?$/i.test(h); });
+      var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
+      var ib = fi(/^booking$/i), ikg = fi(/^booking \(kg\)$/i), ie = fi(/^kode erp$/i), it = fi(/^item$/i), il = fi(/^lot$/i), iy = fi(/^kode entry$/i);
       if (ib >= 0) {
         var before = rows.length;
         rows = rows.filter(function (r) { return numId(r[ib]) > 0; });
         hidden = before - rows.length;
         rows.sort(function (x, y) { return numId(y[ib]) - numId(x[ib]); });
-        if (ino >= 0) cols = cols.filter(function (i) { return i !== ino; });
+        var def = [[iy, 'KODE ENTRY'], [ie, 'KODE KIMIA'], [it, 'NAMA KIMIA'], [il, 'LOT'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)']].filter(function (x) { return x[0] >= 0; });
+        cols = def.map(function (x) { return x[0]; });
+        def.forEach(function (x) { hl[x[0]] = x[1]; });
         virt = true;
       }
     }
-    $('#h' + id).innerHTML = (virt ? '<th class="l-s l-s0 l-last">#</th>' : '') + cols.map(function (i, p) { return '<th' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(hd[i]) + '</th>'; }).join('');
+    $('#h' + id).innerHTML = (virt ? '<th class="l-s l-s0 l-last">#</th>' : '') + cols.map(function (i, p) { return '<th' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(hl[i]) + '</th>'; }).join('');
     var ps = pageSize(), pages = Math.max(1, Math.ceil(rows.length / ps)), pg = 1, from = 0, to = MAXROWS;
     if (PAGED[k]) { if (PG[k] > pages) PG[k] = pages; if (PG[k] < 1) PG[k] = 1; pg = PG[k]; from = (pg - 1) * ps; to = from + ps; }
     var pagerEl = $('#p' + id);
@@ -1028,7 +1038,7 @@
       KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
       var msg = 'Selesai.';
       if (r.item !== undefined) {
-        if (r.versi !== '3') msg = 'PERHATIAN: file resep.gs di Apps Script masih versi lama. Ganti isinya dengan resep.gs terbaru, lalu Deploy versi baru. ';
+        if (r.versi !== '4') msg = 'PERHATIAN: file resep.gs di Apps Script masih versi lama. Ganti isinya dengan resep.gs terbaru, lalu Deploy versi baru. ';
         msg += ' ' + r.terisi + ' dari ' + r.item + ' item punya Booking.';
         if (r.lot !== undefined) msg += ' Lot C.dbb: ' + r.lot + ', ketemu di RESEP: ' + r.lotCocok + ', baris resep dihitung: ' + r.baris + '.';
         if (r.contoh) msg += ' Contoh lot tak cocok: ' + r.contoh + '.';

@@ -71,7 +71,7 @@ function rspSyncResep() {
 //    Lot cocok bila NO_KIKC = wod_no, KODE_RESEP = dye_rec_no dan NO_BON = no_bon. Jika no_bon lot itu tidak ada di RESEP
 //    (nomor bon bisa beda antara RESEP dan C.dbb), dipakai pasangan wod_no + dye_rec_no saja. Baris RESEP dihitung sekali.
 //    Item cocok menurut nama: Booking kolom C = RESEP kolom E (Item Kamus), huruf besar/kecil dan spasi diabaikan.
-//    Hasil: Booking kolom D (gram) dan kolom E (Kg = D / 1000). Kolom A..C tidak disentuh.
+//    Hasil: Booking kolom D (gram), E (Kg = D / 1000), F (Lot = jumlah KIKC berbeda yang memakai item itu), G (Kode Entry = KODE_BRG item di RESEP). Kolom A..C tidak disentuh.
 //    Mengembalikan ringkasan (dipakai tombol di Page 3 untuk menunjukkan apa yang cocok).
 function rspSyncBooking() {
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
@@ -114,28 +114,33 @@ function rspSyncBooking() {
     rows.forEach(i => pakai.add(i));
   });
 
-  const total = {};
+  const total = {}, lotPer = {}, brgPer = {};   // total gram, KIKC berbeda, dan Kode Brg (kode entry) per item
   pakai.forEach(i => {
     const item = norm(resep[i][4]);
     if (!item) return;
     total[item] = (total[item] || 0) + angka(resep[i][5]);
+    (lotPer[item] = lotPer[item] || new Set()).add(kc(resep[i][0]));
+    const brg = String(resep[i][3]).trim();
+    if (brg) { brgPer[item] = brgPer[item] || {}; brgPer[item][brg] = (brgPer[item][brg] || 0) + 1; }
   });
 
   const sh = ss.getSheetByName("Booking");
   const last = sh.getLastRow();
-  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [], contoh: contoh, versi: "3" };
+  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [], contoh: contoh, versi: "4" };
   if (last < 2) return ringkas;
+  if (sh.getMaxColumns() < 7) sh.insertColumnsAfter(sh.getMaxColumns(), 7 - sh.getMaxColumns());
   const items = sh.getRange(2, 3, last - 1, 1).getValues();
   const dikenal = new Set();
   const out = items.map(r => {
     const k = norm(r[0]);
-    if (!k) return ["", ""];
+    if (!k) return ["", "", "", ""];
     dikenal.add(k);
     const t = Math.round((total[k] || 0) * 100) / 100;
-    return [t, Math.round(t * 10) / 10000];
+    const brg = brgPer[k] ? Object.keys(brgPer[k]).sort((x, y) => brgPer[k][y] - brgPer[k][x]).slice(0, 3).join(", ") : "";
+    return [t, Math.round(t * 10) / 10000, lotPer[k] ? lotPer[k].size : 0, brg];
   });
-  sh.getRange(1, 4, 1, 2).setValues([["Booking", "Booking (Kg)"]]);
-  sh.getRange(2, 4, out.length, 2).setValues(out);
+  sh.getRange(1, 4, 1, 4).setValues([["Booking", "Booking (Kg)", "Lot", "Kode Entry"]]);
+  sh.getRange(2, 4, out.length, 4).setValues(out);
   ringkas.item = out.filter(x => x[0] !== "").length;
   ringkas.terisi = out.filter(x => x[0] > 0).length;
   // item yang dipakai di resep tetapi namanya tidak ada di sheet Booking (maks. 5 contoh)
