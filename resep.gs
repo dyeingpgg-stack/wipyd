@@ -71,7 +71,8 @@ function rspSyncResep() {
 //    Lot cocok bila NO_KIKC = wod_no, KODE_RESEP = dye_rec_no dan NO_BON = no_bon. Jika no_bon lot itu tidak ada di RESEP
 //    (nomor bon bisa beda antara RESEP dan C.dbb), dipakai pasangan wod_no + dye_rec_no saja. Baris RESEP dihitung sekali.
 //    Item cocok menurut nama: Booking kolom C = RESEP kolom E (Item Kamus), huruf besar/kecil dan spasi diabaikan.
-//    Hasil: Booking kolom D (gram), E (Kg = D / 1000), F (Lot = jumlah KIKC berbeda yang memakai item itu), G (Kode Entry = sheet Kamus kolom A), H (Kode Kimia = sheet Kamus kolom B), dicocokkan menurut nama kimia (Kamus kolom C). Kolom A..C tidak disentuh.
+//    Hasil: Booking kolom D (gram) dan E (Kg = D / 1000). Jumlah lot per item disimpan di Script Properties (bookingLot); Kode Entry, Kode Kimia dan Jumlah Lot
+//    TIDAK ditulis ke sheet: dihitung virtual saat tab Booking dibuka (lihat getKimia di Kode.gs). Kolom A..C tidak disentuh.
 //    Mengembalikan ringkasan (dipakai tombol di Page 3 untuk menunjukkan apa yang cocok).
 function rspSyncBooking() {
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
@@ -124,33 +125,24 @@ function rspSyncBooking() {
     if (brg) { brgPer[item] = brgPer[item] || {}; brgPer[item][brg] = (brgPer[item][brg] || 0) + 1; }
   });
 
-  // Kamus: nama kimia (kolom C) => Kode Entry (kolom A) dan Kode Kimia (kolom B)
-  const kamusA = {}, kamusB = {};
-  ss.getSheetByName("Kamus").getDataRange().getValues().slice(1).forEach(r => {
-    const nama = norm(r[2]);
-    if (!nama) return;
-    const a = String(r[0]).trim(), b = String(r[1]).trim();
-    if (a) (kamusA[nama] = kamusA[nama] || new Set()).add(a);
-    if (b) (kamusB[nama] = kamusB[nama] || new Set()).add(b);
-  });
-  const gabung = s => s ? Array.from(s).slice(0, 3).join(", ") : "";
-
   const sh = ss.getSheetByName("Booking");
   const last = sh.getLastRow();
-  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [], contoh: contoh, versi: "6" };
+  const ringkas = { lot: lotSeen.size, lotCocok: lotCocok, baris: pakai.size, item: 0, terisi: 0, tanpaItem: [], contoh: contoh, versi: "7" };
   if (last < 2) return ringkas;
-  if (sh.getMaxColumns() < 8) sh.insertColumnsAfter(sh.getMaxColumns(), 8 - sh.getMaxColumns());
   const items = sh.getRange(2, 3, last - 1, 1).getValues();
   const dikenal = new Set();
+  const lotMap = {};   // jumlah lot per item: disimpan di Script Properties (virtual, tidak ditulis ke sheet)
   const out = items.map(r => {
     const k = norm(r[0]);
-    if (!k) return ["", "", "", "", ""];
+    if (!k) return ["", ""];
     dikenal.add(k);
     const t = Math.round((total[k] || 0) * 100) / 100;
-    return [t, Math.round(t * 10) / 10000, lotPer[k] ? lotPer[k].size : 0, gabung(kamusA[k]), gabung(kamusB[k])];
+    if (lotPer[k]) lotMap[k] = lotPer[k].size;
+    return [t, Math.round(t * 10) / 10000];
   });
-  sh.getRange(1, 4, 1, 5).setValues([["Booking", "Booking (Kg)", "Lot", "Kode Entry", "Kode Kimia"]]);
-  sh.getRange(2, 4, out.length, 5).setValues(out);
+  sh.getRange(1, 4, 1, 2).setValues([["Booking", "Booking (Kg)"]]);
+  sh.getRange(2, 4, out.length, 2).setValues(out);
+  PropertiesService.getScriptProperties().setProperty("bookingLot", JSON.stringify(lotMap));
   ringkas.item = out.filter(x => x[0] !== "").length;
   ringkas.terisi = out.filter(x => x[0] > 0).length;
   // item yang dipakai di resep tetapi namanya tidak ada di sheet Booking (maks. 5 contoh)
