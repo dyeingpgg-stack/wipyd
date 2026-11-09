@@ -1016,7 +1016,7 @@
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
-    if (k === 'conf' || k === 'open') cols = [0, 4, 1, 2, 3].concat(info ? [5] : []);   // TANGGAL WOD tampil setelah KIKC, sebelum RECIPE
+    if (k === 'conf' || k === 'open') cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;   // TANGGAL WOD tampil setelah KIKC, sebelum RECIPE
     var heads = null, missingCols = false;   // judul tampil per kolom (khusus Booking)
     if (k === 'booking') {   // hanya yang ada Booking, terbesar di atas, nomor urut virtual (kolom No di sheet disembunyikan)
       var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
