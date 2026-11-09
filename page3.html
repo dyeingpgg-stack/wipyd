@@ -128,6 +128,7 @@
   /* ---------- Area isi ---------- */
   main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px 16px 28px;scrollbar-width:thin;scrollbar-color:rgba(var(--c-rgb),.35) transparent}
   main.is-data{overflow:hidden;display:flex;flex-direction:column;padding-bottom:12px}
+  .rcbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.rcbar .search{flex:1 1 260px}.rcbar #rcDate{flex:0 0 auto;width:auto;min-width:150px}
   .view{display:none}
   .view.active{display:block}
   #viewData.active,.view.list.active{display:flex;flex-direction:column;flex:1;min-height:0}
@@ -752,6 +753,21 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section class="view list" id="viewRencana" aria-label="Rencana">
+      <div class="rcbar">
+        <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="qRencana" type="search" placeholder="Cari item Rencana" autocomplete="off" aria-label="Cari Rencana"></div>
+        <input class="input" id="rcDate" type="date" aria-label="Tanggal Plan">
+      </div>
+      <div class="scrow" id="scRencana" hidden>
+        <div class="sc"><small>LOTS</small><b id="scLotsRc">0</b><span id="scInfoRc"></span></div>
+        <div class="sc"><small>JUMLAH GRAM</small><b id="scGramRc">0</b></div>
+        <div class="sc"><small>JUMLAH KG</small><b id="scKgRc">0</b></div>
+      </div>
+      <div class="lnote" id="rcInfo" style="line-height:1.5"></div>
+      <div class="lnote" id="nRencana"></div><div class="lstate" id="sRencana"></div>
+      <div class="table-wrap hidden" id="wRencana"><table><thead><tr id="hRencana"></tr></thead><tbody id="bRencana"></tbody></table></div>
+    </section>
     <section class="view list" id="viewConf" aria-label="Lot Confirmed">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
@@ -810,6 +826,7 @@
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
   <nav class="tabbar" aria-label="Menu Page 3">
     <button type="button" class="tab active" data-view="booking" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M8 12h8M8 16h5"/></svg>Booking</button>
+    <button type="button" class="tab" data-view="rencana" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h4"/></svg>Rencana</button>
     <button type="button" class="tab" data-view="conf" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Lot Confirmed</button>
     <button type="button" class="tab" data-view="open" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lot Opened</button>
     <button type="button" class="tab" data-view="resep" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg>Resep</button>
@@ -1052,6 +1069,78 @@
     $('#s' + id).innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
     $('#w' + id).classList.toggle('hidden', !rows.length);
   }
+  /* Rencana: pemakaian kimia untuk lot di tab Plan (Page 1) pada tanggal terpilih (awal: hari ini). Gram per item = jumlah baris RESEP semua lot KIKC itu. */
+  var RC = null;
+  function isoLocal() { var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+  function rencanaHitung() {
+    var ix = resepIndex(), R = KIM.resep.rows, B = KIM.booking, hb = B.headers;
+    var fi = function (re) { return hb.findIndex(function (h) { return re.test(h); }); };
+    var ie = fi(/^kode erp$/i), it = fi(/^item$/i), iy = fi(/^kode entry$/i), ik = fi(/^kode kimia$/i);
+    var master = {};
+    B.rows.forEach(function (r) { var n = key(r[it]); if (n && !master[n]) master[n] = { y: r[iy] || '', k: r[ik] || '', e: r[ie] || '' }; });
+    var plan = RC.plan, kik = {}, noRes = [];
+    plan.rows.forEach(function (r) { var k = kc(r[0]); if (!k || kik[k]) return; if (plan.statusLot && plan.statusLot[String(r[0]).toUpperCase().replace(/\s+/g, ' ').trim()] === 'PENDING') return; kik[k] = r[0]; });
+    var tot = {}, lotsItem = {}, lotsOk = 0;
+    Object.keys(kik).forEach(function (k) {
+      var idx = ix.byK[k] || [];
+      if (!idx.length) { noRes.push(kik[k]); return; }
+      lotsOk++;
+      idx.forEach(function (i) {
+        var n = key(R[i][4]); if (!n) return;
+        tot[n] = (tot[n] || 0) + numId(R[i][5]);
+        (lotsItem[n] = lotsItem[n] || {})[k] = 1;
+      });
+    });
+    var rows = Object.keys(tot).filter(function (n) { return tot[n] > 0; }).map(function (n) {
+      var m = master[n] || { y: '', k: '', e: '' };
+      return { g: tot[n], r: [m.y, m.k, m.e, n, String(Object.keys(lotsItem[n]).length), fmtId(tot[n], 2), fmtId(tot[n] / 1000, 3)] };
+    }).sort(function (a, b) { return b.g - a.g; });
+    var gram = rows.reduce(function (a, o) { return a + o.g; }, 0);
+    return { rows: rows.map(function (o) { return o.r; }), lots: Object.keys(kik).length, lotsOk: lotsOk, noRes: noRes, gram: gram };
+  }
+  function rencanaShow() {
+    var res = rencanaHitung(), q = nq($('#qRencana').value.trim()), p = RC.plan;
+    var rows = res.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    $('#scRencana').hidden = false;
+    $('#scLotsRc').textContent = fmtId(res.lotsOk, 0);
+    $('#scInfoRc').textContent = res.lots !== res.lotsOk ? 'dari ' + res.lots + ' lot Plan' : 'lot Plan';
+    $('#scGramRc').textContent = fmtId(res.gram, 2);
+    $('#scKgRc').textContent = fmtId(res.gram / 1000, 3);
+    var msg = 'Plan tanggal ' + (p.date || '').split('-').reverse().join('/');
+    if (p.fallback) msg += ' (tanggal ' + (p.requested || '').split('-').reverse().join('/') + ' belum punya Plan, memakai Plan terakhir)';
+    msg += '. ';
+    if (!res.lots) msg += 'Tidak ada lot di Plan.';
+    if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
+    $('#rcInfo').textContent = msg;
+    var heads = ['#', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)'];
+    $('#hRencana').innerHTML = heads.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + h + '</th>'; }).join('');
+    $('#bRencana').innerHTML = rows.map(function (r, n) {
+      return '<tr><td class="l-s l-s0 l-last">' + (n + 1) + '</td>' + r.map(function (c) { return '<td>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    $('#nRencana').textContent = (q ? rows.length + ' dari ' + res.rows.length : rows.length) + ' item';
+    $('#sRencana').style.display = rows.length ? 'none' : '';
+    $('#sRencana').innerHTML = rows.length ? '' : '<div class="state">Tidak ada item yang cocok.</div>';
+    $('#wRencana').classList.toggle('hidden', !rows.length);
+  }
+  function openRencana(force) {
+    var dEl = $('#rcDate'); if (!dEl.value) dEl.value = isoLocal();
+    var iso = dEl.value;
+    $('#sRencana').style.display = ''; $('#sRencana').innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    $('#wRencana').classList.add('hidden');
+    var planP = (RC && RC.iso === iso && !force) ? Promise.resolve(RC.plan) : gs('getPlanHari', iso, true, !!force).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Plan tidak bisa dibaca.');
+      return r;
+    });
+    Promise.all([planP, loadKim('booking'), loadKim('resep')]).then(function (a) {
+      RC = { iso: iso, plan: a[0] };
+      rencanaShow();
+    }).catch(function (e) {
+      $('#sRencana').style.display = '';
+      $('#sRencana').innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="rencana">Coba lagi</button></div>';
+    });
+  }
+  $('#rcDate').addEventListener('change', function () { RC = null; openRencana(false); });
+  (function () { var t = null; $('#qRencana').addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (RC && KIM.resep && KIM.booking) rencanaShow(); }, 150); }); })();
   function openTable(k, id) {
     $('#s' + id).style.display = ''; $('#s' + id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
@@ -1113,12 +1202,12 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana' }, curView = 'booking';
   function showView(name) {
     curView = name;
     Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
     $$('.tab').forEach(function (b) { var on = b.getAttribute('data-view') === name; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
-    if (name === 'lot') openLot(); else openTable(name, VIEWS[name]);
+    if (name === 'lot') openLot(); else if (name === 'rencana') openRencana(false); else openTable(name, VIEWS[name]);
   }
   $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); }); });
   var refreshing = false;
@@ -1127,7 +1216,8 @@
     refreshing = true;
     var btn = $('#btnRefresh'); btn.disabled = true;
     toast('Memuat ulang data...', 'ok', 60000);
-    var need = curView === 'lot' ? ['resep', 'conf'] : [curView];   // hanya data tab yang sedang dibuka (RESEP besar, jadi tidak semua dimuat)
+    var need = curView === 'lot' ? ['resep', 'conf'] : curView === 'rencana' ? ['booking', 'resep'] : [curView];
+    if (curView === 'rencana') RC = null;   // hanya data tab yang sedang dibuka (RESEP besar, jadi tidak semua dimuat)
     Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
       showView(curView); toast('Data diperbarui.', 'ok', 2500);
     }).catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
