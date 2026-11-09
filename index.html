@@ -34,14 +34,14 @@
      Nama tab: wod, grm, plan, data (WIP), mesin, clp (Celup). Hanya berlaku di mode Viewer. */
   if (q === 'viewer' || q === 'admin') {
     var tl = [];
-    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
       var hm = tl.filter(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); });
       var css = '.tabbar .tab' + hm.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(hm.length, 1) + ',1fr) !important}';
       if (hm.indexOf('miss') >= 0) css += 'html[data-mode="viewer"] .tabbar #tabMiss{display:flex !important}';
       if (!tl.some(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); })) css += '#btnPage2{display:none !important}';
-      css += '#btnPage3{display:none !important}';
+      if (tl.indexOf('kimia') < 0) css += '#btnPage3{display:none !important}';
       var st = document.createElement('style');
       st.textContent = css;
       document.head.appendChild(st);
@@ -5696,13 +5696,15 @@ var Code128 = (function () {
   /* ---------- Bagikan link Viewer dan PC (hanya Admin): tombol Share membuka daftar dua link; alamat web ikut dalam teks yang dibagikan ---------- */
   (function () {
     var URLS = { viewer: '', pc: '' }, LAB = { viewer: 'Viewer', pc: 'PC' }, SB = { gas: false, base: '', pc: '' };
-    var TAB_DEFS = [['wod', 'WOD'], ['grm', 'GRM'], ['plan', 'Plan'], ['form', 'Input'], ['data', 'WIP'], ['miss', 'Outstanding'], ['mesin', 'Mesin'], ['clp', 'Celup'], ['soft', 'SOFT'], ['pack', 'Pack'], ['delivery', 'Delivery'], ['rph', 'RPH']];
+    var TAB_DEFS = [['wod', 'WOD'], ['grm', 'GRM'], ['plan', 'Plan'], ['form', 'Input'], ['data', 'WIP'], ['miss', 'Outstanding'], ['mesin', 'Mesin'], ['clp', 'Celup'], ['soft', 'SOFT'], ['pack', 'Pack'], ['delivery', 'Delivery'], ['rph', 'RPH'], ['kimia', 'Kimia']];
     var SEL = {};
     function homeTab(x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); }
     function viewerLink() {   // tab Input dipilih = link Admin terbatas (?mode=admin&tabs=); selain itu Viewer. Semua tab (kecuali Input) = link Viewer biasa
       var tl = TAB_DEFS.map(function (t) { return t[0]; }).filter(function (x) { return SEL[x]; });
       if (!tl.length) return '';
       var withForm = !!SEL.form, all = tl.length === TAB_DEFS.length, allNoForm = !withForm && tl.length === TAB_DEFS.length - 1, noHome = !tl.some(homeTab);
+      var onlyKimia = tl.length === 1 && tl[0] === 'kimia';
+      if (onlyKimia) { var pm = SB.gas ? '?page=3&mode=viewer&tabs=kimia' : '?mode=viewer&tabs=kimia'; return SB.gas ? SB.base + pm : SB.base + 'page3.html' + pm; }
       var mode = withForm ? 'admin' : 'viewer';
       if (SB.gas) return all ? SB.base : SB.base + '?mode=' + mode + (allNoForm ? '' : '&tabs=' + tl.join(',') + (noHome ? '&page=2' : ''));
       if (all) return SB.base + 'index.html';

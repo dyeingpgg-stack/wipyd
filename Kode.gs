@@ -170,7 +170,7 @@ const API_FUNCS = {
 // Alamat link Viewer (URL web app + ?mode=viewer). Dipakai tombol Bagikan di aplikasi Admin.
 // tabs (opsional) = Viewer terbatas, mis. 'plan,mesin' (hanya tab Plan dan Mesin yang tampil)
 function cleanTabs_(t) {
-  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft)$/.test(x) && a.indexOf(x) === i; });
+  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; });
 }
 // Dua link untuk tombol Share: Viewer dan PC (URL web app)
 function getShareUrls() {
