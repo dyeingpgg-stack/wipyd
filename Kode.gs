@@ -2688,7 +2688,7 @@ function tesKecepatanCariKikc() {
 // ================= Page 3: Kimia (RESEPDB) =================
 // Membaca sheet hasil sinkron resep.gs di spreadsheet RESEPDB (konstanta RSP_ID_DB dari resep.gs, satu project yang sama). Hanya baca.
 //   resep = sheet RESEP | conf = sheet C.dbb (lot Confirmed) | kamus = sheet Kamus. Baris 1 = judul kolom; kolom pertama = KIKC.
-const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking' };
+const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
 function getKimia(which, force) {
   try {
     which = str_(which).toLowerCase();
@@ -2696,6 +2696,7 @@ function getKimia(which, force) {
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
     const ck = 'kim_' + which;
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
+    if (which === 'open') { const ro = kimiaOpen_(); listCachePut_(ck, ro, 300); return ro; }
     const sh = SpreadsheetApp.openById(RSP_ID_DB).getSheetByName(KIMIA_SHEETS[which]);
     if (!sh) throw new Error('Sheet "' + KIMIA_SHEETS[which] + '" tidak ditemukan di RESEPDB.');
     const v = sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
@@ -2703,11 +2704,49 @@ function getKimia(which, force) {
     const rows = v.slice(1).map(function (r) { return r.map(function (x) { return str_(x).trim(); }); }).filter(function (r) { return r.some(function (x) { return x; }); });
     const res = { success: true, headers: headers, rows: rows, total: rows.length, name: KIMIA_SHEETS[which] };
     if (which === 'booking') kimiaBookingVirtual_(res);
+    if (which === 'conf') kimiaTanggalWod_(res);
     listCachePut_(ck, res, 300);
     return res;
   } catch (e) {
     return { error: e.message };
   }
+}
+
+// WODMETA (spreadsheet RPH, kolom B = KIKC, C = Tanggal WOD, I/J = recipe/no bon, L = status_bon). Dibaca langsung; hasil di-cache 10 menit.
+// Hasil: { tgl: {KIKC ringkas: tanggal}, headers, open: [baris OPEN] }. Tanggal hanya disimpan untuk baris Confirmed / Open.
+function kimiaWodmeta_() {
+  const hit = listCacheGet_('kimwm');
+  if (hit && hit.tgl) return hit;
+  const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
+  if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
+  const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
+  const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  const cols = [1, 8, 9, 11];
+  const headers = v.length ? cols.map(function (i) { return str_(v[0][i]).replace(/\s+/g, ' ').trim(); }).concat(['Tanggal WOD']) : [];
+  const tgl = {}, open = [];
+  v.slice(1).forEach(function (r) {
+    const st = str_(r[11]).trim().toLowerCase();
+    if (str_(r[1]).trim() === '' || (st !== 'confirmed' && st !== 'open')) return;
+    const k = kc(r[1]), d = str_(r[2]).trim();
+    if (d && !tgl[k]) tgl[k] = d;
+    if (st === 'open') open.push(cols.map(function (i) { return str_(r[i]).trim(); }).concat([d]));
+  });
+  const res = { tgl: tgl, headers: headers, open: open };
+  listCachePut_('kimwm', res, 600);
+  return res;
+}
+// Tab Lot Confirmed: kolom VIRTUAL Tanggal WOD (WODMETA kolom C, dicocokkan lewat KIKC)
+function kimiaTanggalWod_(res) {
+  let w = null;
+  try { w = kimiaWodmeta_(); } catch (e) { w = null; }
+  const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  res.headers = res.headers.slice(0, 4).concat(['Tanggal WOD']);
+  res.rows = res.rows.map(function (r) { return r.slice(0, 4).concat([w && w.tgl[kc(r[0])] ? w.tgl[kc(r[0])] : '']); });
+}
+// Tab Lot Opened: lot di WODMETA dengan status_bon (kolom L) = OPEN; kolom sama seperti Lot Confirmed
+function kimiaOpen_() {
+  const w = kimiaWodmeta_();
+  return { success: true, headers: w.headers, rows: w.open, total: w.open.length, name: 'WODMETA (OPEN)' };
 }
 
 // Tab Booking: tambah kolom VIRTUAL (tidak ada di sheet): Kode Entry = sheet Kamus kolom A, Kode Kimia = Kamus kolom B (dicocokkan menurut nama kimia = Kamus kolom C),
@@ -2785,5 +2824,6 @@ function hitungBooking(mode, semua) {
   }
   Object.keys(KIMIA_SHEETS).forEach(function (k) { try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kim_' + k + '_n'); } catch (e) { /* abaikan */ } });
   try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kimlot_n'); } catch (e) { /* abaikan */ }
+  try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kimwm_n'); } catch (e) { /* abaikan */ }
   return { success: true, item: res.item, terisi: res.terisi, lot: res.lot, lotCocok: res.lotCocok, baris: res.baris, tanpaItem: res.tanpaItem || [], contoh: res.contoh || '', versi: res.versi || '', semua: !!res.semua };
 }

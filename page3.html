@@ -32,7 +32,7 @@
       h.setAttribute('data-tabs', tl.join(','));
       var pt = tl.filter(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); });
       if (!tl.some(function (x) { return !/^kimia$/.test(x); })) { var st0 = document.createElement('style'); st0.textContent = '#btnHome{display:none !important}'; document.head.appendChild(st0); }
-      var css = '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
+      var css = tl.indexOf('kimia') >= 0 ? '' : '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
       if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';
       var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     }
@@ -770,6 +770,24 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section class="view list" id="viewOpen" aria-label="Lot Opened">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qOpen" type="search" placeholder="Cari lot Opened" autocomplete="off" aria-label="Cari lot Opened"></div>
+      <div class="scrow" id="scOpen" hidden>
+        <div class="sc"><small>LOTS</small><b id="scLotsOpen">0</b><span id="scItemOpen"></span></div>
+        <div class="sc"><small>JUMLAH GRAM</small><b id="scGramOpen">0</b></div>
+        <div class="sc"><small>JUMLAH KG</small><b id="scKgOpen">0</b></div>
+      </div>
+      <div class="lnote" id="nOpen"></div><div class="lstate" id="sOpen"></div>
+      <div class="table-wrap hidden" id="wOpen"><table><thead><tr id="hOpen"></tr></thead><tbody id="bOpen"></tbody></table></div>
+      <div class="pager" id="pOpen" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piOpen" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
     <section class="view list" id="viewKamus" aria-label="Kamus">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qKamus" type="search" placeholder="Cari di Kamus" autocomplete="off" aria-label="Cari Kamus"></div>
@@ -793,6 +811,7 @@
   <nav class="tabbar" aria-label="Menu Page 3">
     <button type="button" class="tab active" data-view="booking" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M8 12h8M8 16h5"/></svg>Booking</button>
     <button type="button" class="tab" data-view="conf" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Lot Confirmed</button>
+    <button type="button" class="tab" data-view="open" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lot Opened</button>
     <button type="button" class="tab" data-view="resep" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg>Resep</button>
     <button type="button" class="tab" data-view="lot" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Resep per Lot</button>
     <!-- Tab Kamus disembunyikan (section viewKamus tetap ada). Untuk menampilkan lagi, tambahkan tombol data-view="kamus" di sini. -->
@@ -906,14 +925,15 @@
   }
   $('#btnHome').addEventListener('click', function () { goHome(''); });
   var TABS = [];
-  var PG = { resep: 1, conf: 1 }, PAGED = { resep: 1, conf: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1 }, PAGED = { resep: 1, conf: 1, open: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
-  var KIM = { resep: null, conf: null, kamus: null, booking: null }, KQ = { lot: '' }, LOTSEL = '';
+  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
   var LABEL = {
     resep: ['KIKC', 'NO DBB', 'KODE RESEP', 'KODE BRG', 'NAMA KIMIA', 'GRAM'],
-    conf: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS']
+    conf: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD'],
+    open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
   };
   function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
   function loadKim(k, force) {
@@ -942,13 +962,13 @@
   }
   function kc(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
   function prefSama(x, y) { return x !== '' && y !== '' && (x === y || x.indexOf(y) === 0 || y.indexOf(x) === 0); }
-  function confByItem(q) {
+  function confByItem(q, kk) {
     var ix = resepIndex(), R = KIM.resep.rows;
     var hit = ix.names.filter(function (n) { return nq(n).indexOf(q) >= 0; });
     if (!hit.length) return null;
     var isHit = {}; hit.forEach(function (n) { isHit[n] = 1; });
     var used = {}, seen = {}, out = [], lots = {}, total = 0;
-    KIM.conf.rows.forEach(function (r) {
+    KIM[kk].rows.forEach(function (r) {
       var a = kc(r[0]), c = kc(r[1]), bn = kc(r[2]), key = a + '|' + c + '|' + bn;
       if (!a || seen[key]) return;
       seen[key] = 1;
@@ -962,7 +982,7 @@
       });
       if (!any) return;
       lots[a] = 1; total += g;
-      out.push({ g: g, r: r.concat([fmtId(g, 2)]) });
+      out.push({ g: g, r: r.slice(0, 5).concat([fmtId(g, 2)]) });
     });
     out.sort(function (x, y) { return y.g - x.g; });   // gram terbesar di atas (hanya mode pencarian item)
     out = out.map(function (o) { return o.r; });
@@ -981,15 +1001,16 @@
   }
   function showTable(k, id, query) {
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
-    if (k === 'conf' && q.length >= 3 && KIM.resep) { info = confByItem(q); if (info) hd = hd.concat(['GRAM']); }
-    var sc = $('#scConf');
+    var sfx = id === 'Conf' ? '' : id;
+    if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
+    var sc = $('#sc' + id);
     if (sc) {
       sc.hidden = !info;
       if (info) {
-        $('#scLots').textContent = fmtId(info.lots, 0);
-        $('#scGram').textContent = fmtId(info.gram, 2);
-        $('#scKg').textContent = fmtId(info.gram / 1000, 3);
-        $('#scItem').textContent = info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok';
+        $('#scLots' + sfx).textContent = fmtId(info.lots, 0);
+        $('#scGram' + sfx).textContent = fmtId(info.gram, 2);
+        $('#scKg' + sfx).textContent = fmtId(info.gram / 1000, 3);
+        $('#scItem' + sfx).textContent = info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok';
       }
     }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
@@ -1035,12 +1056,12 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['kamus', 'Kamus'], ['booking', 'Booking']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
       PG[p[0]] = 1;
       if (KIM[p[0]]) showTable(p[0], p[1], $('#q' + p[1]).value);
-      if (p[0] === 'conf' && $('#q' + p[1]).value.trim().length >= 3 && !KIM.resep) loadKim('resep').then(function () { showTable('conf', 'Conf', $('#qConf').value); }).catch(function () { /* tetap pencarian biasa */ });
+      if ((p[0] === 'conf' || p[0] === 'open') && $('#q' + p[1]).value.trim().length >= 3 && !KIM.resep) loadKim('resep').then(function () { showTable(p[0], p[1], $('#q' + p[1]).value); }).catch(function () { /* tetap pencarian biasa */ });
     }, 150); });
   });
   /* Resep per Lot: ketik KIKC, kartu info (dari Lot Confirmed) + daftar bahan (dari Resep) */
@@ -1080,7 +1101,7 @@
   document.addEventListener('click', function (e) {
     var pb = e.target.closest ? e.target.closest('.pager [data-pg]') : null;
     if (pb && !pb.disabled) {
-      var pk = pb.closest('section').id === 'viewResep' ? 'resep' : 'conf', pid = pk === 'resep' ? 'Resep' : 'Conf', g = pb.getAttribute('data-pg');
+      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : 'Conf', g = pb.getAttribute('data-pg');
       PG[pk] = g === 'first' ? 1 : g === 'prev' ? PG[pk] - 1 : g === 'next' ? PG[pk] + 1 : 999999;
       showTable(pk, pid, $('#q' + pid).value);
       var wr = $('#w' + pid); if (wr) wr.scrollTop = 0;
@@ -1089,9 +1110,9 @@
     var c = e.target.closest ? e.target.closest('[data-lot]') : null;
     if (c) { LOTSEL = c.getAttribute('data-lot'); $('#qLot').value = LOTSEL; lotRender(); return; }
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
-    if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null; showView(k); }
+    if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', kamus: 'Kamus', booking: 'Booking' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking' }, curView = 'booking';
   function showView(name) {
     curView = name;
     Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
@@ -1115,7 +1136,7 @@
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
     if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
-    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null; showView(curView); }
+    if (askApiUrl(API_URL)) { toast('URL server disimpan. Memuat ulang data...', 'ok'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(curView); }
   });
   /* Tombol Booking: jalankan skrip hitung dari aplikasi (Admin) */
   if (MODE !== 'admin') $('#bkBar').style.display = 'none';
@@ -1125,7 +1146,7 @@
     toast(semua ? 'Sinkron semua dan hitung Booking, mohon tunggu...' : 'Menghitung Booking...', 'ok', 60000);
     gs('hitungBooking', MODE, !!semua).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
-      KIM.resep = KIM.conf = KIM.kamus = KIM.booking = null;
+      KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null;
       var msg = 'Selesai.';
       if (r.item !== undefined) {
         if (r.versi !== '7') msg = 'PERHATIAN: file resep.gs di Apps Script masih versi lama. Ganti isinya dengan resep.gs terbaru, lalu Deploy versi baru. ';
