@@ -772,7 +772,7 @@
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
       <div class="scrow" id="scConf" hidden>
-        <div class="sc"><small>LOTS</small><b id="scLots">0</b><span id="scItem"></span></div>
+        <div class="sc"><small>JUMLAH BON</small><b id="scLots">0</b><span id="scItem"></span></div>
         <div class="sc"><small>JUMLAH GRAM</small><b id="scGram">0</b></div>
         <div class="sc"><small>JUMLAH KG</small><b id="scKg">0</b></div>
       </div>
@@ -790,7 +790,7 @@
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qOpen" type="search" placeholder="Cari lot Opened" autocomplete="off" aria-label="Cari lot Opened"></div>
       <div class="scrow" id="scOpen" hidden>
-        <div class="sc"><small>LOTS</small><b id="scLotsOpen">0</b><span id="scItemOpen"></span></div>
+        <div class="sc"><small>JUMLAH BON</small><b id="scLotsOpen">0</b><span id="scItemOpen"></span></div>
         <div class="sc"><small>JUMLAH GRAM</small><b id="scGramOpen">0</b></div>
         <div class="sc"><small>JUMLAH KG</small><b id="scKgOpen">0</b></div>
       </div>
@@ -818,6 +818,11 @@
       <div class="lnote" id="bkInfo" style="display:none;line-height:1.5"></div>
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qBooking" type="search" placeholder="Cari item Booking" autocomplete="off" aria-label="Cari Booking"></div>
+      <div class="scrow" id="scBooking" hidden>
+        <div class="sc"><small>JUMLAH BON</small><b id="scLotsBk">0</b><span id="scInfoBk"></span></div>
+        <div class="sc"><small>JUMLAH GRAM</small><b id="scGramBk">0</b></div>
+        <div class="sc"><small>JUMLAH KG</small><b id="scKgBk">0</b></div>
+      </div>
       <div class="lnote" id="nBooking"></div><div class="lstate" id="sBooking"></div>
       <div class="table-wrap hidden" id="wBooking"><table><thead><tr id="hBooking"></tr></thead><tbody id="bBooking"></tbody></table></div>
     </section>
@@ -970,6 +975,7 @@
   var fmtId = function (n, d) { return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toLocaleString('id-ID', { maximumFractionDigits: d }); };
   /* Lot Confirmed: bila kata cari cocok dengan NAMA KIMIA di RESEP, tampilkan lot Confirmed yang resepnya memakai bahan itu + total gramnya */
   var RIDX = null;
+  var BKCONF = false;
   function resepIndex() {
     if (RIDX && RIDX.src === KIM.resep) return RIDX;
     var byK = {}, names = {};
@@ -1024,10 +1030,10 @@
     if (sc) {
       sc.hidden = !info;
       if (info) {
-        $('#scLots' + sfx).textContent = fmtId(info.lots, 0);
+        $('#scLots' + sfx).textContent = fmtId(info.rows.length, 0);
         $('#scGram' + sfx).textContent = fmtId(info.gram, 2);
         $('#scKg' + sfx).textContent = fmtId(info.gram / 1000, 3);
-        $('#scItem' + sfx).textContent = info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok';
+        $('#scItem' + sfx).textContent = (info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok') + ' · ' + fmtId(info.lots, 0) + ' KIKC';
       }
     }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
@@ -1042,8 +1048,18 @@
         var before = rows.length;
         rows = rows.filter(function (r) { return numId(r[ib]) > 0; });
         hidden = before - rows.length;
+        var gsum = rows.reduce(function (t, r) { return t + numId(r[ib]); }, 0);
+        $('#scBooking').hidden = false;
+        $('#scGramBk').textContent = fmtId(gsum, 2); $('#scKgBk').textContent = fmtId(gsum / 1000, 3);
+        if (KIM.conf) {
+          var lk = {}; KIM.conf.rows.forEach(function (r) { var x = kc(r[0]) + '|' + kc(r[1]) + '|' + kc(r[2]); if (kc(r[0])) lk[x] = 1; });
+          $('#scLotsBk').textContent = fmtId(Object.keys(lk).length, 0); $('#scInfoBk').textContent = 'bon Confirmed';
+        } else {
+          $('#scLotsBk').textContent = '-'; $('#scInfoBk').textContent = 'bon Confirmed';
+          if (!BKCONF) { BKCONF = true; loadKim('conf').then(function () { if (curView === 'booking' && KIM.booking) showTable('booking', 'Booking', $('#qBooking').value); }).catch(function () { BKCONF = false; }); }
+        }
         rows.sort(function (x, y) { return numId(y[ib]) - numId(x[ib]); });
-        var def = [[iy, 'KODE ENTRY'], [ik, 'KODE KIMIA'], [ie, 'KODE ERP'], [it, 'NAMA KIMIA'], [il, 'JUMLAH LOT'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)']];
+        var def = [[it, 'NAMA KIMIA'], [il, 'JUMLAH BON'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)'], [iy, 'KODE ENTRY'], [ik, 'KODE KIMIA'], [ie, 'KODE ERP']];
         cols = def.map(function (x) { return x[0]; });
         heads = def.map(function (x) { return x[1]; });
         missingCols = def.some(function (x) { return x[0] < 0; });
@@ -1112,10 +1128,10 @@
     if (!res.lots) msg += 'Tidak ada lot di Plan.';
     if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
     $('#rcInfo').textContent = msg;
-    var heads = ['#', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)'];
+    var heads = ['#', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP'], ord = [3, 4, 5, 6, 0, 1, 2];
     $('#hRencana').innerHTML = heads.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + h + '</th>'; }).join('');
     $('#bRencana').innerHTML = rows.map(function (r, n) {
-      return '<tr><td class="l-s l-s0 l-last">' + (n + 1) + '</td>' + r.map(function (c) { return '<td>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+      return '<tr><td class="l-s l-s0 l-last">' + (n + 1) + '</td>' + ord.map(function (j) { var c = r[j]; return '<td>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
     $('#nRencana').textContent = (q ? rows.length + ' dari ' + res.rows.length : rows.length) + ' item';
     $('#sRencana').style.display = rows.length ? 'none' : '';

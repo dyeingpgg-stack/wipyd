@@ -2776,7 +2776,7 @@ function kimiaBookingVirtual_(res) {
   });
 }
 
-// Jumlah lot per item kimia: banyaknya KIKC BERBEDA di sheet C.dbb (lot Confirmed) yang resepnya (sheet RESEP) memakai item itu.
+// Jumlah BON per item kimia (bukan KIKC): banyaknya bon (NO DBB) BERBEDA di sheet C.dbb (lot Confirmed) yang resepnya (sheet RESEP) memakai item itu.
 // Lot C.dbb dicocokkan ke RESEP lewat KIKC + kode resep (awalan boleh beda panjang) + no bon; bila no bon tidak cocok cukup KIKC + kode resep. Hasil di-cache 10 menit.
 function kimiaLotMap_() {
   const hit = listCacheGet_('kimlot');
@@ -2796,13 +2796,13 @@ function kimiaLotMap_() {
     seen[key] = 1;
     const kand = (byK[a] || []).filter(function (i) { return sama(kc(resep[i][2]), c); });
     const tepat = kand.filter(function (i) { return kc(resep[i][1]) === b; });
-    (tepat.length ? tepat : kand).forEach(function (i) { pakai[i] = 1; });
+    (tepat.length ? tepat : kand).forEach(function (i) { if (!pakai[i]) pakai[i] = a + '|' + c + '|' + b; });   // nilai = kunci bon (KIKC|recipe|no bon)
   });
   const per = {};
   Object.keys(pakai).forEach(function (i) {
     const item = nm(resep[i][4]);
     if (!item) return;
-    (per[item] = per[item] || {})[kc(resep[i][0])] = 1;
+    (per[item] = per[item] || {})[pakai[i]] = 1;   // hitung BON (NO DBB) berbeda, bukan KIKC: satu KIKC bisa punya beberapa bon Confirmed
   });
   const m = {};
   Object.keys(per).forEach(function (k) { m[k] = Object.keys(per[k]).length; });
