@@ -156,6 +156,7 @@ function rspSyncAll() {
   rspSyncWodmeta();
   rspSyncResep();
   rspSyncBooking();
+  PropertiesService.getScriptProperties().setProperty("rspSyncAt", Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm"));   // waktu sinkron terakhir, ditampilkan di Page 3
 }
 
 // Jalankan SEKALI. Aman dijalankan ulang (pemicu lama dihapus dulu, tidak dobel)
@@ -163,5 +164,5 @@ function rspBuatTrigger() {
   ScriptApp.getProjectTriggers().forEach(t => {
     if (t.getHandlerFunction() === "rspSyncAll") ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger("rspSyncAll").timeBased().everyHours(1).create();
+  ScriptApp.newTrigger("rspSyncAll").timeBased().everyMinutes(30).create();   // tiap 30 menit
 }

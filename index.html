@@ -2404,7 +2404,7 @@ var Code128 = (function () {
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
-    wod: { id: 'Wod', sub: 'WOD (status B) · terbaru di atas', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
+    wod: { id: 'Wod', sub: 'WOD (status B) · urutan sheet WOD', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
     grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(TANGGAL|TGL CELUP|TGL PACK)$/ },
     plan: { id: 'Plan', sub: 'Plan Harian · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(CELUP|TANGGAL)$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
@@ -2418,7 +2418,7 @@ var Code128 = (function () {
   });
 
   function hashStr(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return t.length + ':' + h; }
-  function listCacheKey(k) { return 'wipyd_list5_' + k; }
+  function listCacheKey(k) { return 'wipyd_list6_' + k; }
   function restoreList(k) {
     if (k === 'plan') return;   // Plan per tanggal dari sheet Plan Harian: tidak disimpan di HP
     var m = lst[k];

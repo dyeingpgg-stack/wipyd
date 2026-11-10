@@ -34,6 +34,7 @@
       if (!tl.some(function (x) { return !/^kimia$/.test(x); })) { var st0 = document.createElement('style'); st0.textContent = '#btnHome{display:none !important}'; document.head.appendChild(st0); }
       var css = tl.indexOf('kimia') >= 0 ? '' : '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
       if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';
+      if (!pt.length) css += '#btnPage2{display:none !important}';
       var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     }
   }
@@ -316,6 +317,7 @@
   .tag.bad{color:var(--rose);border-color:rgba(var(--r-rgb),.65)}
   .dim{color:var(--dim)}
   .scrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}.scrow[hidden]{display:none}
+  .scrow.c4{grid-template-columns:repeat(4,1fr)}.scrow.c4.nogk{grid-template-columns:repeat(2,1fr)}@media(max-width:760px){.scrow.c4{grid-template-columns:repeat(2,1fr)}}
   .sc{padding:12px 14px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);min-width:0}
   .sc small{display:block;color:var(--dim);font-size:12px;letter-spacing:.04em}.sc b{display:block;font:700 24px var(--display);color:var(--cyan);margin-top:2px;word-break:break-all}
   .sc span{display:block;color:var(--dim);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -722,6 +724,9 @@
       <button type="button" class="icon-btn" id="btnHome" aria-label="Kembali ke Home" title="Kembali ke Home">
         <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg>
       </button>
+      <button type="button" class="icon-btn" id="btnPage2" aria-label="Page 2: Pack dan RPH" title="Page 2: Pack dan RPH">
+        <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="M2 13l10 5 10-5"/><path d="M2 17.5l10 5 10-5"/></svg>
+      </button>
       <button type="button" class="icon-btn" id="btnTheme" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap">
         <svg class="theme-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -771,10 +776,11 @@
     <section class="view list" id="viewConf" aria-label="Lot Confirmed">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
-      <div class="scrow" id="scConf" hidden>
-        <div class="sc"><small>JUMLAH BON</small><b id="scLots">0</b><span id="scItem"></span></div>
-        <div class="sc"><small>JUMLAH GRAM</small><b id="scGram">0</b></div>
-        <div class="sc"><small>JUMLAH KG</small><b id="scKg">0</b></div>
+      <div class="scrow c4 nogk" id="scConf">
+        <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLots">0</b><span id="scItem"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBon">0</b></div>
+        <div class="sc gk"><small>JUMLAH GRAM</small><b id="scGram">0</b></div>
+        <div class="sc gk"><small>JUMLAH KG</small><b id="scKg">0</b></div>
       </div>
       <div class="lnote" id="nConf"></div><div class="lstate" id="sConf"></div>
       <div class="table-wrap hidden" id="wConf"><table><thead><tr id="hConf"></tr></thead><tbody id="bConf"></tbody></table></div>
@@ -789,10 +795,11 @@
     <section class="view list" id="viewOpen" aria-label="Lot Opened">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qOpen" type="search" placeholder="Cari lot Opened" autocomplete="off" aria-label="Cari lot Opened"></div>
-      <div class="scrow" id="scOpen" hidden>
-        <div class="sc"><small>JUMLAH BON</small><b id="scLotsOpen">0</b><span id="scItemOpen"></span></div>
-        <div class="sc"><small>JUMLAH GRAM</small><b id="scGramOpen">0</b></div>
-        <div class="sc"><small>JUMLAH KG</small><b id="scKgOpen">0</b></div>
+      <div class="scrow c4 nogk" id="scOpen">
+        <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsOpen">0</b><span id="scItemOpen"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonOpen">0</b></div>
+        <div class="sc gk"><small>JUMLAH GRAM</small><b id="scGramOpen">0</b></div>
+        <div class="sc gk"><small>JUMLAH KG</small><b id="scKgOpen">0</b></div>
       </div>
       <div class="lnote" id="nOpen"></div><div class="lstate" id="sOpen"></div>
       <div class="table-wrap hidden" id="wOpen"><table><thead><tr id="hOpen"></tr></thead><tbody id="bOpen"></tbody></table></div>
@@ -946,6 +953,18 @@
     location.href = 'index.html' + (q.length ? '?' + q.join('&') : '');
   }
   $('#btnHome').addEventListener('click', function () { goHome(''); });
+  function openPage2() {
+    if (IN_GAS) {
+      gs('getPageUrl', 2, MODE, '', TABS.join(',')).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Page 2 tidak ditemukan.', 'warn', 5000); })
+        .catch(function (e) { toast('Page 2 gagal dibuka. ' + errMsg(e), 'err', 6000); });
+      return;
+    }
+    var q = [];
+    if (MODE !== 'admin') q.push('mode=' + MODE);
+    if (TABS.length) { if (MODE === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
+    location.href = 'page2.html' + (q.length ? '?' + q.join('&') : '');
+  }
+  $('#btnPage2').addEventListener('click', openPage2);
   var TABS = [];
   var PG = { resep: 1, conf: 1, open: 1 }, PAGED = { resep: 1, conf: 1, open: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
@@ -958,13 +977,33 @@
     open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
   };
   function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
-  function loadKim(k, force) {
-    if (KIM[k] && !force) return Promise.resolve(KIM[k]);
+  var NET = 0;
+  function netSpin(d) { NET += d; var bt = $('#btnRefresh'); if (bt) bt.classList.toggle('spin', NET > 0); }
+  function fetchKim(k, force) {
+    netSpin(1);
     return gs('getKimia', k, !!force).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       r.headers = (r.headers || []).map(function (h, i) { return relabel(k, h, i); });
-      KIM[k] = r; return r;
-    });
+      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k, JSON.stringify(r)); } catch (e) { /* abaikan */ } }
+      return r;
+    }).then(function (r) { netSpin(-1); return r; }, function (e) { netSpin(-1); throw e; });
+  }
+  function sigKim(r) { return r ? (r.headers || []).length + '|' + (r.rows || []).length + '|' + JSON.stringify((r.rows || []).slice(0, 3)) + JSON.stringify((r.rows || []).slice(-3)) + (r.syncAt || '') : ''; }
+  function loadKim(k, force) {
+    if (KIM[k] && !force) return Promise.resolve(KIM[k]);
+    var cached = null;
+    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k) || 'null'); } catch (e) { cached = null; } }
+    var p = fetchKim(k, force).then(function (r) { KIM[k] = r; return r; });
+    if (cached && cached.rows && cached.headers) {   // tampil dulu dari salinan terakhir, lalu diperbarui diam-diam
+      KIM[k] = cached;
+      p.then(function (r) { if (sigKim(r) !== sigKim(cached)) redrawKim(k); }).catch(function () { /* tetap salinan lama */ });
+      return Promise.resolve(cached);
+    }
+    return p;
+  }
+  function redrawKim(k) {   // data baru tiba: gambar ulang tab yang sedang dibuka
+    if (curView === 'rencana' && (k === 'booking' || k === 'resep') && RC && KIM.booking && KIM.resep) { rencanaShow(); return; }
+    if (curView === k && VIEWS[k] && KIM[k] && $('#q' + VIEWS[k])) showTable(k, VIEWS[k], $('#q' + VIEWS[k]).value);
   }
   function numId(v) {   // angka tampilan sheet (koma desimal / titik ribuan) -> angka
     var s = String(v === undefined || v === null ? '' : v).trim().replace(/[^\d.,\-]/g, '');
@@ -1026,20 +1065,20 @@
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
     var sfx = id === 'Conf' ? '' : id;
     if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
-    var sc = $('#sc' + id);
-    if (sc) {
-      sc.hidden = !info;
-      if (info) {
-        $('#scLots' + sfx).textContent = fmtId(info.rows.length, 0);
-        $('#scGram' + sfx).textContent = fmtId(info.gram, 2);
-        $('#scKg' + sfx).textContent = fmtId(info.gram / 1000, 3);
-        $('#scItem' + sfx).textContent = (info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok') + ' · ' + fmtId(info.lots, 0) + ' KIKC';
-      }
-    }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
-    if (k === 'conf' || k === 'open') cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;   // TANGGAL WOD tampil setelah KIKC, sebelum RECIPE
+    if (k === 'conf' || k === 'open') {
+      cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;
+      var lotSet = {}, bonSet = {};
+      rows.forEach(function (r) { if (kc(r[0])) lotSet[kc(r[0])] = 1; if (kc(r[2])) bonSet[kc(r[2])] = 1; });
+      $('#sc' + id).classList.toggle('nogk', !info);
+      $('#scLots' + sfx).textContent = fmtId(Object.keys(lotSet).length, 0);
+      $('#scBon' + sfx).textContent = fmtId(Object.keys(bonSet).length, 0);
+      $('#scItem' + sfx).textContent = info ? (info.names.length === 1 ? info.names[0] : info.names.length + ' item kimia cocok') : '';
+      $$('#sc' + id + ' .gk').forEach(function (el) { el.hidden = !info; });
+      if (info) { $('#scGram' + sfx).textContent = fmtId(info.gram, 2); $('#scKg' + sfx).textContent = fmtId(info.gram / 1000, 3); }
+    }   // TANGGAL WOD tampil setelah KIKC, sebelum RECIPE
     var heads = null, missingCols = false;   // judul tampil per kolom (khusus Booking)
     if (k === 'booking') {   // hanya yang ada Booking, terbesar di atas, nomor urut virtual (kolom No di sheet disembunyikan)
       var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
@@ -1080,7 +1119,7 @@
     $('#b' + id).innerHTML = rows.slice(from, to).map(function (r, n0) { var n = from + n0;
       return '<tr>' + (virt ? '<td class="l-s l-s0 l-last">' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
-    $('#n' + id).textContent = (q ? rows.length + ' dari ' + d.rows.length : rows.length) + ' baris' + (!PAGED[k] && rows.length > MAXROWS ? ' (menampilkan ' + MAXROWS + ' pertama, persempit pencarian)' : '') + (hidden ? ' · ' + hidden + ' item tanpa booking disembunyikan' : '');
+    $('#n' + id).textContent = (q ? rows.length + ' dari ' + d.rows.length : rows.length) + ' baris' + (!PAGED[k] && rows.length > MAXROWS ? ' (menampilkan ' + MAXROWS + ' pertama, persempit pencarian)' : '') + (hidden ? ' · ' + hidden + ' item tanpa booking disembunyikan' : '') + (k === 'booking' && d.syncAt ? ' · sinkron terakhir ' + d.syncAt : '');
     $('#s' + id).style.display = rows.length ? 'none' : '';
     $('#s' + id).innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
     $('#w' + id).classList.toggle('hidden', !rows.length);
@@ -1127,6 +1166,7 @@
     msg += '. ';
     if (!res.lots) msg += 'Tidak ada lot di Plan.';
     if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
+    if (KIM.resep && KIM.resep.syncAt) msg += ' Resep terakhir disinkron: ' + KIM.resep.syncAt + '.';
     $('#rcInfo').textContent = msg;
     var heads = ['#', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP'], ord = [3, 4, 5, 6, 0, 1, 2];
     $('#hRencana').innerHTML = heads.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + h + '</th>'; }).join('');
@@ -1143,10 +1183,11 @@
     var iso = dEl.value;
     $('#sRencana').style.display = ''; $('#sRencana').innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     $('#wRencana').classList.add('hidden');
-    var planP = (RC && RC.iso === iso && !force) ? Promise.resolve(RC.plan) : gs('getPlanHari', iso, true, !!force).then(function (r) {
+    var planP = (RC && RC.iso === iso && !force) ? Promise.resolve(RC.plan) : (netSpin(1), gs('getPlanHari', iso, true, !!force)).then(function (r) {
+      netSpin(-1);
       if (!r || r.error) throw new Error((r && r.error) || 'Plan tidak bisa dibaca.');
       return r;
-    });
+    }, function (e) { netSpin(-1); throw e; });
     Promise.all([planP, loadKim('booking'), loadKim('resep')]).then(function (a) {
       RC = { iso: iso, plan: a[0] };
       rencanaShow();
@@ -1239,6 +1280,23 @@
     }).catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
       .then(function () { refreshing = false; btn.disabled = false; });
   });
+  /* Pembaruan otomatis: tiap 2 menit dan saat jendela kembali dibuka, data tab yang tampil dibaca ulang diam-diam (RESEP besar tidak ikut; ia mengikuti sinkron resep.gs) */
+  var lastAuto = Date.now();
+  function autoRefresh() {
+    if (refreshing || document.hidden) return;
+    lastAuto = Date.now();
+    if (curView === 'lot' || curView === 'resep' || curView === 'kamus') return;
+    (curView === 'rencana' ? ['booking'] : [curView]).forEach(function (k) {
+      fetchKim(k, false).then(function (r) { if (sigKim(r) !== sigKim(KIM[k])) { KIM[k] = r; redrawKim(k); } }).catch(function () { /* coba lagi nanti */ });
+    });
+    if (curView === 'rencana' && RC) {
+      netSpin(1);
+      gs('getPlanHari', RC.iso, true, false).then(function (p) { netSpin(-1); if (p && !p.error && RC && JSON.stringify(p.rows) !== JSON.stringify(RC.plan.rows)) { RC.plan = p; if (KIM.resep && KIM.booking) rencanaShow(); } }, function () { netSpin(-1); });
+    }
+  }
+  setInterval(autoRefresh, 120000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - lastAuto > 45000) autoRefresh(); });
+  window.addEventListener('focus', function () { if (Date.now() - lastAuto > 45000) autoRefresh(); });
   // Ketuk dua kali logo / judul: tampil / ubah URL server (aplikasi di hosting statis), sama seperti Home dan Page 2
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;

@@ -1,5 +1,5 @@
 /* Service worker DyePocket: cangkang aplikasi tersimpan agar cepat dibuka. Data selalu dari server. */
-const VER = 'wipyd-v80';
+const VER = 'wipyd-v81';
 const SHELL = ['./', 'index.html', 'page2.html', 'page3.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'plan.html', 'manifest-planmesin.webmanifest', 'pc.html', 'manifest-pc.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
 
   // Halaman: ambil terbaru dulu, jika offline pakai salinan
   if (req.mode === 'navigate') {
-    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : 'index.html';   // Home dan Page 2 disimpan terpisah
+    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : /page3\.html$/.test(url.pathname) ? 'page3.html' : 'index.html';   // Home, Page 2 dan Page 3 disimpan terpisah
     e.respondWith(
       fetch(req).then((res) => {
         const copy = res.clone();

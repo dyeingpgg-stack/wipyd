@@ -563,7 +563,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst9_';
+const LIST_PREFIX = 'lst10_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -607,7 +607,7 @@ function fmtDmy_(v, disp, tz, mdy) {
 // Membaca satu blok kolom, mengambil kolom yang diminta (pick = indeks di dalam blok, urutan = urutan tampil).
 // keepFn (opsional) menyaring baris berdasarkan seluruh blok. Baris kosong dan baris judul dilewati.
 // dateIdx = indeks kolom tanggal di dalam blok (diformat DD/MM/YYYY dan dipakai mengurutkan dari terbaru).
-// opts.mdy = teks tanggal di sheet ini berformat MM/DD/YYYY; opts.noSort = jangan urut tanggal (baris paling bawah di atas).
+// opts.mdy = teks tanggal di sheet ini berformat MM/DD/YYYY; opts.noSort = jangan urut tanggal (baris paling bawah di atas); opts.asc (bersama noSort) = urutan persis seperti sheet (baris paling atas di atas).
 function readList_(sheet, firstCol, width, pick, keepFn, dateIdx, opts) {
   opts = opts || {};
   const last = sheet.getLastRow();
@@ -626,7 +626,8 @@ function readList_(sheet, firstCol, width, pick, keepFn, dateIdx, opts) {
     if (datePos >= 0) row[datePos] = fmtDmy_(raw[i][0], r[dateIdx], tz, opts.mdy);   // semua tanggal jadi DD/MM/YYYY
     items.push({ row: row, key: opts.noSort ? 0 : sortKey_(raw[i][0], r[dateIdx], opts.mdy), i: i });
   }
-  items.sort(function (x, y) { return (y.key - x.key) || (y.i - x.i); });
+  if (opts.asc) items.sort(function (x, y) { return x.i - y.i; });   // urutan sheet (baris atas di atas)
+  else items.sort(function (x, y) { return (y.key - x.key) || (y.i - x.i); });
   if (opts.rowNos) items.forEach(function (x) { opts.rowNos.push(x.i + 2); });   // nomor baris sheet untuk tiap baris hasil
   return items.map(function (x) { return x.row; });
 }
@@ -659,7 +660,7 @@ function buildList_(key) {
       if (str_(r[WOD_KIKC_IDX]).trim().toUpperCase() === 'KIKC') return false;
       const mesin = str_(r[WOD_MESIN_IDX]).replace(/\s+/g, '').toUpperCase();
       return mesin.indexOf(WOD_HIDE_MESIN) < 0;
-    }, 0, { mdy: !!DATE_TEXT_MDY.wod });
+    }, 0, { mdy: !!DATE_TEXT_MDY.wod, noSort: true, asc: true });   // tab WOD mengikuti urutan sheet WOD
     return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
   }
   if (key === 'grm') {
@@ -2383,7 +2384,7 @@ function cariWod(query) {
       const k = str_(r[WOD_KIKC_IDX]).trim().toUpperCase();
       if (!k || k === 'KIKC') return false;
       return normQ_(r.join(' ')).indexOf(qn) >= 0;
-    }, 0, { mdy: !!DATE_TEXT_MDY.wod });
+    }, 0, { mdy: !!DATE_TEXT_MDY.wod, noSort: true, asc: true });   // tab WOD mengikuti urutan sheet WOD
     out.matches = rows.length;
     out.truncated = rows.length > 500;
     out.rows = rows.slice(0, 500);
@@ -2696,16 +2697,21 @@ function getKimia(which, force) {
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
     const ck = 'kim_' + which;
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
-    if (which === 'open') { const ro = kimiaOpen_(); listCachePut_(ck, ro, 300); return ro; }
+    if (which === 'open' || which === 'conf') {   // Lot Opened / Lot Confirmed dibaca langsung dari WODMETA (tanpa menunggu sinkron C.dbb)
+      let ro = null;
+      try { ro = which === 'open' ? kimiaOpen_() : kimiaConf_(); } catch (eW) { if (which === 'open') throw eW; ro = null; }
+      if (ro) { listCachePut_(ck, ro, 90); return ro; }
+    }
     const sh = SpreadsheetApp.openById(RSP_ID_DB).getSheetByName(KIMIA_SHEETS[which]);
     if (!sh) throw new Error('Sheet "' + KIMIA_SHEETS[which] + '" tidak ditemukan di RESEPDB.');
     const v = sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
     const headers = v.length ? v[0].map(function (x, i) { return str_(x).replace(/\s+/g, ' ').trim() || ('KOLOM ' + (i + 1)); }) : [];
     const rows = v.slice(1).map(function (r) { return r.map(function (x) { return str_(x).trim(); }); }).filter(function (r) { return r.some(function (x) { return x; }); });
     const res = { success: true, headers: headers, rows: rows, total: rows.length, name: KIMIA_SHEETS[which] };
+    try { res.syncAt = PropertiesService.getScriptProperties().getProperty('rspSyncAt') || ''; } catch (eP) { res.syncAt = ''; }
     if (which === 'booking') kimiaBookingVirtual_(res);
     if (which === 'conf') kimiaTanggalWod_(res);
-    listCachePut_(ck, res, 300);
+    listCachePut_(ck, res, 120);
     return res;
   } catch (e) {
     return { error: e.message };
@@ -2716,23 +2722,24 @@ function getKimia(which, force) {
 // Hasil: { tgl: {KIKC ringkas: tanggal}, headers, open: [baris OPEN] }. Tanggal hanya disimpan untuk baris Confirmed / Open.
 function kimiaWodmeta_() {
   const hit = listCacheGet_('kimwm');
-  if (hit && hit.tgl) return hit;
+  if (hit && hit.tgl && hit.conf) return hit;
   const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
   if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
   const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
   const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   const cols = [1, 8, 9, 11];
   const headers = v.length ? cols.map(function (i) { return str_(v[0][i]).replace(/\s+/g, ' ').trim(); }).concat(['Tanggal WOD']) : [];
-  const tgl = {}, open = [];
+  const tgl = {}, open = [], conf = [];
   v.slice(1).forEach(function (r) {
     const st = str_(r[11]).trim().toLowerCase();
     if (str_(r[1]).trim() === '' || (st !== 'confirmed' && st !== 'open')) return;
     const k = kc(r[1]), d = str_(r[2]).trim();
     if (d && !tgl[k]) tgl[k] = d;
-    if (st === 'open') open.push(cols.map(function (i) { return str_(r[i]).trim(); }).concat([d]));
+    const rowX = cols.map(function (i) { return str_(r[i]).trim(); }).concat([d]);
+    if (st === 'open') open.push(rowX); else conf.push(rowX);
   });
-  const res = { tgl: tgl, headers: headers, open: open };
-  listCachePut_('kimwm', res, 600);
+  const res = { tgl: tgl, headers: headers, open: open, conf: conf };
+  listCachePut_('kimwm', res, 90);
   return res;
 }
 // Tab Lot Confirmed: kolom VIRTUAL Tanggal WOD (WODMETA kolom C, dicocokkan lewat KIKC)
@@ -2742,6 +2749,11 @@ function kimiaTanggalWod_(res) {
   const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   res.headers = res.headers.slice(0, 4).concat(['Tanggal WOD']);
   res.rows = res.rows.map(function (r) { return r.slice(0, 4).concat([w && w.tgl[kc(r[0])] ? w.tgl[kc(r[0])] : '']); });
+}
+// Tab Lot Confirmed: baris WODMETA dengan status_bon (kolom L) = Confirmed (urutan sheet WODMETA), kolom sama seperti C.dbb + Tanggal WOD
+function kimiaConf_() {
+  const w = kimiaWodmeta_();
+  return { success: true, headers: w.headers, rows: w.conf, total: w.conf.length, name: 'WODMETA (Confirmed)' };
 }
 // Tab Lot Opened: lot di WODMETA dengan status_bon (kolom L) = OPEN; kolom sama seperti Lot Confirmed
 function kimiaOpen_() {
@@ -2785,7 +2797,9 @@ function kimiaLotMap_() {
   const kc = function (v) { return String(v).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   const nm = function (v) { return String(v).replace(/\s+/g, ' ').trim().toUpperCase(); };
   const sama = function (x, y) { return x !== '' && y !== '' && (x === y || x.indexOf(y) === 0 || y.indexOf(x) === 0); };
-  const cdbb = ss.getSheetByName('C.dbb').getDataRange().getValues().slice(1).filter(function (r) { return String(r[0]).trim() !== ''; });
+  let cdbb = [];
+  try { cdbb = kimiaWodmeta_().conf.map(function (r) { return [r[0], r[1], r[2]]; }).filter(function (r) { return String(r[0]).trim() !== ''; }); } catch (eW) { cdbb = []; }
+  if (!cdbb.length) cdbb = ss.getSheetByName('C.dbb').getDataRange().getValues().slice(1).filter(function (r) { return String(r[0]).trim() !== ''; });
   const resep = ss.getSheetByName('RESEP').getDataRange().getValues().slice(1);
   const byK = {};
   resep.forEach(function (r, i) { const k = kc(r[0]); (byK[k] = byK[k] || []).push(i); });
@@ -2806,7 +2820,7 @@ function kimiaLotMap_() {
   });
   const m = {};
   Object.keys(per).forEach(function (k) { m[k] = Object.keys(per[k]).length; });
-  listCachePut_('kimlot', { m: m }, 600);
+  listCachePut_('kimlot', { m: m }, 120);
   return m;
 }
 
@@ -2818,7 +2832,7 @@ function hitungBooking(mode, semua) {
   let res = null;
   try {
     if (semua === true || semua === 'true') { rspSyncAll(); res = { semua: true }; }
-    else res = rspSyncBooking() || {};
+    else { if (typeof rspSyncWodmeta === 'function') rspSyncWodmeta(); res = rspSyncBooking() || {}; }   // C.dbb (kecil) disegarkan dulu agar Booking memakai lot Confirmed terbaru
   } finally {
     unlock_(lock);
   }
