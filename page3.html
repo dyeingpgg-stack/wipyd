@@ -764,8 +764,9 @@
           <input class="input" id="qRencana" type="search" placeholder="Cari item Rencana" autocomplete="off" aria-label="Cari Rencana"></div>
         <input class="input" id="rcDate" type="date" aria-label="Tanggal Plan">
       </div>
-      <div class="scrow" id="scRencana" hidden>
-        <div class="sc"><small>LOTS</small><b id="scLotsRc">0</b><span id="scInfoRc"></span></div>
+      <div class="scrow c4" id="scRencana" hidden>
+        <div class="sc"><small>JUMLAH LOTS (KIKC)</small><b id="scLotsRc">0</b><span id="scInfoRc"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonRc">0</b><span id="scInfoBonRc"></span></div>
         <div class="sc"><small>JUMLAH GRAM</small><b id="scGramRc">0</b></div>
         <div class="sc"><small>JUMLAH KG</small><b id="scKgRc">0</b></div>
       </div>
@@ -825,8 +826,9 @@
       <div class="lnote" id="bkInfo" style="display:none;line-height:1.5"></div>
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qBooking" type="search" placeholder="Cari item Booking" autocomplete="off" aria-label="Cari Booking"></div>
-      <div class="scrow" id="scBooking" hidden>
-        <div class="sc"><small>JUMLAH BON</small><b id="scLotsBk">0</b><span id="scInfoBk"></span></div>
+      <div class="scrow c4" id="scBooking" hidden>
+        <div class="sc"><small>JUMLAH LOTS (KIKC)</small><b id="scLotsBk">0</b><span id="scInfoBk"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonBk">0</b></div>
         <div class="sc"><small>JUMLAH GRAM</small><b id="scGramBk">0</b></div>
         <div class="sc"><small>JUMLAH KG</small><b id="scKgBk">0</b></div>
       </div>
@@ -1002,7 +1004,7 @@
     return p;
   }
   function redrawKim(k) {   // data baru tiba: gambar ulang tab yang sedang dibuka
-    if (curView === 'rencana' && (k === 'booking' || k === 'resep') && RC && KIM.booking && KIM.resep) { rencanaShow(); return; }
+    if (curView === 'rencana' && RC && KIM.booking && KIM.resep && KIM.conf && KIM.open) { if (k === 'booking' || k === 'resep' || k === 'conf' || k === 'open') rencanaShow(); return; }
     if (curView === k && VIEWS[k] && KIM[k] && $('#q' + VIEWS[k])) showTable(k, VIEWS[k], $('#q' + VIEWS[k]).value);
   }
   function numId(v) {   // angka tampilan sheet (koma desimal / titik ribuan) -> angka
@@ -1090,12 +1092,17 @@
         var gsum = rows.reduce(function (t, r) { return t + numId(r[ib]); }, 0);
         $('#scBooking').hidden = false;
         $('#scGramBk').textContent = fmtId(gsum, 2); $('#scKgBk').textContent = fmtId(gsum / 1000, 3);
-        if (KIM.conf) {
-          var lk = {}; KIM.conf.rows.forEach(function (r) { var x = kc(r[0]) + '|' + kc(r[1]) + '|' + kc(r[2]); if (kc(r[0])) lk[x] = 1; });
-          $('#scLotsBk').textContent = fmtId(Object.keys(lk).length, 0); $('#scInfoBk').textContent = 'bon Confirmed';
+        if (KIM.conf) {   // lot dan bon Confirmed (dari WODMETA): KIKC unik dan NO DBB unik
+          var lkS = {}, bnS = {};
+          KIM.conf.rows.forEach(function (r) { if (kc(r[0])) lkS[kc(r[0])] = 1; if (kc(r[2])) bnS[kc(r[2])] = 1; });
+          $('#scLotsBk').textContent = fmtId(Object.keys(lkS).length, 0); $('#scBonBk').textContent = fmtId(Object.keys(bnS).length, 0);
+          $('#scInfoBk').textContent = 'lot Confirmed';
         } else {
-          $('#scLotsBk').textContent = '-'; $('#scInfoBk').textContent = 'bon Confirmed';
-          if (!BKCONF) { BKCONF = true; loadKim('conf').then(function () { if (curView === 'booking' && KIM.booking) showTable('booking', 'Booking', $('#qBooking').value); }).catch(function () { BKCONF = false; }); }
+          $('#scLotsBk').textContent = '...'; $('#scBonBk').textContent = '...'; $('#scInfoBk').textContent = 'lot Confirmed';
+          if (!BKCONF) {
+            BKCONF = true;
+            loadKim('conf').then(function () { BKCONF = false; if (curView === 'booking' && KIM.booking) showTable('booking', 'Booking', $('#qBooking').value); }, function () { BKCONF = false; });
+          }
         }
         rows.sort(function (x, y) { return numId(y[ib]) - numId(x[ib]); });
         var def = [[it, 'NAMA KIMIA'], [il, 'JUMLAH BON'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)'], [iy, 'KODE ENTRY'], [ik, 'KODE KIMIA'], [ie, 'KODE ERP']];
@@ -1133,25 +1140,41 @@
     var ie = fi(/^kode erp$/i), it = fi(/^item$/i), iy = fi(/^kode entry$/i), ik = fi(/^kode kimia$/i);
     var master = {};
     B.rows.forEach(function (r) { var n = key(r[it]); if (n && !master[n]) master[n] = { y: r[iy] || '', k: r[ik] || '', e: r[ie] || '' }; });
+    // Bon berstatus Open (WODMETA) tidak ikut dihitung. Bon Confirmed = sebaliknya.
+    var openBon = {}, confBon = {}, openByK = {}, confByK = {};
+    (KIM.open ? KIM.open.rows : []).forEach(function (r) { var k = kc(r[0]); if (!k) return; openBon[kc(r[2])] = 1; (openByK[k] = openByK[k] || []).push(kc(r[1])); });
+    (KIM.conf ? KIM.conf.rows : []).forEach(function (r) { var k = kc(r[0]); if (!k) return; confBon[kc(r[2])] = 1; (confByK[k] = confByK[k] || []).push(kc(r[1])); });
+    var isOpenRow = function (k, i) {
+      var b = kc(R[i][1]);
+      if (b && openBon[b]) return true;
+      if (b && confBon[b]) return false;
+      var rc = kc(R[i][2]);   // nomor bon di RESEP tidak dikenal: cocokkan lewat KIKC + kode resep
+      var o = (openByK[k] || []).some(function (x) { return prefSama(x, rc); }), c = (confByK[k] || []).some(function (x) { return prefSama(x, rc); });
+      return o && !c;
+    };
     var plan = RC.plan, kik = {}, noRes = [];
     plan.rows.forEach(function (r) { var k = kc(r[0]); if (!k || kik[k]) return; if (plan.statusLot && plan.statusLot[String(r[0]).toUpperCase().replace(/\s+/g, ' ').trim()] === 'PENDING') return; kik[k] = r[0]; });
-    var tot = {}, lotsItem = {}, lotsOk = 0;
+    var tot = {}, lotsItem = {}, lotsOk = 0, bonOk = {}, exBon = {}, exLot = [];
     Object.keys(kik).forEach(function (k) {
       var idx = ix.byK[k] || [];
       if (!idx.length) { noRes.push(kik[k]); return; }
-      lotsOk++;
+      var used = 0, skipped = 0;
       idx.forEach(function (i) {
+        if (isOpenRow(k, i)) { skipped++; exBon[kc(R[i][1]) || (k + '|' + kc(R[i][2]))] = 1; return; }
+        used++; bonOk[kc(R[i][1]) || (k + '|' + kc(R[i][2]))] = 1;
         var n = key(R[i][4]); if (!n) return;
         tot[n] = (tot[n] || 0) + numId(R[i][5]);
         (lotsItem[n] = lotsItem[n] || {})[k] = 1;
       });
+      if (used) lotsOk++;
+      if (skipped) exLot.push(kik[k]);
     });
     var rows = Object.keys(tot).filter(function (n) { return tot[n] > 0; }).map(function (n) {
       var m = master[n] || { y: '', k: '', e: '' };
       return { g: tot[n], r: [m.y, m.k, m.e, n, String(Object.keys(lotsItem[n]).length), fmtId(tot[n], 2), fmtId(tot[n] / 1000, 3)] };
     }).sort(function (a, b) { return b.g - a.g; });
     var gram = rows.reduce(function (a, o) { return a + o.g; }, 0);
-    return { rows: rows.map(function (o) { return o.r; }), lots: Object.keys(kik).length, lotsOk: lotsOk, noRes: noRes, gram: gram };
+    return { rows: rows.map(function (o) { return o.r; }), lots: Object.keys(kik).length, lotsOk: lotsOk, bons: Object.keys(bonOk).length, exBons: Object.keys(exBon).length, exLots: exLot, noRes: noRes, gram: gram };
   }
   function rencanaShow() {
     var res = rencanaHitung(), q = nq($('#qRencana').value.trim()), p = RC.plan;
@@ -1159,6 +1182,8 @@
     $('#scRencana').hidden = false;
     $('#scLotsRc').textContent = fmtId(res.lotsOk, 0);
     $('#scInfoRc').textContent = res.lots !== res.lotsOk ? 'dari ' + res.lots + ' lot Plan' : 'lot Plan';
+    $('#scBonRc').textContent = fmtId(res.bons, 0);
+    $('#scInfoBonRc').textContent = res.exBons ? res.exBons + ' bon Open tidak dihitung' : 'bon Confirmed';
     $('#scGramRc').textContent = fmtId(res.gram, 2);
     $('#scKgRc').textContent = fmtId(res.gram / 1000, 3);
     var msg = 'Plan tanggal ' + (p.date || '').split('-').reverse().join('/');
@@ -1166,6 +1191,7 @@
     msg += '. ';
     if (!res.lots) msg += 'Tidak ada lot di Plan.';
     if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
+    if (res.exBons) msg += ' ' + res.exBons + ' bon berstatus Open tidak dihitung (KIKC: ' + res.exLots.slice(0, 8).join(', ') + (res.exLots.length > 8 ? ', ...' : '') + ').';
     if (KIM.resep && KIM.resep.syncAt) msg += ' Resep terakhir disinkron: ' + KIM.resep.syncAt + '.';
     $('#rcInfo').textContent = msg;
     var heads = ['#', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP'], ord = [3, 4, 5, 6, 0, 1, 2];
@@ -1188,7 +1214,7 @@
       if (!r || r.error) throw new Error((r && r.error) || 'Plan tidak bisa dibaca.');
       return r;
     }, function (e) { netSpin(-1); throw e; });
-    Promise.all([planP, loadKim('booking'), loadKim('resep')]).then(function (a) {
+    Promise.all([planP, loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
       RC = { iso: iso, plan: a[0] };
       rencanaShow();
     }).catch(function (e) {
@@ -1197,7 +1223,7 @@
     });
   }
   $('#rcDate').addEventListener('change', function () { RC = null; openRencana(false); });
-  (function () { var t = null; $('#qRencana').addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (RC && KIM.resep && KIM.booking) rencanaShow(); }, 150); }); })();
+  (function () { var t = null; $('#qRencana').addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (RC && KIM.resep && KIM.booking && KIM.conf && KIM.open) rencanaShow(); }, 150); }); })();
   function openTable(k, id) {
     $('#s' + id).style.display = ''; $('#s' + id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
@@ -1268,17 +1294,28 @@
   }
   $$('.tab').forEach(function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-view')); }); });
   var refreshing = false;
+  /* Tombol muat ulang: Admin = sinkron semua data (Kamus, WODMETA, RESEP) + hitung Booking di server, lalu SEMUA data halaman dibaca ulang. Viewer = hanya baca ulang. */
   $('#btnRefresh').addEventListener('click', function () {
     if (refreshing) return;
     refreshing = true;
-    var btn = $('#btnRefresh'); btn.disabled = true;
-    toast('Memuat ulang data...', 'ok', 60000);
-    var need = curView === 'lot' ? ['resep', 'conf'] : curView === 'rencana' ? ['booking', 'resep'] : [curView];
-    if (curView === 'rencana') RC = null;   // hanya data tab yang sedang dibuka (RESEP besar, jadi tidak semua dimuat)
-    Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
-      showView(curView); toast('Data diperbarui.', 'ok', 2500);
-    }).catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
-      .then(function () { refreshing = false; btn.disabled = false; });
+    var btn = $('#btnRefresh'); btn.disabled = true; netSpin(1);
+    var adm = MODE === 'admin';
+    toast(adm ? 'Memuat ulang: sinkron semua data dan hitung Booking, mohon tunggu (bisa 1 menit lebih)...' : 'Memuat ulang data...', 'ok', 120000);
+    var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
+    pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
+      .then(function (r) {
+        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; RC = null;
+        var need = ['booking', 'conf', 'open'];
+        if (curView === 'resep' || curView === 'lot' || curView === 'rencana') need.push('resep');
+        return Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
+          showView(curView);
+          var msg = 'Data diperbarui.';
+          if (r && r.item !== undefined) msg += ' Booking: ' + r.terisi + ' dari ' + r.item + ' item terisi.';
+          toast(msg, 'ok', 5000);
+        });
+      })
+      .catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
+      .then(function () { refreshing = false; btn.disabled = false; netSpin(-1); });
   });
   /* Pembaruan otomatis: tiap 2 menit dan saat jendela kembali dibuka, data tab yang tampil dibaca ulang diam-diam (RESEP besar tidak ikut; ia mengikuti sinkron resep.gs) */
   var lastAuto = Date.now();
@@ -1286,12 +1323,12 @@
     if (refreshing || document.hidden) return;
     lastAuto = Date.now();
     if (curView === 'lot' || curView === 'resep' || curView === 'kamus') return;
-    (curView === 'rencana' ? ['booking'] : [curView]).forEach(function (k) {
+    (curView === 'rencana' ? ['booking', 'conf', 'open'] : [curView]).forEach(function (k) {
       fetchKim(k, false).then(function (r) { if (sigKim(r) !== sigKim(KIM[k])) { KIM[k] = r; redrawKim(k); } }).catch(function () { /* coba lagi nanti */ });
     });
     if (curView === 'rencana' && RC) {
       netSpin(1);
-      gs('getPlanHari', RC.iso, true, false).then(function (p) { netSpin(-1); if (p && !p.error && RC && JSON.stringify(p.rows) !== JSON.stringify(RC.plan.rows)) { RC.plan = p; if (KIM.resep && KIM.booking) rencanaShow(); } }, function () { netSpin(-1); });
+      gs('getPlanHari', RC.iso, true, false).then(function (p) { netSpin(-1); if (p && !p.error && RC && JSON.stringify(p.rows) !== JSON.stringify(RC.plan.rows)) { RC.plan = p; if (KIM.resep && KIM.booking && KIM.conf && KIM.open) rencanaShow(); } }, function () { netSpin(-1); });
     }
   }
   setInterval(autoRefresh, 120000);
@@ -1322,7 +1359,7 @@
       }
       var bi = $('#bkInfo'); bi.textContent = msg; bi.style.display = '';
       toast(msg, r.terisi ? 'ok' : 'warn', 8000);
-      return loadKim('booking', true).then(function () { showTable('booking', 'Booking', $('#qBooking').value); });
+      return Promise.all([loadKim('booking', true), loadKim('conf', true), loadKim('open', true)]).then(function () { showTable('booking', 'Booking', $('#qBooking').value); });
     }).catch(function (e) { toast('Gagal. ' + errMsg(e), 'err', 8000); })
       .then(function () { b1.disabled = b2.disabled = false; });
   }

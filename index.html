@@ -372,6 +372,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   th.l-s0,td.l-s0{left:0}
   td.date{white-space:nowrap;color:var(--dim)}
   td.chkc{text-align:center}
+  .btn-sm.danger{color:var(--rose-2);border-color:rgba(var(--r-rgb),.55)}.btn-sm.danger:hover:not(:disabled){border-color:var(--rose);box-shadow:0 0 12px rgba(var(--r-rgb),.35)}
   .rl{font:700 12px var(--body);padding:2px 9px;border-radius:999px;border:1px solid var(--edge-strong)}.rl.t{color:var(--lime);border-color:rgba(var(--g-rgb),.6)}.rl.f{color:var(--rose);border-color:rgba(var(--r-rgb),.5)}
   tr.pend td{opacity:.45}tr.pend td.chkc{opacity:1}
   .stchk{width:22px;height:22px;margin:0;cursor:pointer;accent-color:var(--cyan)}
@@ -416,6 +417,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .mpanel.detail .mgrid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
   .mcard{position:relative;min-width:0;padding:9px 10px;border-radius:10px;border:1px solid var(--edge-strong);background:var(--surface);text-align:left;color:var(--text)}
   .mcard.moved{border-color:rgba(var(--a-rgb),.85)}
+  .mcard[draggable=true]{cursor:grab}.mcard.dragging{opacity:.35}.mpanel.dropok{outline:2px dashed var(--cyan);outline-offset:2px}.mpanel.dropno{outline:2px dashed rgba(var(--r-rgb),.7);outline-offset:2px}
+  .mmove{margin-top:6px;width:100%;font:600 11px var(--body);padding:3px 4px;border-radius:8px;border:1px solid var(--edge-strong);background:var(--surface-2);color:var(--dim)}
   .mcard.sisa{border-color:rgba(var(--r-rgb),.85);background:linear-gradient(180deg,rgba(var(--r-rgb),.14),rgba(var(--r-rgb),.04)),var(--surface);box-shadow:inset 3px 0 0 var(--rose),0 0 12px rgba(var(--r-rgb),.28)}
   .mc-flag.sisa{color:var(--rose)}
   .mcard.fin{border-color:rgba(var(--g-rgb),.8);background:linear-gradient(180deg,rgba(var(--g-rgb),.10),rgba(var(--g-rgb),.03)),var(--surface)}
@@ -2549,9 +2552,9 @@ var Code128 = (function () {
     var order = colOrder(k, hd);
     var iCel = isPlan ? hd.indexOf('CELUP') : -1, iK = hd.indexOf('KIKC');
     var stCols = isPlan && !psearch && iK >= 0;   // kolom virtual SISA ORDER dan PENDING (centang) hanya di tab Plan per tanggal
-    var stEdit = stCols && isAdmin() && planEditable();
+    var delCol = stCols && isAdmin() && planEditable();   // kolom AKSI (tombol Delete) hanya untuk Admin pada Plan hari ini / ke depan
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('') +
-      (stCols ? '<th title="Centang: lot batal / ditarik dari Plan. Kg dan Cone lot ini tidak dihitung dan bukan Sisa Order">PENDING</th>' : '');
+      (delCol ? '<th title="Hapus lot dari Plan tanggal ini (hanya Admin)">AKSI</th>' : '');
     var out = [];
     var alokJ = (isPlan && !psearch && planEditable() && isAdmin()) ? hd.indexOf('ALOKASI') : -1;   // tanggal lewat atau Viewer: Alokasi tampil sebagai teks biasa
     for (var i = 0; i < shown.length; i++) {
@@ -2565,9 +2568,9 @@ var Code128 = (function () {
         else if (sisa && j === iCel) { var sf = !psearch && m.sisaFrom && m.sisaFrom[String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase()]; tr += '<td' + cls(p, hd[j], true) + '><span class="tag-sisa"' + (sf ? ' title="Sisa dari Plan ' + esc(fmtDMY(sf)) + '"' : '') + '>Sisa Order</span></td>'; }
         else tr += '<td' + cls(p, hd[j], true) + '>' + (cell === '' ? '<span class="dim">-</span>' : esc(cell)) + '</td>';
       }
-      if (stCols) {
-        var kst2 = String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase(), cur = (m.statusAll || {})[kst2] || '';
-        tr += '<td class="chkc"><input type="checkbox" class="stchk" data-st="PENDING" data-k="' + esc(kst2) + '"' + (cur === 'PENDING' ? ' checked' : '') + (stEdit && kst2 ? '' : ' disabled') + ' aria-label="Pending ' + esc(kst2) + '"></td>';
+      if (delCol) {
+        var kst2 = String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase();
+        tr += '<td class="chkc">' + (kst2 ? '<button type="button" class="btn-sm danger delplan" data-k="' + esc(kst2) + '" aria-label="Hapus ' + esc(kst2) + ' dari Plan" title="Hapus dari Plan"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg></button>' : '') + '</td>';
       }
       out.push(tr + '</tr>');
     }
@@ -2872,23 +2875,22 @@ var Code128 = (function () {
     loadPlanDay(true);
   }
   /* ---------- Kolom virtual SISA ORDER / PENDING (tab Plan; disimpan menurut KIKC di sheet "Status Lot") ---------- */
-  $('#bPlan').addEventListener('change', function (e) {
-    var cb = e.target;
-    if (!cb || !cb.classList || !cb.classList.contains('stchk')) return;
-    var m = lst.plan, k = cb.getAttribute('data-k'), want = cb.checked ? cb.getAttribute('data-st') : '';
-    if (!isAdmin() || !planEditable()) { cb.checked = !cb.checked; return; }
-    m.statusAll = m.statusAll || {};
-    var before = m.statusAll[k] || '';
-    if (want) m.statusAll[k] = want; else delete m.statusAll[k];   // satu KIKC hanya satu status: mencentang yang satu melepas yang lain
-    m.rk = ''; renderList('plan');
-    gs('setStatusLot', k, want, state.mode, m.date || planCur()).then(function (r) {
-      if (r && r.error) throw new Error(r.error);
-      toast(want === 'PENDING' ? k + ': Pending dicentang (tidak dihitung).' : k + ': Pending dilepas.', 'ok', 2500);
-      return loadPlanDay(true);   // muat ulang Plan: kolom CELUP mengikuti status
+  $('#bPlan').addEventListener('click', function (e) {
+    var bt = e.target.closest ? e.target.closest('.delplan') : null;
+    if (!bt) return;
+    var m = lst.plan, k = bt.getAttribute('data-k');
+    if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
+    if (!planEditable()) { toast('Plan tanggal yang sudah lewat hanya bisa dilihat.', 'warn'); return; }
+    var dt = m.date || planCur();
+    if (!window.confirm('Hapus lot ' + k + ' dari Plan ' + fmtDMY(dt) + '?')) return;
+    bt.disabled = true;
+    gs('hapusPlanLot', dt, k, state.mode).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      toast(k + ' dihapus dari Plan ' + fmtDMY(dt) + '.', 'ok', 3000);
+      return loadPlanDay(true);
     }).catch(function (err) {
-      if (before) m.statusAll[k] = before; else delete m.statusAll[k];
-      m.rk = ''; renderList('plan');
-      toast('Status gagal disimpan. ' + errMsg(err), 'err', 6000);
+      bt.disabled = false;
+      toast('Lot gagal dihapus. ' + errMsg(err), 'err', 6000);
     });
   });
 
@@ -3212,8 +3214,13 @@ var Code128 = (function () {
     return ketCache.map[kikc] || String(fallback || '').trim();
   }
 
+  var MESIN_PINDAH = [['A8', 'A9', 'A10'], ['A11', 'A12', 'A13', 'A14', 'A15']];   // lot hanya boleh dipindah di dalam satu kelompok mesin
+  function grupOf(mc) { for (var g = 0; g < MESIN_PINDAH.length; g++) if (MESIN_PINDAH[g].indexOf(mc) >= 0) return g; return -1; }
+  function canMove(it) { return isAdmin() && planEditable() && !it.fin && grupOf(it.mesin) >= 0 && !mesinQ.query.trim(); }
   function mcardHtml(it, cyc) {
     var moved = it.mesin !== it.from;
+    var mv = canMove(it), mvSel = '';
+    if (mv) mvSel = '<select class="mmove" data-k="' + esc(it.kikc) + '" aria-label="Pindah ' + esc(it.kikc) + ' ke mesin lain"><option value="">Pindah ke...</option>' + MESIN_PINDAH[grupOf(it.mesin)].filter(function (x) { return x !== it.mesin; }).map(function (x) { return '<option value="' + x + '">' + x + '</option>'; }).join('') + '</select>';
     var sup = it.sup || supplierOf(it.kikc);
     var yarn = it.noBenang ? esc(it.noBenang) : '-';
     var kg = it.kgTxt === '' ? '-' : esc(it.kgTxt), cone = it.coneTxt === '' ? '-' : esc(it.coneTxt);
@@ -3221,12 +3228,12 @@ var Code128 = (function () {
     if (it.fin) flags += '<div class="mc-flag ok">Finish · celup ' + esc(it.celup) + '</div>';
     else if (it.sisa) flags += '<div class="mc-flag sisa">SISA ORDER</div>';
     if (moved) flags += '<div class="mc-flag">Dialokasi (Plan: ' + (it.from === '' ? 'kosong' : esc(it.from)) + ')</div>';
-    return '<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + (it.sisa ? ' sisa' : '') + '" data-k="' + esc(it.kikc) + '">' +
+    return '<div class="mcard' + (moved ? ' moved' : '') + (it.fin ? ' fin' : '') + (it.sisa ? ' sisa' : '') + '" data-k="' + esc(it.kikc) + '"' + (mv ? ' draggable="true" data-mv="1"' : '') + '>' +
       '<div class="mc-cmp">' +
         '<div class="mc-k">' + esc(it.kikc) + '</div>' +
         '<div class="mc-y">' + yarn + (it.warna ? ' / <em>' + esc(it.warna) + '</em>' : '') + '</div>' +
         flags +
-        '<div class="mc-n"><b>' + kg + ' Kg</b><span>' + cone + ' Cone</span></div>' +
+        '<div class="mc-n"><b>' + kg + ' Kg</b><span>' + cone + ' Cone</span></div>' + mvSel +
       '</div>' +
       '<div class="mc-det">' +
         '<div class="mc-top"><span class="mc-cy">CYCLE #' + cyc + '</span>' + (it.warna ? '<span class="mc-wb">' + esc(it.warna) + '</span>' : '') + '</div>' +
@@ -3292,7 +3299,7 @@ var Code128 = (function () {
       else mesinState('');
       return;
     }
-    var key = m.sig + '|' + lst.wod.sig + '|' + lst.clp.sig + '|' + q + '|' + mesinStop.join(',') + '|' + state.mode;
+    var key = m.sig + '|' + lst.wod.sig + '|' + lst.clp.sig + '|' + q + '|' + mesinStop.join(',') + '|' + state.mode + '|' + (planEditable() ? 1 : 0);
     if (key === mesinQ.key) return;   // tidak ada yang berubah
     var res = buildAlokasi(m.headers, m.rows);
     // Ringkasan mesin: Stop = tombol Stop; Running = Ready dan punya lot belum Finish ("Order Aktif"); Idle = Ready tanpa lot aktif
@@ -3317,7 +3324,7 @@ var Code128 = (function () {
       var on = !!mesinQ.view[label];
       var kap = kapTotal(b.mesin);
       var pill = b.stop ? 'STOP' : (b.open ? b.open + ' Order Aktif' : 'IDLE');
-      out.push('<div class="mpanel' + (b.stop ? ' stop' : '') + (on ? ' detail' : '') + '" data-m="' + esc(label) + '">' +
+      out.push('<div class="mpanel' + (b.stop ? ' stop' : '') + (on ? ' detail' : '') + '" data-m="' + esc(label) + '" data-g="' + grupOf(b.mesin) + '" data-stop="' + (b.stop ? 1 : 0) + '">' +
         '<div class="mhead"><div class="mid">' +
           '<span class="mbadge">' + esc(label) + '</span>' +
           '<span class="mname">MC. ' + esc(label) + '</span>' +
@@ -3387,6 +3394,64 @@ var Code128 = (function () {
       applyMesinStop(before);
       toast('Status mesin gagal disimpan. ' + errMsg(err), 'err', 7000);
     });
+  });
+  /* Pindah alokasi lot antar mesin satu kelompok (A8-A10, A11-A15): seret kartu ke mesin lain, atau pilih mesin di kartu. Disimpan ke kolom ALOKASI seperti di tab Plan. */
+  var dragK = '', dragFrom = '';
+  function moveLot(kikc, to) {
+    if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
+    if (!planEditable()) { toast('Plan tanggal yang sudah lewat hanya bisa dilihat.', 'warn'); return; }
+    var m = lst.plan, col = m.headers.indexOf('ALOKASI'), kc = m.headers.indexOf('KIKC');
+    var nk = function (v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); };
+    var ri = -1; m.rows.forEach(function (r, i) { if (ri < 0 && nk(r[kc]) === nk(kikc)) ri = i; });
+    if (ri < 0 || col < 0) { toast('Lot ' + kikc + ' tidak ditemukan di Plan.', 'warn'); return; }
+    var row = m.rows[ri], prev = String(row[col] || '');
+    gs('setAlokasi', 0, row[kc], to, state.mode, m.date).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
+      row[col] = r.value || '';
+      m.sig = hashStr(JSON.stringify(m.rows) + JSON.stringify(m.rowNos));
+      toast(kikc + ' dipindah ke ' + (r.value || to), 'ok');
+      m.rk = ''; renderList('plan');
+    }).catch(function (e) { row[col] = prev; toast('Pindah mesin gagal. ' + errMsg(e), 'err', 7000); });
+  }
+  $('#bMesin').addEventListener('dragstart', function (e) {
+    var c = e.target.closest ? e.target.closest('.mcard[data-mv]') : null;
+    if (!c) return;
+    dragK = c.getAttribute('data-k'); dragFrom = (c.closest('.mpanel') || {}).getAttribute ? c.closest('.mpanel').getAttribute('data-m') : '';
+    c.classList.add('dragging');
+    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragK); } catch (er) { /* abaikan */ }
+  });
+  $('#bMesin').addEventListener('dragend', function () {
+    dragK = ''; $$('#bMesin .dragging').forEach(function (x) { x.classList.remove('dragging'); }); $$('#bMesin .dropok,#bMesin .dropno').forEach(function (x) { x.classList.remove('dropok', 'dropno'); });
+  });
+  $('#bMesin').addEventListener('dragover', function (e) {
+    if (!dragK) return;
+    var p = e.target.closest ? e.target.closest('.mpanel') : null;
+    $$('#bMesin .dropok,#bMesin .dropno').forEach(function (x) { if (x !== p) x.classList.remove('dropok', 'dropno'); });
+    if (!p) return;
+    var ok = p.getAttribute('data-m') !== dragFrom && p.getAttribute('data-g') === String(grupOf(dragFrom)) && grupOf(dragFrom) >= 0 && p.getAttribute('data-stop') !== '1';
+    p.classList.toggle('dropok', ok); p.classList.toggle('dropno', !ok);
+    if (ok) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) { /* abaikan */ } }
+  });
+  $('#bMesin').addEventListener('drop', function (e) {
+    var p = e.target.closest ? e.target.closest('.mpanel') : null, k = dragK, from = dragFrom;
+    dragK = ''; $$('#bMesin .dropok,#bMesin .dropno,#bMesin .dragging').forEach(function (x) { x.classList.remove('dropok', 'dropno', 'dragging'); });
+    if (!p || !k) return;
+    var to = p.getAttribute('data-m');
+    if (to === from) return;
+    e.preventDefault();
+    if (p.getAttribute('data-g') !== String(grupOf(from)) || grupOf(from) < 0) { toast('Lot hanya bisa dipindah ke mesin dalam kelompok yang sama (A8-A10 atau A11-A15).', 'warn', 5000); return; }
+    if (p.getAttribute('data-stop') === '1') { toast('Mesin ' + to + ' sedang STOP.', 'warn', 4000); return; }
+    moveLot(k, to);
+  });
+  $('#bMesin').addEventListener('change', function (e) {
+    var sel = e.target.closest ? e.target.closest('select.mmove') : null;
+    if (!sel || !sel.value) return;
+    var to = sel.value, k = sel.getAttribute('data-k'), p = sel.closest('.mpanel');
+    sel.value = '';
+    if (p && p.getAttribute('data-stop') === '1') return;
+    var tp = $('#bMesin .mpanel[data-m="' + to + '"]');
+    if (tp && tp.getAttribute('data-stop') === '1') { toast('Mesin ' + to + ' sedang STOP.', 'warn', 4000); return; }
+    moveLot(k, to);
   });
   // View / Hide: ganti tampilan kartu satu mesin tanpa menggambar ulang (posisi gulir tetap)
   $('#bMesin').addEventListener('click', function (e) {

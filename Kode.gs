@@ -159,6 +159,7 @@ const API_FUNCS = {
   getSoftHari: function (a) { return getSoftHari(a[0]); },
   getPageUrl: function (a) { return getPageUrl(a[0], a[1], a[2], a[3]); },
   planHilangTindak: function (a) { return planHilangTindak(a[0], a[1], a[2]); },
+  hapusPlanLot: function (a) { return hapusPlanLot(a[0], a[1], a[2]); },
   setStatusLot: function (a) { return setStatusLot(a[0], a[1], a[2], a[3]); },
   getPlanTanggal: function () { return getPlanTanggal(); },
   getTerlewat: function (a) { return getTerlewat(a[0], a[1], a[2]); },
@@ -1337,6 +1338,28 @@ function planHilangTindak(iso, mode, aksi) {
     planLostIgnoreAdd_(iso, keys);
   }
   return { success: true, n: keys.length, aksi: aksi };
+}
+// Hapus SATU lot (KIKC) dari Plan tanggal itu (hanya Admin; hanya hari ini / ke depan). Alokasi dan status Pending lot itu tidak disentuh.
+function hapusPlanLot(iso, kikc, mode) {
+  needAdmin_(mode);
+  iso = planIsoOk_(iso);
+  if (!planEditableIso_(iso)) throw new Error('Plan tanggal yang sudah lewat tidak boleh diubah.');
+  const k = normKikc_(kikc);
+  if (!k) throw new Error('KIKC kosong.');
+  let n = 0;
+  const lock = lock_();
+  try {
+    const sh = planHarianSheet_(), dmy = iso.split('-').reverse().join('/');
+    const last = sh.getLastRow();
+    if (last >= 2) {
+      const v = sh.getRange(2, 1, last - 1, 2).getDisplayValues();
+      for (let i = v.length - 1; i >= 0; i--) { if (str_(v[i][0]).trim() === dmy && normKikc_(v[i][1]) === k) { sh.deleteRow(i + 2); n++; } }
+      SpreadsheetApp.flush();
+    }
+  } finally { unlock_(lock); }
+  try { const sv = planSeenGet_(iso); if (sv && sv.indexOf(k) < 0) planSeenSet_(iso, sv.concat([k])); } catch (eS) { /* abaikan */ }   // tetap dianggap sudah dilihat: tidak muncul lagi sebagai "lot baru"
+  try { CacheService.getScriptCache().remove('plan_dates'); } catch (eC) { /* abaikan */ }
+  return { success: true, n: n };
 }
 // Menambahkan lot baru ke salinan Plan tanggal itu. Baris yang sudah ada (alokasi mesin, status Sisa Order / Pending) tidak diubah.
 function planTambahBaru(iso, mode) {
