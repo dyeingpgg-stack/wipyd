@@ -166,3 +166,32 @@ function rspBuatTrigger() {
   });
   ScriptApp.newTrigger("rspSyncAll").timeBased().everyMinutes(30).create();   // tiap 30 menit
 }
+
+// ====== PENGGANTI IMPORTRANGE: salin sheet WOD dan RPH dari spreadsheet RPH ke WIP YD (Jawaban) ======
+// Hasilnya NILAI (bukan rumus), jadi tidak bisa #REF! dan cepat dibaca. Isi lama sheet tujuan diganti hanya jika data sumber berhasil dibaca.
+// Jalankan syncWodRph sekali secara manual (beri izin), lalu jalankan pasangTriggerWodRph sekali agar jalan otomatis tiap 10 menit.
+function syncWodRphSheet_(nama) {
+  const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName(nama);
+  if (!src) throw new Error('Sheet "' + nama + '" tidak ada di spreadsheet RPH.');
+  const lr = src.getLastRow(), lc = src.getLastColumn();
+  if (lr < 1 || lc < 1) throw new Error('Sheet "' + nama + '" di spreadsheet RPH kosong, tidak disalin.');
+  const vals = src.getRange(1, 1, lr, lc).getValues();
+  if (String(vals[0][0]).indexOf("#REF") >= 0) throw new Error('Sheet "' + nama + '" di sumber berisi error, tidak disalin.');
+  const dst = ss_().getSheetByName(nama) || ss_().insertSheet(nama);
+  if (dst.getMaxColumns() < lc) dst.insertColumnsAfter(dst.getMaxColumns(), lc - dst.getMaxColumns());
+  if (dst.getMaxRows() < lr) dst.insertRowsAfter(dst.getMaxRows(), lr - dst.getMaxRows());
+  dst.clearContents();   // menghapus rumus IMPORTRANGE lama; format sel tetap
+  dst.getRange(1, 1, lr, lc).setValues(vals);
+  return lr;
+}
+function syncWodRph() {
+  const hasil = {};
+  ["WOD", "RPH"].forEach(n => { try { hasil[n] = syncWodRphSheet_(n); } catch (e) { hasil[n] = "GAGAL: " + e.message; } });
+  PropertiesService.getScriptProperties().setProperty("wodRphSyncAt", Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm"));
+  Logger.log(JSON.stringify(hasil));
+  return hasil;
+}
+function pasangTriggerWodRph() {
+  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === "syncWodRph") ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger("syncWodRph").timeBased().everyMinutes(10).create();
+}

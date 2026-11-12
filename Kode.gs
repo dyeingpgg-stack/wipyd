@@ -136,6 +136,7 @@ const API_FUNCS = {
   updateRowData: function (a) { return updateRowData(a[0]); },
   deleteData: function (a) { return deleteData(a[0], a[1], a[2]); },
   getList: function (a) { return getList(a[0], a[1]); },
+  sinkronWodRph: function (a) { return sinkronWodRph(a[0]); },
   getLists: function (a) { return getLists(a[0]); },
   setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3], a[4]); },
   resetAlokasi: function (a) { return resetAlokasi(a[0], a[1]); },
@@ -235,19 +236,8 @@ function findSheet_(ss, name) {
   return null;
 }
 
-// WOD dan RPH dibaca LANGSUNG dari spreadsheet RPH (tanpa IMPORTRANGE). Jika gagal dibuka (izin/koneksi), dipakai salinan lokal di WIP YD (Jawaban).
-let RPHSS_ = null;
-function rphSheet_(name) {
-  try {
-    if (!RPHSS_) RPHSS_ = SpreadsheetApp.openById(RSP_ID_WODMETA);
-    const sh = findSheet_(RPHSS_, name);
-    if (sh && sh.getLastRow() >= 1) {
-      const a = sh.getRange(1, 1).getDisplayValue();
-      if (String(a).indexOf('#REF') < 0) return sh;
-    }
-  } catch (e) { RPHSS_ = null; }
-  return findSheet_(ss_(), name);
-}
+// WOD dan RPH dibaca dari sheet lokal di WIP YD (Jawaban) (cepat). Isinya disalin dari spreadsheet RPH oleh syncWodRph() di resep.gs (pengganti IMPORTRANGE).
+function rphSheet_(name) { return findSheet_(ss_(), name); }
 
 function getWodSheet_() {
   const ss = ss_();
@@ -578,7 +568,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst11_';
+const LIST_PREFIX = 'lst12_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -2887,4 +2877,28 @@ function hitungBooking(mode, semua) {
   try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kimlot_n'); } catch (e) { /* abaikan */ }
   try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kimwm_n'); } catch (e) { /* abaikan */ }
   return { success: true, item: res.item, terisi: res.terisi, lot: res.lot, lotCocok: res.lotCocok, baris: res.baris, tanpaItem: res.tanpaItem || [], contoh: res.contoh || '', versi: res.versi || '', semua: !!res.semua };
+}
+
+
+// Dipanggil aplikasi saat dibuka dan saat tombol refresh ditekan: menyalin WOD dan RPH dari spreadsheet RPH (syncWodRph di resep.gs).
+// Tanpa force, dilewati bila sinkron terakhir kurang dari 3 menit lalu atau sedang berjalan.
+function sinkronWodRph(force) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const last = parseInt(props.getProperty('wodRphSyncMs') || '0', 10);
+    if (!force && Date.now() - last < 180000) return { success: true, skipped: true };
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(force ? 20000 : 500)) return { success: true, skipped: true };
+    let hasil;
+    try {
+      hasil = syncWodRph();
+      props.setProperty('wodRphSyncMs', String(Date.now()));
+    } finally { lock.releaseLock(); }
+    try {
+      const keys = ['wod', 'shl_rph', 'supmap', 'sup2'].map(function (x) { return LIST_PREFIX + x + '_n'; });
+      CacheService.getScriptCache().removeAll(keys);
+    } catch (e) { /* abaikan */ }
+    const gagal = Object.keys(hasil).filter(function (n) { return String(hasil[n]).indexOf('GAGAL') === 0; }).map(function (n) { return n + ' ' + hasil[n]; });
+    return { success: true, skipped: false, hasil: hasil, gagal: gagal.join('; ') };
+  } catch (e) { return { success: false, error: String(e && e.message || e) }; }
 }

@@ -1932,7 +1932,20 @@
   $('#tabPackDetil').addEventListener('click', function () { showView('packdetil'); });
   $('#tabDelivery').addEventListener('click', function () { showView('delivery'); });
   $('#tabSoft').addEventListener('click', function () { showView('soft'); });
-  $('#btnRefresh').addEventListener('click', function () { if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); });
+  /* Sinkron WOD + RPH dari spreadsheet RPH (pengganti IMPORTRANGE): saat dibuka dan saat refresh. */
+  var wrSync = false;
+  function syncWr(force) {
+    if (wrSync) return Promise.resolve(null);
+    wrSync = true;
+    return gs('sinkronWodRph', !!force).then(function (r) {
+      if (r && r.success && !r.skipped) {
+        if (r.gagal) toast('Sinkron WOD/RPH: ' + r.gagal, 'err', 7000);
+        if (lst.rph) { lst.rph.at = 0; if (view === 'rph') loadList('rph', { force: true, reread: true }); }
+      }
+      return r;
+    }).catch(function () { return null; }).then(function (r) { wrSync = false; return r; });
+  }
+  $('#btnRefresh').addEventListener('click', function () { if (MODE !== 'pc') syncWr(true); if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); });
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
     if (String(window.WIPYD_API_URL || '').trim()) { window.prompt('URL server diatur di config.js. URL sekarang:', API_URL); return; }
@@ -2040,6 +2053,7 @@
   if (!/^(rph|pack|packdetil|delivery|soft)$/.test(startTab)) startTab = MODE === 'pc' ? 'soft' : 'rph';
   if (P2TABS.length && P2TABS.indexOf(startTab) < 0) startTab = P2TABS[0];
   showView(startTab);
+  if (MODE !== 'pc') setTimeout(function () { syncWr(false); }, 600);
   if (MODE !== 'pc') setTimeout(function () { loadList('pack'); }, 1200);   // Pack disiapkan di latar belakang
 })();
 </script>

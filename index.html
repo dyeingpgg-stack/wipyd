@@ -4006,7 +4006,22 @@ var Code128 = (function () {
   $$('.tab').forEach(function (b) {
     b.addEventListener('click', function () { showView(b.getAttribute('data-view')); });
   });
+  /* Sinkron WOD + RPH dari spreadsheet RPH (pengganti IMPORTRANGE): saat aplikasi dibuka dan saat tombol refresh ditekan. Data lama tampil dulu, lalu diperbarui jika sudah selesai. */
+  var wrSync = false;
+  function syncWr(force) {
+    if (wrSync) return Promise.resolve(null);
+    wrSync = true;
+    return gs('sinkronWodRph', !!force).then(function (r) {
+      if (r && r.success && !r.skipped) {
+        if (r.gagal) toast('Sinkron WOD/RPH: ' + r.gagal, 'err', 7000);
+        if (lst.wod) { lst.wod.at = 0; loadList('wod', true); }
+        if (state.view === 'form' && isAdmin()) loadKikc();
+      }
+      return r;
+    }).catch(function () { return null; }).then(function (r) { wrSync = false; return r; });
+  }
   $('#btnRefresh').addEventListener('click', function () {
+    syncWr(true);
     if (state.view === 'miss') loadMiss(true);
     else if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
     else if (LISTS[state.view]) { loadList(state.view, true); if (state.view === 'plan') { loadList('clp', true); loadPlanDates(true); } }
@@ -5893,6 +5908,7 @@ var Code128 = (function () {
     showView(HOME_TABS.length ? HOME_TABS[0] : 'data');   // Viewer: langsung ke tab WIP (Viewer terbatas: tab pertama yang dibagikan); daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
+  setTimeout(function () { syncWr(false); }, 600);   // sinkron WOD/RPH di latar belakang saat dibuka
   setTimeout(function () { loadMiss(false); }, 2500);   // cek lot outstanding di latar belakang untuk notifikasi
   if (qLen()) flushQueue();
 })();
