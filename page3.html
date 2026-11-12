@@ -27,10 +27,10 @@
   /* Viewer terbatas: ?mode=viewer&tabs=pack,rph (atau tanda WIPYD_TABS dari server) = hanya tab yang dibagikan */
   if (q === 'viewer' || q === 'admin') {
     var tl = [];
-    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|packdetil|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
-      var pt = tl.filter(function (x) { return /^(rph|pack|delivery|soft)$/.test(x); });
+      var pt = tl.filter(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); });
       if (!tl.some(function (x) { return !/^kimia$/.test(x); })) { var st0 = document.createElement('style'); st0.textContent = '#btnHome{display:none !important}'; document.head.appendChild(st0); }
       var css = tl.indexOf('kimia') >= 0 ? '' : '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
       if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';

@@ -116,7 +116,7 @@ function doGet(e) {
     page = HtmlService.createHtmlOutput(page.getContent().replace('<head>', '<head><script>window.WIPYD_TABS="' + tl.join(',') + '";</script>'));
   }
   const tab = str_(p.tab).toLowerCase();
-  if (str_(p.page) === '2' && /^(rph|pack|delivery|soft)$/.test(tab)) {   // tab awal Page 2 (mis. tombol SOFT di Input)
+  if (str_(p.page) === '2' && /^(rph|pack|packdetil|delivery|soft)$/.test(tab)) {   // tab awal Page 2 (mis. tombol SOFT di Input)
     page = HtmlService.createHtmlOutput(page.getContent().replace('<head>', '<head><script>window.WIPYD_TAB="' + tab + '";</script>'));
   }
   if (str_(p.page) !== '2' && /^(inputsoft|miss)$/.test(tab)) {   // tab awal Home (tombol di Page 2: Input SOFT, Outstanding)
@@ -171,7 +171,7 @@ const API_FUNCS = {
 // Alamat link Viewer (URL web app + ?mode=viewer). Dipakai tombol Bagikan di aplikasi Admin.
 // tabs (opsional) = Viewer terbatas, mis. 'plan,mesin' (hanya tab Plan dan Mesin yang tampil)
 function cleanTabs_(t) {
-  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; });
+  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|packdetil|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; });
 }
 // Dua link untuk tombol Share: Viewer dan PC (URL web app)
 function getShareUrls() {
@@ -192,7 +192,7 @@ function getPageUrl(page, mode, tab, tabs) {
   if (String(page) === '2' || String(page) === '3') q.push('page=' + String(page));
   const tl0 = cleanTabs_(tabs);
   if (str_(mode) === 'viewer' || str_(mode) === 'pc' || (str_(mode) === 'admin' && tl0.length)) q.push('mode=' + str_(mode));
-  if (String(page) === '2' && /^(rph|pack|delivery|soft)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());
+  if (String(page) === '2' && /^(rph|pack|packdetil|delivery|soft)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());
   if (String(page) !== '2' && /^(inputsoft|miss)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());   // Home: tab awal Input SOFT / Outstanding
   const tl = cleanTabs_(tabs);
   if ((str_(mode) === 'viewer' || str_(mode) === 'admin') && tl.length) q.push('tabs=' + tl.join(','));   // Viewer terbatas: daftar tab ikut dibawa saat pindah halaman
@@ -235,9 +235,23 @@ function findSheet_(ss, name) {
   return null;
 }
 
+// WOD dan RPH dibaca LANGSUNG dari spreadsheet RPH (tanpa IMPORTRANGE). Jika gagal dibuka (izin/koneksi), dipakai salinan lokal di WIP YD (Jawaban).
+let RPHSS_ = null;
+function rphSheet_(name) {
+  try {
+    if (!RPHSS_) RPHSS_ = SpreadsheetApp.openById(RSP_ID_WODMETA);
+    const sh = findSheet_(RPHSS_, name);
+    if (sh && sh.getLastRow() >= 1) {
+      const a = sh.getRange(1, 1).getDisplayValue();
+      if (String(a).indexOf('#REF') < 0) return sh;
+    }
+  } catch (e) { RPHSS_ = null; }
+  return findSheet_(ss_(), name);
+}
+
 function getWodSheet_() {
   const ss = ss_();
-  const sh = findSheet_(ss, SHEET_WOD);
+  const sh = rphSheet_(SHEET_WOD);
   if (!sh) {
     const names = ss.getSheets().map(function (s) { return s.getName(); }).join(', ');
     throw new Error('Tab "' + SHEET_WOD + '" tidak ditemukan di spreadsheet "' + ss.getName() +
@@ -366,7 +380,7 @@ function mapRph_(r, c) {
   return { kikc: g(c.kikc), noBenang: g(c.noBenang), warna: g(c.warna), kg: g(c.kg), cone: g(c.cone), mesin: g(c.mesin), ketKikc: g(c.ket) };
 }
 function findInRph_(want) {
-  const sh = findSheet_(ss_(), SHEET_RPH);
+  const sh = rphSheet_(SHEET_RPH);
   if (!sh || sh.getLastRow() < 2) return null;
   const c = rphCols_(sh);
   if (!c) return null;
@@ -508,7 +522,7 @@ function getKikcData() {
     }
 
     try {
-      const rsh = findSheet_(ss_(), SHEET_RPH);
+      const rsh = rphSheet_(SHEET_RPH);
       if (!rsh) {
         warn = 'Sheet "' + SHEET_RPH + '" tidak ditemukan, KIKC dari RPH tidak dimuat.';
       } else if (rsh.getLastRow() >= 2) {
@@ -564,7 +578,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst10_';
+const LIST_PREFIX = 'lst11_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -1778,9 +1792,19 @@ function tesPack() {
 // ================= 2d. Page 2: tab Pack (sheet PACK) dan RPH (sheet RPH) =================
 // Isi sheet ditampilkan apa adanya menurut judul kolom baris 1 (maks. 40 kolom). Kolom tanggal (judul berisi TANGGAL/TGL/DATE, atau kolom A bila isinya tanggal)
 // diformat DD/MM/YYYY dan dipakai mengurutkan dari terbaru; tanpa kolom tanggal, baris paling bawah di sheet tampil paling atas.
-const SHEET_LIST2 = { pack: SHEET_PACK, rph: SHEET_RPH, soft: 'SOFT' };   // 'SOFT' = SHEET_SOFT (ditulis langsung: const itu dideklarasikan di bagian bawah file)
+const METAPACK_SS_ID = '1_C1qJMj-wi_9S1-E0stXIk_H-nVfIyDoCCVhmGcxLo0';   // ISI dengan ID spreadsheet METAPACK (bagian antara /d/ dan /edit pada link), atau set Script Property METAPACK_SS_ID
+const SHEET_LIST2 = { pack: SHEET_PACK, rph: SHEET_RPH, soft: 'SOFT', packdetil: 'METAPACK:DETIL' };   // 'SOFT' = SHEET_SOFT (ditulis langsung: const itu dideklarasikan di bagian bawah file)
+function listSheet_(name) {
+  if (name === SHEET_RPH) return rphSheet_(name);
+  if (name === 'METAPACK:DETIL') {
+    const id = METAPACK_SS_ID || PropertiesService.getScriptProperties().getProperty('METAPACK_SS_ID') || '';
+    if (!id) throw new Error('ID spreadsheet METAPACK belum diisi. Isi METAPACK_SS_ID di Kode.gs.');
+    return findSheet_(SpreadsheetApp.openById(id), 'DETIL');
+  }
+  return findSheet_(ss_(), name);
+}
 function buildSheetList_(name) {
-  const sh = findSheet_(ss_(), name);
+  const sh = listSheet_(name);
   if (!sh) throw new Error(name === 'SOFT' ? 'Sheet "SOFT" belum ada. Isi dulu lewat Home > Input > SOFT.' : 'Tab "' + name + '" tidak ditemukan di spreadsheet.');
   const lastR = sh.getLastRow(), lastC = Math.min(sh.getLastColumn(), 40);
   if (lastR < 1 || lastC < 1) return { success: true, headers: [], rows: [], total: 0, name: name };
