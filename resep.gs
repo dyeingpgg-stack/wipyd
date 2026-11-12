@@ -170,23 +170,51 @@ function rspBuatTrigger() {
 // ====== PENGGANTI IMPORTRANGE: salin sheet WOD dan RPH dari spreadsheet RPH ke WIP YD (Jawaban) ======
 // Hasilnya NILAI (bukan rumus), jadi tidak bisa #REF! dan cepat dibaca. Isi lama sheet tujuan diganti hanya jika data sumber berhasil dibaca.
 // Jalankan syncWodRph sekali secara manual (beri izin), lalu jalankan pasangTriggerWodRph sekali agar jalan otomatis tiap 10 menit.
-function syncWodRphSheet_(nama) {
+// Disalin BERTAHAP (3000 baris per langkah) dengan batas waktu. Bila waktu habis, posisi terakhir disimpan dan dilanjutkan pada panggilan berikutnya
+// (trigger 10 menit / buka aplikasi / refresh). Baris sisa di bawah data baru dibersihkan setelah selesai.
+const WR_CHUNK = 3000;
+function syncWodRphSheet_(nama, batasMs) {
+  const t0 = Date.now(), props = PropertiesService.getScriptProperties(), kunci = "wrNext_" + nama;
   const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName(nama);
   if (!src) throw new Error('Sheet "' + nama + '" tidak ada di spreadsheet RPH.');
   const lr = src.getLastRow(), lc = src.getLastColumn();
   if (lr < 1 || lc < 1) throw new Error('Sheet "' + nama + '" di spreadsheet RPH kosong, tidak disalin.');
-  const vals = src.getRange(1, 1, lr, lc).getValues();
-  if (String(vals[0][0]).indexOf("#REF") >= 0) throw new Error('Sheet "' + nama + '" di sumber berisi error, tidak disalin.');
+  let mulai = parseInt(props.getProperty(kunci) || "1", 10);
+  if (!(mulai >= 1) || mulai > lr) mulai = 1;
   const dst = ss_().getSheetByName(nama) || ss_().insertSheet(nama);
   if (dst.getMaxColumns() < lc) dst.insertColumnsAfter(dst.getMaxColumns(), lc - dst.getMaxColumns());
   if (dst.getMaxRows() < lr) dst.insertRowsAfter(dst.getMaxRows(), lr - dst.getMaxRows());
-  dst.clearContents();   // menghapus rumus IMPORTRANGE lama; format sel tetap
-  dst.getRange(1, 1, lr, lc).setValues(vals);
-  return lr;
+  let baris = mulai;
+  while (baris <= lr) {
+    if (baris > mulai && Date.now() - t0 > batasMs) {
+      props.setProperty(kunci, String(baris));
+      Logger.log(nama + ": sebagian, lanjut dari baris " + baris + " / " + lr + " (" + Math.round((Date.now() - t0) / 1000) + " dtk)");
+      return { baris: lr, sampai: baris - 1, selesai: false };
+    }
+    const n = Math.min(WR_CHUNK, lr - baris + 1);
+    const vals = src.getRange(baris, 1, n, lc).getValues();
+    if (baris === 1 && String(vals[0][0]).indexOf("#REF") >= 0) throw new Error('Sheet "' + nama + '" di sumber berisi error, tidak disalin.');
+    dst.getRange(baris, 1, n, lc).setValues(vals);
+    baris += n;
+  }
+  const lastD = dst.getMaxRows();
+  if (lastD > lr) dst.getRange(lr + 1, 1, lastD - lr, dst.getMaxColumns()).clearContent();
+  if (dst.getMaxColumns() > lc) dst.getRange(1, lc + 1, Math.min(lr, lastD), dst.getMaxColumns() - lc).clearContent();
+  props.deleteProperty(kunci);
+  Logger.log(nama + ": selesai " + lr + " baris x " + lc + " kolom (" + Math.round((Date.now() - t0) / 1000) + " dtk)");
+  return { baris: lr, sampai: lr, selesai: true };
 }
-function syncWodRph() {
-  const hasil = {};
-  ["WOD", "RPH"].forEach(n => { try { hasil[n] = syncWodRphSheet_(n); } catch (e) { hasil[n] = "GAGAL: " + e.message; } });
+// batasMs = total waktu yang boleh dipakai (default 4 menit; batas Apps Script 6 menit)
+function syncWodRph(batasMs) {
+  batasMs = (typeof batasMs === "number" && batasMs > 0) ? batasMs : 240000;
+  const t0 = Date.now(), hasil = {};
+  ["WOD", "RPH"].forEach(n => {
+    try {
+      const sisa = Math.max(batasMs - (Date.now() - t0), 15000);
+      const x = syncWodRphSheet_(n, sisa);
+      hasil[n] = x.selesai ? x.baris : "SEBAGIAN: " + x.sampai + " dari " + x.baris + " baris, lanjut otomatis";
+    } catch (e) { hasil[n] = "GAGAL: " + e.message; }
+  });
   PropertiesService.getScriptProperties().setProperty("wodRphSyncAt", Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm"));
   Logger.log(JSON.stringify(hasil));
   return hasil;

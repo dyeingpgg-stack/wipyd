@@ -2891,14 +2891,14 @@ function sinkronWodRph(force) {
     if (!lock.tryLock(force ? 20000 : 500)) return { success: true, skipped: true };
     let hasil;
     try {
-      hasil = syncWodRph();
+      hasil = syncWodRph(force ? 270000 : 200000);
       props.setProperty('wodRphSyncMs', String(Date.now()));
     } finally { lock.releaseLock(); }
     try {
       const keys = ['wod', 'shl_rph', 'supmap', 'sup2'].map(function (x) { return LIST_PREFIX + x + '_n'; });
       CacheService.getScriptCache().removeAll(keys);
     } catch (e) { /* abaikan */ }
-    const gagal = Object.keys(hasil).filter(function (n) { return String(hasil[n]).indexOf('GAGAL') === 0; }).map(function (n) { return n + ' ' + hasil[n]; });
+    const gagal = Object.keys(hasil).filter(function (n) { return String(hasil[n]).indexOf('GAGAL') === 0 || String(hasil[n]).indexOf('SEBAGIAN') === 0; }).map(function (n) { return n + ' ' + hasil[n]; });
     return { success: true, skipped: false, hasil: hasil, gagal: gagal.join('; ') };
   } catch (e) { return { success: false, error: String(e && e.message || e) }; }
 }
