@@ -2732,7 +2732,7 @@ function getKimia(which, force) {
     which = str_(which).toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(KIMIA_SHEETS, which)) throw new Error('Daftar Kimia tidak dikenal: ' + which);
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
-    const ck = 'kim_' + which + (which === 'mutasi' ? '3' : '');
+    const ck = 'kim_' + which + (which === 'mutasi' ? '4' : '');
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
     if (which === 'open' || which === 'conf') {   // Lot Opened / Lot Confirmed dibaca langsung dari WODMETA (tanpa menunggu sinkron C.dbb)
       let ro = null;
@@ -2962,12 +2962,16 @@ function kimiaMutasi_() {
     prev[n] = o.akhir;
   });
   // urutan: periode terbaru di atas; di dalam periode dikelompokkan per JENIS (AUXILLIRIES dulu, lalu jenis lain menurut urutan pertama muncul di sheet), urutan baris sheet dipertahankan
-  const jr = {}; let jn = 1;
-  rows.slice().sort(function (a, b) { return a.idx - b.idx; }).forEach(function (o) { const j = o.jenis.toUpperCase(); if (!(j in jr)) jr[j] = /^AUX/.test(j) ? 0 : jn++; });
+  const base = function (o) { return o.jenis.toUpperCase().replace(/\s*\(.*$/, '').trim(); };   // "REACTIVE DYES (MCT)" dan "REACTIVE DYES (VS)" satu kelompok
+  const jb = {}, js = {}; let nb = 1, ns = 1;
+  rows.slice().sort(function (a, b) { return a.idx - b.idx; }).forEach(function (o) {
+    const bs = base(o), j = o.jenis.toUpperCase();
+    if (!(bs in jb)) jb[bs] = /^AUX/.test(bs) ? 0 : nb++;
+    if (!(j in js)) js[j] = ns++;
+  });
   rows.sort(function (a, b) {
     if (a.p !== b.p) return a.p < b.p ? 1 : -1;
-    const ra = jr[a.jenis.toUpperCase()], rb = jr[b.jenis.toUpperCase()];
-    return (ra - rb) || (a.idx - b.idx);
+    return (jb[base(a)] - jb[base(b)]) || (js[a.jenis.toUpperCase()] - js[b.jenis.toUpperCase()]) || (a.idx - b.idx);
   });
   const headers = ['PERIODE', 'KODE ENTRY', 'KODE KIMIA', 'NAMA', 'JENIS', 'UOM', 'STOCK AWAL', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR'];
   const out = rows.map(function (o) {
