@@ -2726,7 +2726,7 @@ function tesKecepatanCariKikc() {
 // ================= Page 3: Kimia (RESEPDB) =================
 // Membaca sheet hasil sinkron resep.gs di spreadsheet RESEPDB (konstanta RSP_ID_DB dari resep.gs, satu project yang sama). Hanya baca.
 //   resep = sheet RESEP | conf = sheet C.dbb (lot Confirmed) | kamus = sheet Kamus. Baris 1 = judul kolom; kolom pertama = KIKC.
-const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
+const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI', kritikal: 'Kritikal' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
 function getKimia(which, force) {
   try {
     which = str_(which).toLowerCase();
@@ -2739,6 +2739,7 @@ function getKimia(which, force) {
       try { ro = which === 'open' ? kimiaOpen_() : kimiaConf_(); } catch (eW) { if (which === 'open') throw eW; ro = null; }
       if (ro) { listCachePut_(ck, ro, 90); return ro; }
     }
+    if (which === 'kritikal') { const rk = kimiaKritikal_(); listCachePut_(ck, rk, 120); return rk; }
     if (which === 'mutasi') { const rm = kimiaMutasi_(); listCachePut_(ck, rm, 300); return rm; }
     const sh = SpreadsheetApp.openById(RSP_ID_DB).getSheetByName(KIMIA_SHEETS[which]);
     if (!sh) throw new Error('Sheet "' + KIMIA_SHEETS[which] + '" tidak ditemukan di RESEPDB.');
@@ -2978,4 +2979,26 @@ function kimiaMutasi_() {
     return [o.per, o.entry, o.kode, o.nama, o.jenis, 'gram', mutasiFmt_(o.awal), mutasiFmt_(o.masuk), mutasiFmt_(o.pakai), mutasiFmt_(o.ret), mutasiFmt_(o.akhir)];
   });
   return { success: true, headers: headers, rows: out, total: out.length, name: 'MUTASI', syncAt: '' };
+}
+
+
+// Tab Kritikal (Page 3): sheet "Kritikal" kolom A sampai K di spreadsheet MUTKIMYD. Baris 1 = judul kolom, baris 2 = tanggal + total (ditampilkan sebagai keterangan), data mulai baris 3.
+// ID ditulis seperti yang diketik pengguna; huruf I besar / l kecil mudah tertukar, jadi beberapa kemungkinan dicoba. Bisa juga diisi lewat Script Property KRITIKAL_SS_ID.
+const KRITIKAL_SS_IDS = ['1aNoqY6Iu5-9xWIj3DpRfTEQ-ilWn5DrAE5ScV_hYPdc', '1aNoqY6lu5-9xWIj3DpRfTEQ-iIWn5DrAE5ScV_hYPdc', '1aNoqY6Iu5-9xWIj3DpRfTEQ-iIWn5DrAE5ScV_hYPdc', '1aNoqY6lu5-9xWIj3DpRfTEQ-ilWn5DrAE5ScV_hYPdc'];
+function kimiaKritikal_() {
+  let ids = KRITIKAL_SS_IDS.slice();
+  try { const p = PropertiesService.getScriptProperties().getProperty('KRITIKAL_SS_ID'); if (p) ids.unshift(p); } catch (e) { /* abaikan */ }
+  let ss = null, err = '';
+  for (let i = 0; i < ids.length && !ss; i++) { try { ss = SpreadsheetApp.openById(ids[i]); } catch (e) { err = e.message; } }
+  if (!ss) throw new Error('Spreadsheet Kritikal tidak bisa dibuka (cek ID dan izin akses): ' + err);
+  const sh = findSheet_(ss, 'Kritikal');
+  if (!sh) throw new Error('Sheet "Kritikal" tidak ditemukan di spreadsheet ' + ss.getName() + '.');
+  const lr = sh.getLastRow();
+  if (lr < 1) return { success: true, headers: [], rows: [], total: 0, name: 'Kritikal', info: '' };
+  const v = sh.getRange(1, 1, lr, 11).getDisplayValues();
+  const clean = function (x) { return String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); };
+  const headers = v[0].map(function (x, i) { return clean(x) || ('KOLOM ' + (i + 1)); });
+  const info = lr >= 2 ? [clean(v[1][0]), clean(v[1][1]) ? 'TOTAL ' + clean(v[1][1]) + ' ' + headers[1] : ''].filter(function (x) { return x; }).join(' \u00b7 ') : '';
+  const rows = v.slice(2).map(function (r) { return r.map(clean); }).filter(function (r) { return r[0] !== ''; });
+  return { success: true, headers: headers, rows: rows, total: rows.length, name: 'Kritikal', info: info };
 }
