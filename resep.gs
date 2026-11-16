@@ -223,3 +223,30 @@ function pasangTriggerWodRph() {
   ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === "syncWodRph") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("syncWodRph").timeBased().everyMinutes(10).create();
 }
+
+// DIAGNOSA (cepat, < 1 menit): mengukur waktu tiap langkah penyalinan. Jalankan dengan tombol "Jalankan" (BUKAN Debug), lalu kirim isi Log eksekusi.
+// Catatan: 300 baris pertama sheet WOD dan RPH di WIP YD (Jawaban) ditulis ulang dengan data sumber yang sama (aman).
+function tesWodRph() {
+  const dt = (t) => Math.round((Date.now() - t) / 100) / 10 + " dtk";
+  let t = Date.now();
+  const sss = SpreadsheetApp.openById(RSP_ID_WODMETA);
+  console.log("buka spreadsheet RPH: " + dt(t));
+  ["WOD", "RPH"].forEach(n => {
+    try {
+      t = Date.now(); const src = sss.getSheetByName(n);
+      const lr = src.getLastRow(), lc = src.getLastColumn();
+      console.log(n + " sumber: " + lr + " baris x " + lc + " kolom, maxKolom " + src.getMaxColumns() + " (" + dt(t) + ")");
+      const k = Math.min(300, lr);
+      t = Date.now(); const v = src.getRange(1, 1, k, lc).getValues();
+      console.log(n + " baca " + k + " baris: " + dt(t));
+      t = Date.now(); const dst = ss_().getSheetByName(n);
+      console.log(n + " tujuan: " + dst.getLastRow() + " baris x " + dst.getLastColumn() + " kolom, max " + dst.getMaxRows() + " x " + dst.getMaxColumns() + " (" + dt(t) + ")");
+      t = Date.now(); dst.getRange(1, 1, k, lc).setValues(v); SpreadsheetApp.flush();
+      console.log(n + " tulis " + k + " baris: " + dt(t));
+    } catch (e) { console.log(n + " GAGAL: " + e.message); }
+  });
+}
+
+// Sinkron satu sheet saja (jalankan dengan tombol "Jalankan"). Bila hasilnya "belum selesai", jalankan lagi: dilanjutkan dari posisi terakhir.
+function syncRphSaja() { const x = syncWodRphSheet_("RPH", 300000); Logger.log("RPH: " + JSON.stringify(x)); return x; }
+function syncWodSaja() { const x = syncWodRphSheet_("WOD", 300000); Logger.log("WOD: " + JSON.stringify(x)); return x; }

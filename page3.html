@@ -812,6 +812,19 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section class="view list" id="viewMutasi" aria-label="Stock Mutasi Kimia">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qMutasi" type="search" placeholder="Cari nama kimia, kode, jenis, atau periode (mis. 10-2026)" autocomplete="off" aria-label="Cari mutasi kimia"></div>
+      <div class="lnote" id="nMutasi"></div><div class="lstate" id="sMutasi"></div>
+      <div class="table-wrap hidden" id="wMutasi"><table><thead><tr id="hMutasi"></tr></thead><tbody id="bMutasi"></tbody></table></div>
+      <div class="pager" id="pMutasi" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piMutasi" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
     <section class="view list" id="viewKamus" aria-label="Kamus">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qKamus" type="search" placeholder="Cari di Kamus" autocomplete="off" aria-label="Cari Kamus"></div>
@@ -845,6 +858,7 @@
     <button type="button" class="tab" data-view="open" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lot Opened</button>
     <button type="button" class="tab" data-view="resep" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 11h6M9 15h6"/></svg>Resep</button>
     <button type="button" class="tab" data-view="lot" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Resep per Lot</button>
+    <button type="button" class="tab" data-view="mutasi" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>Stock Mutasi</button>
     <!-- Tab Kamus disembunyikan (section viewKamus tetap ada). Untuk menampilkan lagi, tambahkan tombol data-view="kamus" di sini. -->
   </nav>
 
@@ -968,9 +982,9 @@
   }
   $('#btnPage2').addEventListener('click', openPage2);
   var TABS = [];
-  var PG = { resep: 1, conf: 1, open: 1 }, PAGED = { resep: 1, conf: 1, open: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1, mutasi: 1 }, PAGED = { resep: 1, conf: 1, open: 1, mutasi: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
-  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null }, KQ = { lot: '' }, LOTSEL = '';
+  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
   var LABEL = {
@@ -1016,7 +1030,7 @@
   var fmtId = function (n, d) { return (Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).toLocaleString('id-ID', { maximumFractionDigits: d }); };
   /* Lot Confirmed: bila kata cari cocok dengan NAMA KIMIA di RESEP, tampilkan lot Confirmed yang resepnya memakai bahan itu + total gramnya */
   var RIDX = null;
-  var BKCONF = false;
+  var BKRES = false, BKCONF = false;
   function resepIndex() {
     if (RIDX && RIDX.src === KIM.resep) return RIDX;
     var byK = {}, names = {};
@@ -1094,9 +1108,14 @@
         $('#scGramBk').textContent = fmtId(gsum, 2); $('#scKgBk').textContent = fmtId(gsum / 1000, 3);
         if (KIM.conf) {   // lot dan bon Confirmed (dari WODMETA): KIKC unik dan NO DBB unik
           var lkS = {}, bnS = {};
-          KIM.conf.rows.forEach(function (r) { if (kc(r[0])) lkS[kc(r[0])] = 1; if (kc(r[2])) bnS[kc(r[2])] = 1; });
+          var bkInfo = null;
+          if (q.length >= 3) {   // sedang mencari item: lot dan bon hanya yang memakai item tsb
+            if (KIM.resep) bkInfo = confByItem(q, 'conf');
+            else if (!BKRES) { BKRES = true; loadKim('resep').then(function () { BKRES = false; if (curView === 'booking') showTable('booking', 'Booking', $('#qBooking').value); }, function () { BKRES = false; }); }
+          }
+          (bkInfo ? bkInfo.rows : KIM.conf.rows).forEach(function (r) { if (kc(r[0])) lkS[kc(r[0])] = 1; if (kc(r[2])) bnS[kc(r[2])] = 1; });
           $('#scLotsBk').textContent = fmtId(Object.keys(lkS).length, 0); $('#scBonBk').textContent = fmtId(Object.keys(bnS).length, 0);
-          $('#scInfoBk').textContent = 'lot Confirmed';
+          $('#scInfoBk').textContent = bkInfo ? 'lot Confirmed memakai ' + (bkInfo.names.length === 1 ? bkInfo.names[0] : bkInfo.names.length + ' item cocok') : 'lot Confirmed';
         } else {
           $('#scLotsBk').textContent = '...'; $('#scBonBk').textContent = '...'; $('#scInfoBk').textContent = 'lot Confirmed';
           if (!BKCONF) {
@@ -1229,7 +1248,7 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
       PG[p[0]] = 1;
@@ -1274,7 +1293,7 @@
   document.addEventListener('click', function (e) {
     var pb = e.target.closest ? e.target.closest('.pager [data-pg]') : null;
     if (pb && !pb.disabled) {
-      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : 'Conf', g = pb.getAttribute('data-pg');
+      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewMutasi' ? 'mutasi' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'mutasi' ? 'Mutasi' : 'Conf', g = pb.getAttribute('data-pg');
       PG[pk] = g === 'first' ? 1 : g === 'prev' ? PG[pk] - 1 : g === 'next' ? PG[pk] + 1 : 999999;
       showTable(pk, pid, $('#q' + pid).value);
       var wr = $('#w' + pid); if (wr) wr.scrollTop = 0;
@@ -1285,7 +1304,7 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', mutasi: 'Mutasi' }, curView = 'booking';
   function showView(name) {
     curView = name;
     Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
@@ -1304,7 +1323,7 @@
     var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
       .then(function (r) {
-        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; RC = null;
+        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = null; RC = null;
         var need = ['booking', 'conf', 'open'];
         if (curView === 'resep' || curView === 'lot' || curView === 'rencana') need.push('resep');
         return Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {

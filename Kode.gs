@@ -2726,7 +2726,7 @@ function tesKecepatanCariKikc() {
 // ================= Page 3: Kimia (RESEPDB) =================
 // Membaca sheet hasil sinkron resep.gs di spreadsheet RESEPDB (konstanta RSP_ID_DB dari resep.gs, satu project yang sama). Hanya baca.
 //   resep = sheet RESEP | conf = sheet C.dbb (lot Confirmed) | kamus = sheet Kamus. Baris 1 = judul kolom; kolom pertama = KIKC.
-const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
+const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
 function getKimia(which, force) {
   try {
     which = str_(which).toLowerCase();
@@ -2739,6 +2739,7 @@ function getKimia(which, force) {
       try { ro = which === 'open' ? kimiaOpen_() : kimiaConf_(); } catch (eW) { if (which === 'open') throw eW; ro = null; }
       if (ro) { listCachePut_(ck, ro, 90); return ro; }
     }
+    if (which === 'mutasi') { const rm = kimiaMutasi_(); listCachePut_(ck, rm, 300); return rm; }
     const sh = SpreadsheetApp.openById(RSP_ID_DB).getSheetByName(KIMIA_SHEETS[which]);
     if (!sh) throw new Error('Sheet "' + KIMIA_SHEETS[which] + '" tidak ditemukan di RESEPDB.');
     const v = sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
@@ -2901,4 +2902,70 @@ function sinkronWodRph(force) {
     const gagal = Object.keys(hasil).filter(function (n) { return String(hasil[n]).indexOf('GAGAL') === 0 || String(hasil[n]).indexOf('SEBAGIAN') === 0; }).map(function (n) { return n + ' ' + hasil[n]; });
     return { success: true, skipped: false, hasil: hasil, gagal: gagal.join('; ') };
   } catch (e) { return { success: false, error: String(e && e.message || e) }; }
+}
+
+
+// Tab Stock Mutasi Kimia (Page 3): sheet MUTASI di spreadsheet Kamus (RSP_ID_KAMUS). Stok Akhir = Awal + Pemasukan - Pemakaian - Return (gram).
+// Angka sheet berformat Indonesia (titik ribuan, koma desimal). SELISIH = Akhir - rumus; BEDA = Awal bulan ini - Akhir bulan lalu (item sama).
+function mutasiNum_(v) {
+  if (typeof v === 'number') return v;
+  let s = String(v == null ? '' : v).replace(/[^\d.,-]/g, '');
+  if (!s) return 0;
+  if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function mutasiFmt_(n) {
+  const neg = n < 0, a = Math.abs(Math.round(n * 100) / 100);
+  const p = String(a).split('.');
+  return (neg ? '-' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (p[1] ? ',' + p[1] : '');
+}
+function kimiaMutasi_() {
+  const sh = SpreadsheetApp.openById(RSP_ID_KAMUS).getSheetByName('MUTASI');
+  if (!sh) throw new Error('Sheet "MUTASI" tidak ditemukan di spreadsheet Kamus.');
+  const v = sh.getDataRange().getValues();
+  if (v.length < 2) return { success: true, headers: [], rows: [], total: 0, name: 'MUTASI' };
+  const h = v[0].map(function (x) { return String(x).trim().toLowerCase(); });
+  const c = function (n) { const i = h.indexOf(n); if (i < 0) throw new Error('Kolom "' + n + '" tidak ada di sheet MUTASI'); return i; };
+  const I = { entry: c('kode.entry'), kode: c('kode.kimia'), nama: c('nama'), jenis: c('jenis'), awal: c('stock awal'), masuk: c('pemasukan'),
+    pakai: c('pemakaian'), ret: c('return'), akhir: c('stock akhir'), per: c('periode'), cat: c('catatan') };
+  const pKey = function (per) { const m = String(per).match(/(\d{1,2})-(\d{1,2})-(\d{4})/); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) : ''; };
+  const map = {};
+  for (let r = 1; r < v.length; r++) {
+    const x = v[r], nama = String(x[I.nama] || '').trim(), jn = String(x[I.jenis] || '').trim();
+    if (!nama || /grand total/i.test(jn)) continue;
+    const per = String(x[I.per] || '').trim(), p = pKey(per);
+    if (!p) continue;
+    const o = { p: p, per: per, kode: String(x[I.kode] || '').trim(), entry: String(x[I.entry] || '').trim(), nama: nama, jenis: jn,
+      awal: mutasiNum_(x[I.awal]), masuk: mutasiNum_(x[I.masuk]), pakai: mutasiNum_(x[I.pakai]), ret: mutasiNum_(x[I.ret]), akhir: mutasiNum_(x[I.akhir]),
+      cat: String(x[I.cat] || '').trim() };
+    o.act = o.awal + o.masuk + o.pakai + o.ret + o.akhir;
+    const k = p + '|' + nama.toUpperCase();
+    if (!map[k] || o.act > map[k].act) map[k] = o;   // salinan periode lama: simpan yang berisi data
+  }
+  const rows = Object.keys(map).map(function (k) { return map[k]; });
+  const vote = function (f) {
+    const t = {}, best = {};
+    rows.forEach(function (o) { const n = o.nama.toUpperCase(); t[n] = t[n] || {}; if (o[f]) t[n][o[f]] = (t[n][o[f]] || 0) + 1; });
+    Object.keys(t).forEach(function (n) { best[n] = Object.keys(t[n]).sort(function (a, b) { return t[n][b] - t[n][a]; })[0] || ''; });
+    return best;
+  };
+  const bj = vote('jenis'), bk = vote('kode');
+  rows.forEach(function (o) { const n = o.nama.toUpperCase(); o.jenis = bj[n] || o.jenis; o.kode = bk[n] || o.kode; });
+  rows.sort(function (a, b) { return a.p < b.p ? -1 : a.p > b.p ? 1 : 0; });
+  const prev = {};
+  rows.forEach(function (o) {
+    const n = o.nama.toUpperCase();
+    o.sel = Math.round((o.akhir - (o.awal + o.masuk - o.pakai - o.ret)) * 100) / 100;
+    o.beda = prev[n] === undefined ? null : Math.round((o.awal - prev[n]) * 100) / 100;
+    prev[n] = o.akhir;
+  });
+  rows.sort(function (a, b) { return a.p < b.p ? 1 : a.p > b.p ? -1 : (a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0); });   // periode terbaru di atas
+  const headers = ['PERIODE', 'NAMA KIMIA', 'JENIS', 'KODE ENTRY', 'KODE KIMIA', 'STOCK AWAL (GR)', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR (GR)', 'SELISIH', 'BEDA DGN BULAN LALU', 'CATATAN'];
+  const out = rows.map(function (o) {
+    return [o.per, o.nama, o.jenis, o.entry, o.kode, mutasiFmt_(o.awal), mutasiFmt_(o.masuk), mutasiFmt_(o.pakai), mutasiFmt_(o.ret), mutasiFmt_(o.akhir),
+      mutasiFmt_(o.sel), o.beda === null ? '' : mutasiFmt_(o.beda), o.cat];
+  });
+  return { success: true, headers: headers, rows: out, total: out.length, name: 'MUTASI', syncAt: '' };
 }

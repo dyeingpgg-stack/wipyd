@@ -1115,7 +1115,7 @@
       else listState(k, '');
       return;
     }
-    var ps = pageSize(), rk = m.sig + '|' + m.page + '|' + ps;
+    var ps = k === 'rph' ? 50 : pageSize(), rk = m.sig + '|' + m.page + '|' + ps;
     if (rk === m.rk) { note.textContent = noteText(m, q); return; }
     listState(k, '');
     var rows = m.rows, pages = Math.max(1, Math.ceil(rows.length / ps));
@@ -1144,7 +1144,7 @@
     var sp = m.reqKey + '|' + m.page;
     if (sp !== m.sp) { wrap.scrollTop = 0; m.sp = sp; }
     note.textContent = noteText(m, q);
-    pager.hidden = pages <= 1;
+    pager.hidden = k === 'rph' ? false : pages <= 1;   // RPH: halaman 50 baris, pager selalu tampil
     $('#pi' + d.id).innerHTML = 'Halaman <b>' + m.page + '</b> dari ' + pages + '<small>baris ' + (start + 1) + '–' + (start + shown.length) + ' dari ' + rows.length + '</small>';
     $$('#p' + d.id + ' [data-pg]').forEach(function (b) {
       var g = b.getAttribute('data-pg');
