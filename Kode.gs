@@ -2962,10 +2962,9 @@ function kimiaMutasi_() {
     prev[n] = o.akhir;
   });
   rows.sort(function (a, b) { return a.p < b.p ? 1 : a.p > b.p ? -1 : (a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0); });   // periode terbaru di atas
-  const headers = ['PERIODE', 'NAMA KIMIA', 'JENIS', 'KODE ENTRY', 'KODE KIMIA', 'STOCK AWAL (GR)', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR (GR)', 'SELISIH', 'BEDA DGN BULAN LALU', 'CATATAN'];
+  const headers = ['PERIODE', 'KODE ENTRY', 'KODE KIMIA', 'NAMA', 'JENIS', 'UOM', 'STOCK AWAL', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR'];
   const out = rows.map(function (o) {
-    return [o.per, o.nama, o.jenis, o.entry, o.kode, mutasiFmt_(o.awal), mutasiFmt_(o.masuk), mutasiFmt_(o.pakai), mutasiFmt_(o.ret), mutasiFmt_(o.akhir),
-      mutasiFmt_(o.sel), o.beda === null ? '' : mutasiFmt_(o.beda), o.cat];
+    return [o.per, o.entry, o.kode, o.nama, o.jenis, 'gram', mutasiFmt_(o.awal), mutasiFmt_(o.masuk), mutasiFmt_(o.pakai), mutasiFmt_(o.ret), mutasiFmt_(o.akhir)];
   });
   return { success: true, headers: headers, rows: out, total: out.length, name: 'MUTASI', syncAt: '' };
 }

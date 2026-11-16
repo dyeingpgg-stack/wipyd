@@ -248,6 +248,9 @@
   .daterow .input{flex:1;min-width:0;min-height:48px;padding:6px 10px;text-align:center;color-scheme:var(--scheme);font-family:var(--display);font-weight:600;font-size:17px}
   .daterow .icon-btn{width:48px;height:48px}
   .daterow .icon-btn:disabled{opacity:.35;cursor:default;box-shadow:none;border-color:var(--edge)}
+  #viewMutasi th:nth-child(n+7),#viewMutasi td:nth-child(n+7){text-align:right;font-variant-numeric:tabular-nums}
+  #viewMutasi .mtot td{font-weight:800;color:var(--cyan);border-top:2px solid var(--cyan);background:rgba(var(--c-rgb),.08)}
+  #viewMutasi .mtot td:first-child{text-align:left}
   .btn-today{flex:none;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 15px var(--body);cursor:pointer}
   .btn-today.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
   .stats{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
@@ -983,7 +986,7 @@
   }
   $('#btnPage2').addEventListener('click', openPage2);
   var TABS = [];
-  var PG = { resep: 1, conf: 1, open: 1, mutasi: 1 }, PAGED = { resep: 1, conf: 1, open: 1, mutasi: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1, mutasi: 1 }, PAGED = { resep: 1, conf: 1, open: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
   var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
@@ -1103,6 +1106,7 @@
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     if (k === 'mutasi') rows = mutasiPeriode(d, rows);
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
+    if (k === 'mutasi') { cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; virt = true; }   // kolom 0 (periode) hanya untuk filter
     if (k === 'conf' || k === 'open') {
       cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;
       var lotSet = {}, bonSet = {};
@@ -1151,7 +1155,7 @@
       }
     }
     $('#h' + id).innerHTML = (virt ? '<th class="l-s l-s0 l-last">#</th>' : '') + cols.map(function (i, p) { return '<th' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(heads ? heads[p] : hd[i]) + '</th>'; }).join('');
-    var ps = pageSize(), pages = Math.max(1, Math.ceil(rows.length / ps)), pg = 1, from = 0, to = MAXROWS;
+    var ps = pageSize(), pages = Math.max(1, Math.ceil(rows.length / ps)), pg = 1, from = 0, to = k === 'mutasi' ? 5000 : MAXROWS;
     if (PAGED[k]) { if (PG[k] > pages) PG[k] = pages; if (PG[k] < 1) PG[k] = 1; pg = PG[k]; from = (pg - 1) * ps; to = from + ps; }
     var pagerEl = $('#p' + id);
     if (pagerEl) {
@@ -1164,6 +1168,12 @@
     $('#b' + id).innerHTML = rows.slice(from, to).map(function (r, n0) { var n = from + n0;
       return '<tr>' + (virt ? '<td class="l-s l-s0 l-last">' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
+    if (k === 'mutasi' && rows.length) {   // GRAND TOTAL semua baris yang tampil (periode + pencarian)
+      var tt = [0, 0, 0, 0, 0];
+      rows.forEach(function (r) { for (var z = 0; z < 5; z++) tt[z] += parseFloat(String(r[6 + z]).replace(/\./g, '').replace(',', '.')) || 0; });
+      var pl = MUTPER === 'all' ? 'SEMUA PERIODE' : MBLN[parseInt(MUTPER.slice(5), 10) - 1].toUpperCase() + ' ' + MUTPER.slice(0, 4);
+      $('#b' + id).insertAdjacentHTML('beforeend', '<tr class="mtot"><td colspan="6">GRAND TOTAL ' + fmtId(rows.length, 0) + ' ITEM \u00b7 ' + pl + '</td>' + tt.map(function (x) { return '<td>' + fmtId(x, 2).replace(/,00$/, '') + '</td>'; }).join('') + '</tr>');
+    }
     $('#n' + id).textContent = (q ? rows.length + ' dari ' + d.rows.length : rows.length) + ' baris' + (!PAGED[k] && rows.length > MAXROWS ? ' (menampilkan ' + MAXROWS + ' pertama, persempit pencarian)' : '') + (hidden ? ' · ' + hidden + ' item tanpa booking disembunyikan' : '') + (k === 'booking' && d.syncAt ? ' · sinkron terakhir ' + d.syncAt : '');
     $('#s' + id).style.display = rows.length ? 'none' : '';
     $('#s' + id).innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
