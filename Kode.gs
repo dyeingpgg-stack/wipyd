@@ -2732,7 +2732,7 @@ function getKimia(which, force) {
     which = str_(which).toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(KIMIA_SHEETS, which)) throw new Error('Daftar Kimia tidak dikenal: ' + which);
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
-    const ck = 'kim_' + which;
+    const ck = 'kim_' + which + (which === 'mutasi' ? '2' : '');
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
     if (which === 'open' || which === 'conf') {   // Lot Opened / Lot Confirmed dibaca langsung dari WODMETA (tanpa menunggu sinkron C.dbb)
       let ro = null;

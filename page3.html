@@ -249,8 +249,11 @@
   .daterow .icon-btn{width:48px;height:48px}
   .daterow .icon-btn:disabled{opacity:.35;cursor:default;box-shadow:none;border-color:var(--edge)}
   #viewMutasi th:nth-child(n+7),#viewMutasi td:nth-child(n+7){text-align:right;font-variant-numeric:tabular-nums}
-  #viewMutasi .mtot td{font-weight:800;color:var(--cyan);border-top:2px solid var(--cyan);background:rgba(var(--c-rgb),.08)}
-  #viewMutasi .mtot td:first-child{text-align:left}
+  #viewMutasi .mgt td{font-weight:800;color:var(--cyan);border-top:2px solid var(--cyan);background:rgba(var(--c-rgb),.08)}
+  #viewMutasi td.l-s{font:700 15px var(--body);color:var(--text)}
+  #viewMutasi th:nth-child(4),#viewMutasi td:nth-child(4){white-space:nowrap}
+  #viewMutasi .mgt td:nth-child(4){text-align:left}
+  #viewMutasi th:first-child,#viewMutasi td:first-child{width:1%;white-space:nowrap}
   .btn-today{flex:none;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 15px var(--body);cursor:pointer}
   .btn-today.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
   .stats{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
@@ -999,12 +1002,22 @@
   function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
   var NET = 0;
   function netSpin(d) { NET += d; var bt = $('#btnRefresh'); if (bt) bt.classList.toggle('spin', NET > 0); }
+  /* Stock Mutasi: bentuk baku [PERIODE, KODE ENTRY, KODE KIMIA, NAMA, JENIS, UOM, AWAL, MASUK, PAKAI, RETURN, AKHIR] apa pun urutan kolom dari server (SELISIH, BEDA, CATATAN dibuang) */
+  function mutasiNorm(r) {
+    var H = (r.headers || []).map(function (h) { return String(h).toUpperCase(); });
+    var fi = function (re) { return H.findIndex(function (h) { return re.test(h); }); };
+    var ix = [fi(/^PERIODE/), fi(/KODE\.?\s?ENTRY/), fi(/KODE\.?\s?KIMIA/), fi(/^NAMA/), fi(/^JENIS/), fi(/^UOM/), fi(/^STOCK AWAL/), fi(/^PEMASUKAN/), fi(/^PEMAKAIAN/), fi(/^RETURN/), fi(/^STOCK AKHIR/)];
+    if (ix[0] < 0 || ix[3] < 0) return r;
+    return { success: true, headers: ['PERIODE', 'KODE ENTRY', 'KODE KIMIA', 'NAMA', 'JENIS', 'UOM', 'STOCK AWAL', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR'],
+      rows: (r.rows || []).map(function (x) { return ix.map(function (j, n) { return j >= 0 ? x[j] : (n === 5 ? 'gram' : ''); }); }), total: (r.rows || []).length, name: r.name };
+  }
   function fetchKim(k, force) {
     netSpin(1);
     return gs('getKimia', k, !!force).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       r.headers = (r.headers || []).map(function (h, i) { return relabel(k, h, i); });
-      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k, JSON.stringify(r)); } catch (e) { /* abaikan */ } }
+      if (k === 'mutasi') r = mutasiNorm(r);
+      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k + (k === 'mutasi' ? '2' : ''), JSON.stringify(r)); } catch (e) { /* abaikan */ } }
       return r;
     }).then(function (r) { netSpin(-1); return r; }, function (e) { netSpin(-1); throw e; });
   }
@@ -1012,7 +1025,7 @@
   function loadKim(k, force) {
     if (KIM[k] && !force) return Promise.resolve(KIM[k]);
     var cached = null;
-    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k) || 'null'); } catch (e) { cached = null; } }
+    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k + (k === 'mutasi' ? '2' : '')) || 'null'); } catch (e) { cached = null; } }
     var p = fetchKim(k, force).then(function (r) { KIM[k] = r; return r; });
     if (cached && cached.rows && cached.headers) {   // tampil dulu dari salinan terakhir, lalu diperbarui diam-diam
       KIM[k] = cached;
@@ -1154,7 +1167,7 @@
         virt = true;
       }
     }
-    $('#h' + id).innerHTML = (virt ? '<th class="l-s l-s0 l-last">#</th>' : '') + cols.map(function (i, p) { return '<th' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + esc(heads ? heads[p] : hd[i]) + '</th>'; }).join('');
+    $('#h' + id).innerHTML = (virt ? '<th' + (k === 'mutasi' ? '' : ' class="l-s l-s0 l-last"') + '>#</th>' : '') + cols.map(function (i, p) { return '<th' + (k === 'mutasi' ? (p === 2 ? ' class="l-s l-s0 l-last"' : '') : (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '')) + '>' + esc(heads ? heads[p] : hd[i]) + '</th>'; }).join('');
     var ps = pageSize(), pages = Math.max(1, Math.ceil(rows.length / ps)), pg = 1, from = 0, to = k === 'mutasi' ? 5000 : MAXROWS;
     if (PAGED[k]) { if (PG[k] > pages) PG[k] = pages; if (PG[k] < 1) PG[k] = 1; pg = PG[k]; from = (pg - 1) * ps; to = from + ps; }
     var pagerEl = $('#p' + id);
@@ -1166,13 +1179,12 @@
       }
     }
     $('#b' + id).innerHTML = rows.slice(from, to).map(function (r, n0) { var n = from + n0;
-      return '<tr>' + (virt ? '<td class="l-s l-s0 l-last">' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+      return '<tr>' + (virt ? '<td' + (k === 'mutasi' ? '' : ' class="l-s l-s0 l-last"') + '>' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (k === 'mutasi' ? (p === 2 ? ' class="l-s l-s0 l-last"' : '') : (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '')) + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
     if (k === 'mutasi' && rows.length) {   // GRAND TOTAL semua baris yang tampil (periode + pencarian)
       var tt = [0, 0, 0, 0, 0];
       rows.forEach(function (r) { for (var z = 0; z < 5; z++) tt[z] += parseFloat(String(r[6 + z]).replace(/\./g, '').replace(',', '.')) || 0; });
-      var pl = MUTPER === 'all' ? 'SEMUA PERIODE' : MBLN[parseInt(MUTPER.slice(5), 10) - 1].toUpperCase() + ' ' + MUTPER.slice(0, 4);
-      $('#b' + id).insertAdjacentHTML('beforeend', '<tr class="mtot"><td colspan="6">GRAND TOTAL ' + fmtId(rows.length, 0) + ' ITEM \u00b7 ' + pl + '</td>' + tt.map(function (x) { return '<td>' + fmtId(x, 2).replace(/,00$/, '') + '</td>'; }).join('') + '</tr>');
+      $('#b' + id).insertAdjacentHTML('beforeend', '<tr class="mgt"><td></td><td></td><td></td><td>GRAND TOTAL \u00b7 ' + fmtId(rows.length, 0) + ' ITEM</td><td></td><td></td>' + tt.map(function (x) { return '<td>' + fmtId(x, 2).replace(/,00$/, '') + '</td>'; }).join('') + '</tr>');
     }
     $('#n' + id).textContent = (q ? rows.length + ' dari ' + d.rows.length : rows.length) + ' baris' + (!PAGED[k] && rows.length > MAXROWS ? ' (menampilkan ' + MAXROWS + ' pertama, persempit pencarian)' : '') + (hidden ? ' · ' + hidden + ' item tanpa booking disembunyikan' : '') + (k === 'booking' && d.syncAt ? ' · sinkron terakhir ' + d.syncAt : '');
     $('#s' + id).style.display = rows.length ? 'none' : '';
