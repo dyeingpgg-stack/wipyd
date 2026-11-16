@@ -813,6 +813,7 @@
       </div>
     </section>
     <section class="view list" id="viewMutasi" aria-label="Stock Mutasi Kimia">
+      <div class="daterow"><select class="input" id="selMutasi" aria-label="Periode stock mutasi"></select><button type="button" class="btn-today" id="allMutasi" title="Tampilkan semua periode">Semua</button></div>
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qMutasi" type="search" placeholder="Cari nama kimia, kode, jenis, atau periode (mis. 10-2026)" autocomplete="off" aria-label="Cari mutasi kimia"></div>
       <div class="lnote" id="nMutasi"></div><div class="lstate" id="sMutasi"></div>
@@ -1077,12 +1078,30 @@
     for (var i = blocks.length - 1; i >= 0; i--) for (var j = 0; j < blocks[i].length; j++) out.push(blocks[i][j]);
     return out;
   }
+  /* Stock Mutasi: filter periode (bulan). Awal = periode terbaru; "Semua" = tanpa filter. */
+  var MUTPER = '', MBLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  function mutBulan(s) { var m = String(s).match(/(\d{1,2})-(\d{1,2})-(\d{4})/); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) : ''; }
+  function mutasiPeriode(d, rows) {
+    var set = {}; d.rows.forEach(function (r) { var b = mutBulan(r[0]); if (b) set[b] = 1; });
+    var list = Object.keys(set).sort().reverse(), sel = $('#selMutasi');
+    if (MUTPER !== 'all' && list.indexOf(MUTPER) < 0) MUTPER = list[0] || 'all';
+    if (sel.getAttribute('data-n') !== list.join(',')) {
+      sel.innerHTML = list.map(function (b) { return '<option value="' + b + '">' + MBLN[parseInt(b.slice(5), 10) - 1] + ' ' + b.slice(0, 4) + '</option>'; }).join('') + '<option value="all">Semua periode</option>';
+      sel.setAttribute('data-n', list.join(','));
+    }
+    sel.value = MUTPER;
+    $('#allMutasi').classList.toggle('active', MUTPER === 'all');
+    return MUTPER === 'all' ? rows : rows.filter(function (r) { return mutBulan(r[0]) === MUTPER; });
+  }
+  $('#selMutasi').addEventListener('change', function () { MUTPER = this.value; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
+  $('#allMutasi').addEventListener('click', function () { MUTPER = MUTPER === 'all' ? '' : 'all'; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   function showTable(k, id, query) {
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
     var sfx = id === 'Conf' ? '' : id;
     if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    if (k === 'mutasi') rows = mutasiPeriode(d, rows);
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
     if (k === 'conf' || k === 'open') {
       cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;
