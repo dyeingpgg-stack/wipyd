@@ -1059,7 +1059,8 @@
   function prefSama(x, y) { return x !== '' && y !== '' && (x === y || x.indexOf(y) === 0 || y.indexOf(x) === 0); }
   function confByItem(q, kk) {
     var ix = resepIndex(), R = KIM.resep.rows;
-    var hit = ix.names.filter(function (n) { return nq(n).indexOf(q) >= 0; });
+    var hit = ix.names.filter(function (n) { return nq(n) === q; });   // nama persis sama dengan yang diketik: hanya item itu (mis. "NAPHTOL AS" tanpa AS-G / AS-BO)
+    if (!hit.length) hit = ix.names.filter(function (n) { return nq(n).indexOf(q) >= 0; });   // selain itu: cocok sebagian
     if (!hit.length) return null;
     var isHit = {}; hit.forEach(function (n) { isHit[n] = 1; });
     var used = {}, seen = {}, out = [], lots = {}, total = 0;
@@ -1117,6 +1118,10 @@
     if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    if (k === 'booking' && q) {   // Booking: nama item persis sama dengan yang diketik = hanya item itu
+      var ixItem = hd.findIndex(function (h) { return /^item$/i.test(h); });
+      if (ixItem >= 0) { var exr = d.rows.filter(function (r) { return nq(r[ixItem]) === q; }); if (exr.length) rows = exr; }
+    }
     if (k === 'mutasi') rows = mutasiPeriode(d, rows);
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
     if (k === 'mutasi') { cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; virt = true; }   // kolom 0 (periode) hanya untuk filter
