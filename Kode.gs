@@ -2732,7 +2732,7 @@ function getKimia(which, force) {
     which = str_(which).toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(KIMIA_SHEETS, which)) throw new Error('Daftar Kimia tidak dikenal: ' + which);
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
-    const ck = 'kim_' + which + (which === 'mutasi' ? '2' : '');
+    const ck = 'kim_' + which + (which === 'mutasi' ? '3' : '');
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
     if (which === 'open' || which === 'conf') {   // Lot Opened / Lot Confirmed dibaca langsung dari WODMETA (tanpa menunggu sinkron C.dbb)
       let ro = null;
@@ -2937,7 +2937,7 @@ function kimiaMutasi_() {
     if (!nama || /grand total/i.test(jn)) continue;
     const per = String(x[I.per] || '').trim(), p = pKey(per);
     if (!p) continue;
-    const o = { p: p, per: per, kode: String(x[I.kode] || '').trim(), entry: String(x[I.entry] || '').trim(), nama: nama, jenis: jn,
+    const o = { idx: r, p: p, per: per, kode: String(x[I.kode] || '').trim(), entry: String(x[I.entry] || '').trim(), nama: nama, jenis: jn,
       awal: mutasiNum_(x[I.awal]), masuk: mutasiNum_(x[I.masuk]), pakai: mutasiNum_(x[I.pakai]), ret: mutasiNum_(x[I.ret]), akhir: mutasiNum_(x[I.akhir]),
       cat: String(x[I.cat] || '').trim() };
     o.act = o.awal + o.masuk + o.pakai + o.ret + o.akhir;
@@ -2961,7 +2961,14 @@ function kimiaMutasi_() {
     o.beda = prev[n] === undefined ? null : Math.round((o.awal - prev[n]) * 100) / 100;
     prev[n] = o.akhir;
   });
-  rows.sort(function (a, b) { return a.p < b.p ? 1 : a.p > b.p ? -1 : (a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0); });   // periode terbaru di atas
+  // urutan: periode terbaru di atas; di dalam periode dikelompokkan per JENIS (AUXILLIRIES dulu, lalu jenis lain menurut urutan pertama muncul di sheet), urutan baris sheet dipertahankan
+  const jr = {}; let jn = 1;
+  rows.slice().sort(function (a, b) { return a.idx - b.idx; }).forEach(function (o) { const j = o.jenis.toUpperCase(); if (!(j in jr)) jr[j] = /^AUX/.test(j) ? 0 : jn++; });
+  rows.sort(function (a, b) {
+    if (a.p !== b.p) return a.p < b.p ? 1 : -1;
+    const ra = jr[a.jenis.toUpperCase()], rb = jr[b.jenis.toUpperCase()];
+    return (ra - rb) || (a.idx - b.idx);
+  });
   const headers = ['PERIODE', 'KODE ENTRY', 'KODE KIMIA', 'NAMA', 'JENIS', 'UOM', 'STOCK AWAL', 'PEMASUKAN', 'PEMAKAIAN', 'RETURN', 'STOCK AKHIR'];
   const out = rows.map(function (o) {
     return [o.per, o.entry, o.kode, o.nama, o.jenis, 'gram', mutasiFmt_(o.awal), mutasiFmt_(o.masuk), mutasiFmt_(o.pakai), mutasiFmt_(o.ret), mutasiFmt_(o.akhir)];

@@ -1017,7 +1017,7 @@
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       r.headers = (r.headers || []).map(function (h, i) { return relabel(k, h, i); });
       if (k === 'mutasi') r = mutasiNorm(r);
-      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k + (k === 'mutasi' ? '2' : ''), JSON.stringify(r)); } catch (e) { /* abaikan */ } }
+      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k + (k === 'mutasi' ? '3' : ''), JSON.stringify(r)); } catch (e) { /* abaikan */ } }
       return r;
     }).then(function (r) { netSpin(-1); return r; }, function (e) { netSpin(-1); throw e; });
   }
@@ -1025,7 +1025,7 @@
   function loadKim(k, force) {
     if (KIM[k] && !force) return Promise.resolve(KIM[k]);
     var cached = null;
-    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k + (k === 'mutasi' ? '2' : '')) || 'null'); } catch (e) { cached = null; } }
+    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k + (k === 'mutasi' ? '3' : '')) || 'null'); } catch (e) { cached = null; } }
     var p = fetchKim(k, force).then(function (r) { KIM[k] = r; return r; });
     if (cached && cached.rows && cached.headers) {   // tampil dulu dari salinan terakhir, lalu diperbarui diam-diam
       KIM[k] = cached;
