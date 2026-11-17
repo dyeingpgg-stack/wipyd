@@ -104,7 +104,7 @@ const COL_PACK = 16;             // kolom P = Tanggal Pack (diisi dari sheet PAC
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.fn === 'ping') return json_({ ok: true, result: 'pong' });
-  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : str_(p.page) === '3' ? 'Page3' : 'Index');   // ?page=2 = Page 2 (Pack, RPH); ?page=3 = Page 3 (Kimia)
+  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : str_(p.page) === '3' ? 'Page3' : str_(p.page) === '4' ? 'Page4' : 'Index');   // ?page=2 = Page 2 (Pack, RPH); ?page=3 = Page 3 (Kimia)
   // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
   // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
   const want = str_(p.mode).toLowerCase();
@@ -190,7 +190,7 @@ function getPageUrl(page, mode, tab, tabs) {
   const u = ScriptApp.getService().getUrl();
   if (!u) return '';
   const q = [];
-  if (String(page) === '2' || String(page) === '3') q.push('page=' + String(page));
+  if (String(page) === '2' || String(page) === '3' || String(page) === '4') q.push('page=' + String(page));
   const tl0 = cleanTabs_(tabs);
   if (str_(mode) === 'viewer' || str_(mode) === 'pc' || (str_(mode) === 'admin' && tl0.length)) q.push('mode=' + str_(mode));
   if (String(page) === '2' && /^(rph|pack|packdetil|delivery|soft)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());
@@ -2726,7 +2726,7 @@ function tesKecepatanCariKikc() {
 // ================= Page 3: Kimia (RESEPDB) =================
 // Membaca sheet hasil sinkron resep.gs di spreadsheet RESEPDB (konstanta RSP_ID_DB dari resep.gs, satu project yang sama). Hanya baca.
 //   resep = sheet RESEP | conf = sheet C.dbb (lot Confirmed) | kamus = sheet Kamus. Baris 1 = judul kolom; kolom pertama = KIKC.
-const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI', kritikal: 'Kritikal' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
+const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI', kritikal: 'Kritikal', cek: 'WODMETA' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
 function getKimia(which, force) {
   try {
     which = str_(which).toLowerCase();
@@ -2739,6 +2739,7 @@ function getKimia(which, force) {
       try { ro = which === 'open' ? kimiaOpen_() : kimiaConf_(); } catch (eW) { if (which === 'open') throw eW; ro = null; }
       if (ro) { listCachePut_(ck, ro, 90); return ro; }
     }
+    if (which === 'cek') { const rc = kimiaCekLots_(); listCachePut_(ck, rc, 120); return rc; }
     if (which === 'kritikal') { const rk = kimiaKritikal_(); listCachePut_(ck, rk, 120); return rk; }
     if (which === 'mutasi') { const rm = kimiaMutasi_(); listCachePut_(ck, rm, 300); return rm; }
     const sh = SpreadsheetApp.openById(RSP_ID_DB).getSheetByName(KIMIA_SHEETS[which]);
@@ -3001,4 +3002,31 @@ function kimiaKritikal_() {
   const info = lr >= 2 ? [clean(v[1][0]), clean(v[1][1]) ? 'TOTAL ' + clean(v[1][1]) + ' ' + headers[1] : ''].filter(function (x) { return x; }).join(' \u00b7 ') : '';
   const rows = v.slice(2).map(function (r) { return r.map(clean); }).filter(function (r) { return r[0] !== ''; });
   return { success: true, headers: headers, rows: rows, total: rows.length, name: 'Kritikal', info: info };
+}
+
+
+// Tab Cek Lots (Page 3): lot (KIKC) yang punya LEBIH DARI SATU no DBB (bon) berbeda di WODMETA, apa pun statusnya (Confirmed / Canceled / Open),
+// KECUALI bon berstatus Finish (tidak ikut dihitung). WODMETA: kolom B = KIKC, C = Tanggal WOD, I = recipe, J = no bon, L = status_bon.
+function kimiaCekLots_() {
+  const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
+  if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
+  const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
+  const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  const grp = {}, order = [], seen = {};
+  v.slice(1).forEach(function (r) {
+    const kikc = str_(r[1]).trim(), bon = str_(r[9]).trim(), st = str_(r[11]).trim();
+    if (!kikc || !bon || /^finish/i.test(st)) return;
+    const gk = kc(kikc), rk = gk + '|' + kc(r[8]) + '|' + kc(bon) + '|' + st.toLowerCase();
+    if (seen[rk]) return;
+    seen[rk] = 1;
+    if (!grp[gk]) { grp[gk] = { rows: [], bons: {} }; order.push(gk); }
+    grp[gk].rows.push([kikc, str_(r[2]).trim(), str_(r[8]).trim(), bon, st]);
+    grp[gk].bons[kc(bon)] = 1;
+  });
+  const rows = [];
+  for (let i = order.length - 1; i >= 0; i--) {   // lot terbaru (paling bawah di sheet) di atas
+    const g = grp[order[i]], n = Object.keys(g.bons).length;
+    if (n > 1) g.rows.forEach(function (x) { rows.push(x.concat([String(n)])); });
+  }
+  return { success: true, headers: ['KIKC', 'TANGGAL WOD', 'RECIPE', 'NO DBB', 'STATUS', 'JUMLAH BON'], rows: rows, total: rows.length, name: 'Cek Lots' };
 }

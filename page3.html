@@ -829,6 +829,23 @@
       <div class="lnote" id="nKritikal"></div><div class="lstate" id="sKritikal"></div>
       <div class="table-wrap hidden" id="wKritikal"><table><thead><tr id="hKritikal"></tr></thead><tbody id="bKritikal"></tbody></table></div>
     </section>
+    <section class="view list" id="viewCek" aria-label="Cek Lots">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qCek" type="search" placeholder="Cari KIKC, no DBB, recipe, atau status" autocomplete="off" aria-label="Cari cek lots"></div>
+      <div class="scrow c4" id="scCek">
+        <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsCek">0</b><span>lot dengan lebih dari 1 no DBB</span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonCek">0</b><span>tidak termasuk bon Finish</span></div>
+      </div>
+      <div class="lnote" id="nCek"></div><div class="lstate" id="sCek"></div>
+      <div class="table-wrap hidden" id="wCek"><table><thead><tr id="hCek"></tr></thead><tbody id="bCek"></tbody></table></div>
+      <div class="pager" id="pCek" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piCek" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
     <section class="view list" id="viewMutasi" aria-label="Stock Mutasi Kimia">
       <div class="daterow"><select class="input" id="selMutasi" aria-label="Periode stock mutasi"></select><button type="button" class="btn-today" id="allMutasi" title="Tampilkan semua periode">Semua</button></div>
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -878,6 +895,7 @@
     <button type="button" class="tab" data-view="lot" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Resep per Lot</button>
     <button type="button" class="tab" data-view="mutasi" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>Stock Mutasi</button>
     <button type="button" class="tab" data-view="kritikal" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 18v.5"/></svg>Kritikal</button>
+    <button type="button" class="tab" data-view="cek" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg>Cek Lots</button>
     <!-- Tab Kamus disembunyikan (section viewKamus tetap ada). Untuk menampilkan lagi, tambahkan tombol data-view="kamus" di sini. -->
   </nav>
 
@@ -1001,9 +1019,9 @@
   }
   $('#btnPage2').addEventListener('click', openPage2);
   var TABS = [];
-  var PG = { resep: 1, conf: 1, open: 1, mutasi: 1 }, PAGED = { resep: 1, conf: 1, open: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1, cek: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
-  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null }, KQ = { lot: '' }, LOTSEL = '';
+  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null, cek: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
   var LABEL = {
@@ -1128,6 +1146,7 @@
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
     var sfx = id === 'Conf' ? '' : id;
     if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
+    if (k === 'kritikal') hd = hd.map(function (h) { return /^BOOKING KIMIA DI ERP/i.test(h) ? 'BOOKING' : /^STOK GKD DIKURANGI BOOKING/i.test(h) ? 'AFS' : h; });
     var cols = hd.map(function (_, i) { return i; }), virt = false, hidden = 0;
     var rows = info ? info.rows.slice() : d.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     if (k === 'booking' && q) {   // Booking: nama item persis sama dengan yang diketik = hanya item itu
@@ -1137,6 +1156,12 @@
     if (k === 'mutasi') rows = mutasiPeriode(d, rows);
     if (k === 'resep') rows = resepBlocksNewestFirst(rows);
     if (k === 'mutasi') { cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; virt = true; }   // kolom 0 (periode) hanya untuk filter
+    if (k === 'cek') {
+      cols = [0, 1, 2, 3, 4, 5]; virt = true;
+      var cl = {}, cb = {};
+      rows.forEach(function (r) { if (kc(r[0])) cl[kc(r[0])] = 1; if (kc(r[3])) cb[kc(r[3])] = 1; });
+      $('#scLotsCek').textContent = fmtId(Object.keys(cl).length, 0); $('#scBonCek').textContent = fmtId(Object.keys(cb).length, 0);
+    }
     if (k === 'conf' || k === 'open') {
       cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;
       var lotSet = {}, bonSet = {};
@@ -1316,7 +1341,7 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal'], ['cek', 'Cek']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
       PG[p[0]] = 1;
@@ -1361,7 +1386,7 @@
   document.addEventListener('click', function (e) {
     var pb = e.target.closest ? e.target.closest('.pager [data-pg]') : null;
     if (pb && !pb.disabled) {
-      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewMutasi' ? 'mutasi' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'mutasi' ? 'Mutasi' : 'Conf', g = pb.getAttribute('data-pg');
+      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewCek' ? 'cek' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'cek' ? 'Cek' : 'Conf', g = pb.getAttribute('data-pg');
       PG[pk] = g === 'first' ? 1 : g === 'prev' ? PG[pk] - 1 : g === 'next' ? PG[pk] + 1 : 999999;
       showTable(pk, pid, $('#q' + pid).value);
       var wr = $('#w' + pid); if (wr) wr.scrollTop = 0;
@@ -1372,7 +1397,7 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', mutasi: 'Mutasi', kritikal: 'Kritikal' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
   function showView(name) {
     curView = name;
     Object.keys(VIEWS).forEach(function (k) { $('#view' + VIEWS[k]).classList.toggle('active', k === name); });
@@ -1391,7 +1416,7 @@
     var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
       .then(function (r) {
-        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = KIM.kritikal = null; RC = null;
+        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = KIM.kritikal = KIM.cek = null; RC = null;
         var need = ['booking', 'conf', 'open'];
         if (curView === 'resep' || curView === 'lot' || curView === 'rencana') need.push('resep');
         return Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
