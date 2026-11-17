@@ -254,11 +254,23 @@
   #viewMutasi th:nth-child(4),#viewMutasi td:nth-child(4){white-space:nowrap}
   #viewMutasi .mgt td:nth-child(4){text-align:left}
   #viewMutasi th:first-child,#viewMutasi td:first-child{width:1%;white-space:nowrap}
-  #viewKritikal th:nth-child(n+2):nth-child(-n+8),#viewKritikal td:nth-child(n+2):nth-child(-n+8),#viewKritikal th:nth-child(11),#viewKritikal td:nth-child(11){text-align:right;font-variant-numeric:tabular-nums}
+  #viewKritikal th.r,#viewKritikal td.r{text-align:right;font-variant-numeric:tabular-nums}
   #viewKritikal td.l-s{font:700 15px var(--body);color:var(--text)}
-  #viewKritikal td.kr-red{color:var(--rose);font-weight:700}
-  #viewKritikal td.kr-yel{color:#f5b942;font-weight:700}
-  #viewKritikal td.kr-grn{color:var(--lime);font-weight:700}
+  #viewKritikal td.kr-red,.kr-red{color:var(--rose);font-weight:700}
+  #viewKritikal td.kr-yel,.kr-yel{color:#f5b942;font-weight:700}
+  #viewKritikal td.kr-grn,.kr-grn{color:var(--lime);font-weight:700}
+  .sc b.kr-red,.sc b.kr-yel{font-weight:800}
+  .krchips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
+  .krchip{padding:7px 12px;border-radius:999px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 13px var(--body);cursor:pointer}
+  .krchip b{margin-left:6px;font-weight:800}
+  .krchip.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12)}
+  .krtools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px}
+  .krtgt{display:flex;align-items:center;gap:8px;font:500 13px var(--body);color:var(--soft)}
+  .krtgt .input{width:78px;min-height:38px;padding:4px 8px;text-align:center}
+  .krname{cursor:pointer}.krname:hover{color:var(--cyan)}
+  .krlot{margin-left:8px;padding:1px 7px;border-radius:8px;border:1px solid var(--edge);font:600 11px var(--body);color:var(--dim);cursor:pointer}
+  .krlot:hover{color:var(--cyan);border-color:var(--cyan)}
+  .krup{margin-left:6px;padding:1px 6px;border-radius:8px;background:rgba(var(--r-rgb),.16);color:var(--rose);font:700 11px var(--body)}
   .btn-today{flex:none;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--soft);font:600 15px var(--body);cursor:pointer}
   .btn-today.active{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.4)}
   .stats{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
@@ -329,6 +341,7 @@
   .dim{color:var(--dim)}
   .scrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}.scrow[hidden]{display:none}
   .scrow.c4{grid-template-columns:repeat(4,1fr)}.scrow.c4.nogk{grid-template-columns:repeat(2,1fr)}@media(max-width:760px){.scrow.c4{grid-template-columns:repeat(2,1fr)}}
+  .scrow.sm{grid-template-columns:repeat(3,1fr);gap:8px}.sc.sm{padding:7px 12px;border-radius:12px}.sc.sm small{font-size:11px}.sc.sm b{font-size:18px}.sc.sm span{font-size:11px;margin-left:6px;color:var(--dim)}
   .sc{padding:12px 14px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);min-width:0}
   .sc small{display:block;color:var(--dim);font-size:12px;letter-spacing:.04em}.sc b{display:block;font:700 24px var(--display);color:var(--cyan);margin-top:2px;word-break:break-all}
   .sc span{display:block;color:var(--dim);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -826,6 +839,17 @@
     <section class="view list" id="viewKritikal" aria-label="Kritikal">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qKritikal" type="search" placeholder="Cari nama kimia atau status" autocomplete="off" aria-label="Cari kritikal"></div>
+      <div class="scrow c4" id="scKr">
+        <div class="sc"><small>TOTAL ITEM</small><b id="scKrAll">0</b></div>
+        <div class="sc"><small>ORDER SEKARANG</small><b id="scKrOrder" class="kr-red">0</b></div>
+        <div class="sc"><small>BOOKING MENINGKAT</small><b id="scKrBook" class="kr-red">0</b></div>
+        <div class="sc"><small>WASPADA</small><b id="scKrWasp" class="kr-yel">0</b></div>
+      </div>
+      <div class="krchips" id="krChips" role="tablist" aria-label="Saring status kritikal"></div>
+      <div class="krtools">
+        <label class="krtgt">Target DoH <input class="input" id="krTarget" type="number" min="1" max="365" step="1" inputmode="numeric" aria-label="Target DoH dalam hari"> hari</label>
+        <button type="button" class="btn-sm" id="krSort" title="Ganti urutan">Urut: DoH terkecil</button>
+      </div>
       <div class="lnote" id="nKritikal"></div><div class="lstate" id="sKritikal"></div>
       <div class="table-wrap hidden" id="wKritikal"><table><thead><tr id="hKritikal"></tr></thead><tbody id="bKritikal"></tbody></table></div>
     </section>
@@ -835,6 +859,11 @@
       <div class="scrow c4" id="scCek">
         <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsCek">0</b><span>lot dengan lebih dari 1 no DBB</span></div>
         <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonCek">0</b><span>tidak termasuk bon Finish</span></div>
+      </div>
+      <div class="scrow sm" id="scCekSt">
+        <div class="sc sm"><small>CONFIRMED</small><b id="scCekCf">0</b><span id="scCekCfL"></span></div>
+        <div class="sc sm"><small>OPEN</small><b id="scCekOp">0</b><span id="scCekOpL"></span></div>
+        <div class="sc sm"><small>CANCELED</small><b id="scCekCn">0</b><span id="scCekCnL"></span></div>
       </div>
       <div class="lnote" id="nCek"></div><div class="lstate" id="sCek"></div>
       <div class="table-wrap hidden" id="wCek"><table><thead><tr id="hCek"></tr></thead><tbody id="bCek"></tbody></table></div>
@@ -1142,7 +1171,77 @@
   }
   $('#selMutasi').addEventListener('change', function () { MUTPER = this.value; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   $('#allMutasi').addEventListener('click', function () { MUTPER = MUTPER === 'all' ? '' : 'all'; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
+  /* ---------- Kritikal: chip filter, scorecard, urut DoH terkecil, saran order, loncat ke Booking / Lot Confirmed, penanda status naik ---------- */
+  var KR = { chip: 'all', sort: lsGet('wipyd_krsort') === 'sheet' ? 'sheet' : 'doh', target: parseInt(lsGet('wipyd_krtarget'), 10) || 30, base: null, hasBase: false };
+  var KRNAMES = { BOOKING: /^BOOKING KIMIA DI ERP/i, AFS: /^STOK GKD DIKURANGI BOOKING/i };
+  function krNum(s) { var n = parseFloat(String(s === undefined || s === null ? '' : s).replace(/[^\d.,\-]/g, '').replace(/\./g, '').replace(',', '.')); return isNaN(n) ? NaN : n; }
+  function krLevel(st, ind) {   // 3 order, 2 booking meningkat, 1 waspada, 0 aman
+    var a = String(st || '').toUpperCase(), b = String(ind || '').toUpperCase();
+    return /ORDER/.test(a) ? 3 : /WASPADA/.test(b) ? 1 : /BOOKING/.test(b) ? 2 : 0;
+  }
+  function kritikalRender(query) {
+    var d = KIM.kritikal, q = nq(String(query || '').trim());
+    var hd = d.headers.map(function (h) { return KRNAMES.BOOKING.test(h) ? 'BOOKING' : KRNAMES.AFS.test(h) ? 'AFS' : h; });
+    var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
+    var iSisa = fi(/^SISA STOK/i), iAvd = fi(/^AVD/i), iDoh = fi(/^DoH \(\+GKI\)/i), iDohG = fi(/^DoH GKD/i), iSt = fi(/^Status Stok/i), iInd = fi(/^Booking Indikator/i);
+    if (KR.base === null) { try { var sv = lsGet('wipyd_krsnap'); KR.hasBase = !!sv; KR.base = sv ? JSON.parse(sv) : {}; } catch (e) { KR.base = {}; } }
+    var all = d.rows.map(function (r, n) {
+      var lvl = krLevel(r[iSt], r[iInd]), avd = krNum(r[iAvd]), sisa = krNum(r[iSisa]);
+      var need = isNaN(avd) ? NaN : KR.target * avd, saran = isNaN(need) || isNaN(sisa) ? NaN : Math.max(0, Math.round((need - sisa) * 100) / 100);
+      var nm = key(r[0]);
+      return { r: r, n: n, lvl: lvl, doh: krNum(r[iDoh]), dohg: krNum(r[iDohG]), saran: saran, st: String(r[iSt] || '').toUpperCase(), ind: String(r[iInd] || '').toUpperCase(), up: KR.hasBase && nm in KR.base && lvl > KR.base[nm], nm: nm };
+    });
+    // simpan keadaan sekarang sebagai pembanding untuk pembukaan berikutnya
+    try { var snap = {}; all.forEach(function (o) { snap[o.nm] = o.lvl; }); lsSet('wipyd_krsnap', JSON.stringify(snap)); } catch (e) { /* abaikan */ }
+    var cnt = function (f) { return all.filter(f).length; };
+    var isOrder = function (o) { return /ORDER/.test(o.st); }, isWasp = function (o) { return /WASPADA/.test(o.ind); }, isBook = function (o) { return /BOOKING/.test(o.ind) && !/WASPADA/.test(o.ind); }, isAman = function (o) { return /AMAN/.test(o.st); };
+    $('#scKrAll').textContent = fmtId(all.length, 0); $('#scKrOrder').textContent = fmtId(cnt(isOrder), 0);
+    $('#scKrBook').textContent = fmtId(cnt(isBook), 0); $('#scKrWasp').textContent = fmtId(cnt(isWasp), 0);
+    var found = all.filter(function (o) { return !q || nq(o.r.join(' ')).indexOf(q) >= 0; });
+    var chips = [['all', 'Semua', found.length], ['order', 'Order Sekarang', found.filter(isOrder).length], ['waspada', 'Waspada', found.filter(isWasp).length], ['booking', 'Booking Meningkat', found.filter(isBook).length], ['aman', 'Aman', found.filter(isAman).length]];
+    $('#krChips').innerHTML = chips.map(function (c) { return '<button type="button" class="krchip' + (KR.chip === c[0] ? ' active' : '') + '" data-krchip="' + c[0] + '">' + c[1] + '<b>' + c[2] + '</b></button>'; }).join('');
+    var pick = { all: null, order: isOrder, waspada: isWasp, booking: isBook, aman: isAman }[KR.chip];
+    var rows = pick ? found.filter(pick) : found.slice();
+    if (KR.sort === 'doh') rows.sort(function (a, b) {
+      var x = isNaN(a.doh) ? 1e9 : a.doh, y = isNaN(b.doh) ? 1e9 : b.doh;
+      if (x !== y) return x - y;
+      var gx = isNaN(a.dohg) ? 1e9 : a.dohg, gy = isNaN(b.dohg) ? 1e9 : b.dohg;
+      return (gx - gy) || (a.n - b.n);
+    });
+    $('#krSort').textContent = KR.sort === 'doh' ? 'Urut: DoH terkecil' : 'Urut: sesuai sheet';
+    if (document.activeElement !== $('#krTarget')) $('#krTarget').value = KR.target;
+    var num = function (i) { return i >= 1 && i <= 7 || i === 10; };   // kolom angka (B..H dan K)
+    $('#hKritikal').innerHTML = hd.map(function (h, i) { return '<th class="' + (i === 0 ? 'l-s l-s0 l-last ' : '') + (num(i) ? 'r' : '') + '">' + esc(h) + '</th>'; }).join('') + '<th class="r" title="Saran order = Target DoH x AVD+BUFF dikurangi sisa stok GKD+GKI (satuan kg, AVD+BUFF per hari mengikuti sheet)">SARAN ORDER (KG)</th>';
+    $('#bKritikal').innerHTML = rows.map(function (o) {
+      return '<tr>' + o.r.map(function (c, i) {
+        var cls = [];
+        if (i === 0) cls.push('l-s', 'l-s0', 'l-last');
+        if (num(i)) cls.push('r');
+        if (i === iSt || i === iInd) { var t = String(c).toUpperCase(); if (/WASPADA|ORDER/.test(t)) cls.push('kr-yel'); else if (/BOOKING/.test(t)) cls.push('kr-red'); else if (/AMAN/.test(t)) cls.push('kr-grn'); }
+        var inner = i === 0 ? '<span class="krname" data-krgo="booking" title="Buka di tab Booking">' + esc(c) + '</span><span class="krlot" data-krgo="conf" title="Buka di tab Lot Confirmed">Lot</span>' + (o.up ? '<span class="krup" title="Status naik sejak terakhir dibuka">&#9650; naik</span>' : '') : (c ? esc(c) : '<span class="dim">-</span>');
+        return '<td' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + (i === 0 ? ' data-krname="' + esc(c) + '"' : '') + '>' + inner + '</td>';
+      }).join('') + '<td class="r' + (o.saran > 0 ? ' kr-yel' : '') + '">' + (isNaN(o.saran) ? '<span class="dim">-</span>' : o.saran > 0 ? fmtId(o.saran, 2) : '0') + '</td></tr>';
+    }).join('');
+    $('#n' + 'Kritikal').textContent = rows.length + ' dari ' + all.length + ' baris' + (d.info ? ' \u00b7 ' + d.info : '') + ' \u00b7 saran order untuk target ' + KR.target + ' hari';
+    $('#sKritikal').style.display = rows.length ? 'none' : ''; $('#sKritikal').innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
+    $('#wKritikal').classList.toggle('hidden', !rows.length);
+  }
+  function krGo(view, name) {
+    var id = view === 'conf' ? 'Conf' : 'Booking', inp = $('#q' + id);
+    inp.value = name; PG[view] = 1;
+    showView(view);
+    try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* abaikan */ }
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-krgo],[data-krchip],#krSort') : null;
+    if (!t) return;
+    if (t.id === 'krSort') { KR.sort = KR.sort === 'doh' ? 'sheet' : 'doh'; lsSet('wipyd_krsort', KR.sort); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
+    if (t.hasAttribute('data-krchip')) { KR.chip = t.getAttribute('data-krchip'); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
+    var td = t.closest('td'); if (td && td.getAttribute('data-krname')) krGo(t.getAttribute('data-krgo'), td.getAttribute('data-krname'));
+  });
+  $('#krTarget').addEventListener('input', function () { var v = parseInt(this.value, 10); if (v >= 1 && v <= 365) { KR.target = v; lsSet('wipyd_krtarget', String(v)); if (KIM.kritikal) kritikalRender($('#qKritikal').value); } });
   function showTable(k, id, query) {
+    if (k === 'kritikal') { kritikalRender(query); return; }
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
     var sfx = id === 'Conf' ? '' : id;
     if ((k === 'conf' || k === 'open') && q.length >= 3 && KIM.resep) { info = confByItem(q, k); if (info) hd = hd.concat(['GRAM']); }
@@ -1161,6 +1260,9 @@
       var cl = {}, cb = {};
       rows.forEach(function (r) { if (kc(r[0])) cl[kc(r[0])] = 1; if (kc(r[3])) cb[kc(r[3])] = 1; });
       $('#scLotsCek').textContent = fmtId(Object.keys(cl).length, 0); $('#scBonCek').textContent = fmtId(Object.keys(cb).length, 0);
+      var sb = { cf: {}, op: {}, cn: {} }, sl = { cf: {}, op: {}, cn: {} };
+      rows.forEach(function (r) { var s = String(r[4]).toLowerCase(), z = /^confirm/.test(s) ? 'cf' : /^open/.test(s) ? 'op' : /^cancel/.test(s) ? 'cn' : ''; if (z) { if (kc(r[3])) sb[z][kc(r[3])] = 1; if (kc(r[0])) sl[z][kc(r[0])] = 1; } });
+      ['cf', 'op', 'cn'].forEach(function (z) { var n = z === 'cf' ? 'Cf' : z === 'op' ? 'Op' : 'Cn'; $('#scCek' + n).textContent = fmtId(Object.keys(sb[z]).length, 0); $('#scCek' + n + 'L').textContent = 'bon \u00b7 ' + fmtId(Object.keys(sl[z]).length, 0) + ' lot'; });
     }
     if (k === 'conf' || k === 'open') {
       cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;

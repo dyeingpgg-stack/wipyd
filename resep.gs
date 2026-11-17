@@ -37,7 +37,7 @@ function rspSyncWodmeta() {
   rspTulis_(sh, [header].concat(rows), cols.length);
 }
 
-// 3. RESEP <- RSP (B, F, G, N) + Kamus (cocok D -> Kamus A atau B, ambil C) + RSP!U
+// 3. RESEP <- RSP (B, F, G, N; kode resep G diganti kode lengkap dari sheet Query result) + Kamus (cocok D -> Kamus A atau B, ambil C) + RSP!U
 function rspSyncResep() {
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
   const norm = v => String(v).replace(/\s+/g, " ").trim().toUpperCase();
@@ -53,6 +53,23 @@ function rspSyncResep() {
     });
   });
 
+  // Kode resep LENGKAP: sheet "Query result" (kolom D = No Bon, kolom F = Dyeing Recipe - Recipe -> Dye Rec No). Kode resep di RSP terpotong (12 karakter).
+  // Dicocokkan lewat NO BON. Bila bon tidak ada di Query result, dipakai kode dari RSP (tidak diubah).
+  const kodeLengkap = {};
+  const qsh = ss.getSheetByName("Query result");
+  if (qsh && qsh.getLastRow() > 1) {
+    const qv = qsh.getDataRange().getValues();
+    const qh = qv[0].map(x => String(x).trim().toLowerCase());
+    let ib = qh.findIndex(x => /^no\.?\s*bon$/.test(x));
+    let ik = qh.findIndex(x => /dye\s*rec\s*no/.test(x));
+    if (ib < 0) ib = 3;
+    if (ik < 0) ik = 5;
+    qv.slice(1).forEach(q => {
+      const b = String(q[ib]).trim().toUpperCase(), k = String(q[ik]).trim();
+      if (b && k && !(b in kodeLengkap)) kodeLengkap[b] = k;
+    });
+  }
+
   const data = ss.getSheetByName("RSP").getDataRange().getValues();
   const h = data[0];
   const header = [h[1], h[5], h[6], h[13], "Item (Kamus)", h[20]];
@@ -61,7 +78,8 @@ function rspSyncResep() {
     .filter(r => String(r[1]).trim() !== "")
     .map(r => {
       const e = peta[norm(r[13])];
-      return [r[1], r[5], r[6], r[13], e !== undefined ? e : "", r[20]];
+      const kr = kodeLengkap[String(r[5]).trim().toUpperCase()];
+      return [r[1], r[5], kr !== undefined ? kr : r[6], r[13], e !== undefined ? e : "", r[20]];
     });
 
   rspTulis_(ss.getSheetByName("RESEP"), [header].concat(rows), 6);

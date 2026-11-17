@@ -3012,21 +3012,37 @@ function kimiaCekLots_() {
   if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
   const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
   const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, mei: 5, jun: 6, jul: 7, aug: 8, agu: 8, ags: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, des: 12 };
+  const dkey = function (s) {   // "Nov 16, 2026" / "Mei 20, 2026" / "16/11/2026" -> yyyymmdd
+    s = String(s).trim();
+    let m = s.match(/([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/);
+    if (m && MON[m[1].toLowerCase()]) return +m[3] * 10000 + MON[m[1].toLowerCase()] * 100 + +m[2];
+    m = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+    if (m) return +m[3] * 10000 + +m[2] * 100 + +m[1];
+    m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    return m ? +m[1] * 10000 + +m[2] * 100 + +m[3] : 0;
+  };
   const grp = {}, order = [], seen = {};
-  v.slice(1).forEach(function (r) {
+  v.slice(1).forEach(function (r, idx) {
     const kikc = str_(r[1]).trim(), bon = str_(r[9]).trim(), st = str_(r[11]).trim();
     if (!kikc || !bon || /^finish/i.test(st)) return;
     const gk = kc(kikc), rk = gk + '|' + kc(r[8]) + '|' + kc(bon) + '|' + st.toLowerCase();
     if (seen[rk]) return;
     seen[rk] = 1;
-    if (!grp[gk]) { grp[gk] = { rows: [], bons: {} }; order.push(gk); }
-    grp[gk].rows.push([kikc, str_(r[2]).trim(), str_(r[8]).trim(), bon, st]);
-    grp[gk].bons[kc(bon)] = 1;
+    if (!grp[gk]) { grp[gk] = { rows: [], bons: {}, d: 0, last: 0 }; order.push(gk); }
+    const g = grp[gk], d = dkey(r[2]);
+    g.rows.push({ x: [kikc, str_(r[2]).trim(), str_(r[8]).trim(), bon, st], i: idx });
+    g.bons[kc(bon)] = 1;
+    if (d > g.d) g.d = d;
+    g.last = idx;
   });
+  // terbaru di atas: tanggal WOD terbaru, lalu baris paling akhir di sheet; di dalam lot, bon terbaru (baris paling bawah) di atas
+  const keep = order.filter(function (gk) { return Object.keys(grp[gk].bons).length > 1; });
+  keep.sort(function (a, b) { return (grp[b].d - grp[a].d) || (grp[b].last - grp[a].last); });
   const rows = [];
-  for (let i = order.length - 1; i >= 0; i--) {   // lot terbaru (paling bawah di sheet) di atas
-    const g = grp[order[i]], n = Object.keys(g.bons).length;
-    if (n > 1) g.rows.forEach(function (x) { rows.push(x.concat([String(n)])); });
-  }
+  keep.forEach(function (gk) {
+    const g = grp[gk], n = String(Object.keys(g.bons).length);
+    g.rows.sort(function (a, b) { return b.i - a.i; }).forEach(function (o) { rows.push(o.x.concat([n])); });
+  });
   return { success: true, headers: ['KIKC', 'TANGGAL WOD', 'RECIPE', 'NO DBB', 'STATUS', 'JUMLAH BON'], rows: rows, total: rows.length, name: 'Cek Lots' };
 }
