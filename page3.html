@@ -341,7 +341,7 @@
   .dim{color:var(--dim)}
   .scrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}.scrow[hidden]{display:none}
   .scrow.c4{grid-template-columns:repeat(4,1fr)}.scrow.c4.nogk{grid-template-columns:repeat(2,1fr)}@media(max-width:760px){.scrow.c4{grid-template-columns:repeat(2,1fr)}}
-  .scrow.sm{grid-template-columns:repeat(3,1fr);gap:8px}.sc.sm{padding:7px 12px;border-radius:12px}.sc.sm small{font-size:11px}.sc.sm b{font-size:18px}.sc.sm span{font-size:11px;margin-left:6px;color:var(--dim)}
+  .scrow.sm{grid-template-columns:repeat(3,1fr);gap:8px}.sc.sm{padding:7px 12px;border-radius:12px}.sc.sm small{font-size:11px}.sc.sm b{font-size:18px}.sc.sm[data-cekst]{cursor:pointer;transition:border-color .15s,background .15s}.sc.sm[data-cekst]:hover{border-color:var(--cyan)}.sc.sm.active{border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.35)}.sc.sm span{font-size:11px;margin-left:6px;color:var(--dim)}
   .sc{padding:12px 14px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);min-width:0}
   .sc small{display:block;color:var(--dim);font-size:12px;letter-spacing:.04em}.sc b{display:block;font:700 24px var(--display);color:var(--cyan);margin-top:2px;word-break:break-all}
   .sc span{display:block;color:var(--dim);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -861,9 +861,9 @@
         <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonCek">0</b><span>tidak termasuk bon Finish</span></div>
       </div>
       <div class="scrow sm" id="scCekSt">
-        <div class="sc sm"><small>CONFIRMED</small><b id="scCekCf">0</b><span id="scCekCfL"></span></div>
-        <div class="sc sm"><small>OPEN</small><b id="scCekOp">0</b><span id="scCekOpL"></span></div>
-        <div class="sc sm"><small>CANCELED</small><b id="scCekCn">0</b><span id="scCekCnL"></span></div>
+        <div class="sc sm" data-cekst="cf" role="button" tabindex="0" title="Klik untuk menampilkan hanya Confirmed (klik lagi untuk semua)"><small>CONFIRMED</small><b id="scCekCf">0</b><span id="scCekCfL"></span></div>
+        <div class="sc sm" data-cekst="op" role="button" tabindex="0" title="Klik untuk menampilkan hanya Open (klik lagi untuk semua)"><small>OPEN</small><b id="scCekOp">0</b><span id="scCekOpL"></span></div>
+        <div class="sc sm" data-cekst="cn" role="button" tabindex="0" title="Klik untuk menampilkan hanya Canceled (klik lagi untuk semua)"><small>CANCELED</small><b id="scCekCn">0</b><span id="scCekCnL"></span></div>
       </div>
       <div class="lnote" id="nCek"></div><div class="lstate" id="sCek"></div>
       <div class="table-wrap hidden" id="wCek"><table><thead><tr id="hCek"></tr></thead><tbody id="bCek"></tbody></table></div>
@@ -1198,7 +1198,7 @@
     $('#scKrAll').textContent = fmtId(all.length, 0); $('#scKrOrder').textContent = fmtId(cnt(isOrder), 0);
     $('#scKrBook').textContent = fmtId(cnt(isBook), 0); $('#scKrWasp').textContent = fmtId(cnt(isWasp), 0);
     var found = all.filter(function (o) { return !q || nq(o.r.join(' ')).indexOf(q) >= 0; });
-    var chips = [['all', 'Semua', found.length], ['order', 'Order Sekarang', found.filter(isOrder).length], ['waspada', 'Waspada', found.filter(isWasp).length], ['booking', 'Booking Meningkat', found.filter(isBook).length], ['aman', 'Aman', found.filter(isAman).length]];
+    var chips = [['all', 'Semua', found.length], ['aman', 'Aman', found.filter(isAman).length], ['booking', 'Booking Meningkat', found.filter(isBook).length], ['waspada', 'Waspada', found.filter(isWasp).length], ['order', 'Order Sekarang', found.filter(isOrder).length]];
     $('#krChips').innerHTML = chips.map(function (c) { return '<button type="button" class="krchip' + (KR.chip === c[0] ? ' active' : '') + '" data-krchip="' + c[0] + '">' + c[1] + '<b>' + c[2] + '</b></button>'; }).join('');
     var pick = { all: null, order: isOrder, waspada: isWasp, booking: isBook, aman: isAman }[KR.chip];
     var rows = pick ? found.filter(pick) : found.slice();
@@ -1240,6 +1240,13 @@
     var td = t.closest('td'); if (td && td.getAttribute('data-krname')) krGo(t.getAttribute('data-krgo'), td.getAttribute('data-krname'));
   });
   $('#krTarget').addEventListener('input', function () { var v = parseInt(this.value, 10); if (v >= 1 && v <= 365) { KR.target = v; lsSet('wipyd_krtarget', String(v)); if (KIM.kritikal) kritikalRender($('#qKritikal').value); } });
+  var CEKST = '';   // filter status Cek Lots: '' = semua, cf = Confirmed, op = Open, cn = Canceled
+  function cekPick(el) {
+    var z = el.getAttribute('data-cekst'); CEKST = CEKST === z ? '' : z; PG.cek = 1;
+    if (KIM.cek) showTable('cek', 'Cek', $('#qCek').value);
+  }
+  document.addEventListener('click', function (e) { var el = e.target.closest ? e.target.closest('[data-cekst]') : null; if (el) cekPick(el); });
+  document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('data-cekst')) { e.preventDefault(); cekPick(e.target); } });
   function showTable(k, id, query) {
     if (k === 'kritikal') { kritikalRender(query); return; }
     var d = KIM[k], q = nq(query.trim()), hd = d.headers, info = null;
@@ -1257,12 +1264,15 @@
     if (k === 'mutasi') { cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; virt = true; }   // kolom 0 (periode) hanya untuk filter
     if (k === 'cek') {
       cols = [0, 1, 2, 3, 4, 5]; virt = true;
+      var stOf = function (r) { var s = String(r[4]).toLowerCase(); return /^confirm/.test(s) ? 'cf' : /^open/.test(s) ? 'op' : /^cancel/.test(s) ? 'cn' : ''; };
+      var sb = { cf: {}, op: {}, cn: {} }, sl = { cf: {}, op: {}, cn: {} };
+      rows.forEach(function (r) { var z = stOf(r); if (z) { if (kc(r[3])) sb[z][kc(r[3])] = 1; if (kc(r[0])) sl[z][kc(r[0])] = 1; } });
+      ['cf', 'op', 'cn'].forEach(function (z) { var n = z === 'cf' ? 'Cf' : z === 'op' ? 'Op' : 'Cn'; $('#scCek' + n).textContent = fmtId(Object.keys(sb[z]).length, 0); $('#scCek' + n + 'L').textContent = 'bon \u00b7 ' + fmtId(Object.keys(sl[z]).length, 0) + ' lot'; });
+      $$('#scCekSt [data-cekst]').forEach(function (el) { el.classList.toggle('active', CEKST === el.getAttribute('data-cekst')); });
+      if (CEKST) rows = rows.filter(function (r) { return stOf(r) === CEKST; });   // kartu status dipilih: hanya baris berstatus itu
       var cl = {}, cb = {};
       rows.forEach(function (r) { if (kc(r[0])) cl[kc(r[0])] = 1; if (kc(r[3])) cb[kc(r[3])] = 1; });
       $('#scLotsCek').textContent = fmtId(Object.keys(cl).length, 0); $('#scBonCek').textContent = fmtId(Object.keys(cb).length, 0);
-      var sb = { cf: {}, op: {}, cn: {} }, sl = { cf: {}, op: {}, cn: {} };
-      rows.forEach(function (r) { var s = String(r[4]).toLowerCase(), z = /^confirm/.test(s) ? 'cf' : /^open/.test(s) ? 'op' : /^cancel/.test(s) ? 'cn' : ''; if (z) { if (kc(r[3])) sb[z][kc(r[3])] = 1; if (kc(r[0])) sl[z][kc(r[0])] = 1; } });
-      ['cf', 'op', 'cn'].forEach(function (z) { var n = z === 'cf' ? 'Cf' : z === 'op' ? 'Op' : 'Cn'; $('#scCek' + n).textContent = fmtId(Object.keys(sb[z]).length, 0); $('#scCek' + n + 'L').textContent = 'bon \u00b7 ' + fmtId(Object.keys(sl[z]).length, 0) + ' lot'; });
     }
     if (k === 'conf' || k === 'open') {
       cols = [0, 4, 1, 2, 3].concat(info ? [5] : []); virt = true;

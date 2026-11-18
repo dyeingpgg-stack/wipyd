@@ -749,14 +749,24 @@
   </header>
 
   <main id="main" class="is-data">
-    <section class="view list active" id="viewP4" aria-label="Page 4">
-      <div class="lstate"><div class="state">Page 4 masih kosong. Isinya akan ditambahkan nanti.</div></div>
+    <section class="view list active" id="viewPidang" aria-label="Pidang">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qPid" type="search" placeholder="Cari KIKC, benang, warna, MC, PDG, atau motif" autocomplete="off" aria-label="Cari Pidang"></div>
+      <div class="lnote" id="nPid"></div><div class="lstate" id="sPid"><div class="state">Memuat data...</div></div>
+      <div class="table-wrap hidden" id="wPid"><table><thead><tr id="hPid"></tr></thead><tbody id="bPid"></tbody></table></div>
+      <div class="pager" id="pPid" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piPid" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
     </section>
   </main>
 
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
   <nav class="tabbar" aria-label="Menu Page 4">
-    <button type="button" class="tab active" data-view="p4" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12h6"/></svg>Page 4</button>
+    <button type="button" class="tab active" data-view="pidang" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>Pidang</button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -889,7 +899,46 @@
   }
   $('#btnPage3').addEventListener('click', openPage3);
   var TABS = [];
-  $('#btnRefresh').addEventListener('click', function () { location.reload(); });
+
+  /* ---------- Tab PIDANG (GRM > Sheet1, customer CORAK - ATBM) ---------- */
+  var PID = null, PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang1';
+  function pidRender() {
+    if (!PID) return;
+    var q = nq($('#qPid').value).trim(), rows = PID.rows;
+    if (q) rows = rows.filter(function (r) { return nq(r.join(' ')).indexOf(q) >= 0; });
+    var pages = Math.max(1, Math.ceil(rows.length / PIDSIZE)); if (PIDPG > pages) PIDPG = pages; if (PIDPG < 1) PIDPG = 1;
+    var part = rows.slice((PIDPG - 1) * PIDSIZE, PIDPG * PIDSIZE), off = (PIDPG - 1) * PIDSIZE;
+    $('#hPid').innerHTML = '<th>#</th>' + PID.headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
+    $('#bPid').innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
+    $('#nPid').textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(PID.rows.length) + ')' : '');
+    var empty = !rows.length;
+    $('#sPid').innerHTML = empty ? '<div class="state">Data tidak ditemukan.</div>' : '';
+    $('#wPid').classList.toggle('hidden', empty);
+    $('#pPid').hidden = pages <= 1;
+    $('#piPid').textContent = PIDPG + ' / ' + pages;
+    $$('#pPid [data-pg]').forEach(function (b) { var g = b.getAttribute('data-pg'); b.disabled = (g === 'first' || g === 'prev') ? PIDPG <= 1 : PIDPG >= pages; });
+  }
+  function fmtN(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function pidLoad(force) {
+    var c = ''; if (!force) c = lsGet(PIDKEY);
+    if (c) { try { PID = JSON.parse(c); pidRender(); } catch (e) { PID = null; } }
+    if (!PID) $('#sPid').innerHTML = '<div class="state">Memuat data...</div>';
+    return gs('getPidang', !!force).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Data kosong.');
+      PID = r; lsSet(PIDKEY, JSON.stringify(r)); pidRender();
+    }).catch(function (e) {
+      if (!PID) $('#sPid').innerHTML = '<div class="state">' + esc(errMsg(e)) + '</div>';
+      else toast('Gagal memperbarui. ' + errMsg(e), 'warn', 5000);
+    });
+  }
+  $('#qPid').addEventListener('input', function () { PIDPG = 1; pidRender(); });
+  $('#pPid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pg]'); if (!b || !PID) return;
+    var g = b.getAttribute('data-pg'), n = Math.max(1, Math.ceil(PID.rows.length / PIDSIZE));
+    PIDPG = g === 'first' ? 1 : g === 'prev' ? PIDPG - 1 : g === 'next' ? PIDPG + 1 : 1e9; pidRender();
+  });
+  pidLoad(false);
+  $('#btnRefresh').addEventListener('click', function () { var b = $('#btnRefresh'); b.classList.add('spin'); pidLoad(true).then(function () { b.classList.remove('spin'); }); });
 })();
 </script>
 </body>
