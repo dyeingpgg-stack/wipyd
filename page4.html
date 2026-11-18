@@ -130,6 +130,10 @@
   main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px 16px 28px;scrollbar-width:thin;scrollbar-color:rgba(var(--c-rgb),.35) transparent}
   main.is-data{overflow:hidden;display:flex;flex-direction:column;padding-bottom:12px}
   .rcbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.rcbar .search{flex:1 1 260px}.rcbar #rcDate{flex:0 0 auto;width:auto;min-width:150px}
+  .pgrp{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;flex:none;scrollbar-width:thin}
+  .pgrp button{flex:none;white-space:nowrap;padding:7px 12px;border-radius:999px;border:1px solid var(--edge);background:rgba(var(--w-rgb),.04);color:var(--text);font:600 13px var(--body);cursor:pointer}
+  .pgrp button small{opacity:.7;margin-left:6px;font-weight:500}
+  .pgrp button.on{color:var(--cyan);border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 12px rgba(var(--c-rgb),.35)}
   .view{display:none}
   .view.active{display:block}
   #viewData.active,.view.list.active{display:flex;flex-direction:column;flex:1;min-height:0}
@@ -752,6 +756,7 @@
     <section class="view list active" id="viewPidang" aria-label="Pidang">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPid" type="search" placeholder="Cari KIKC, benang, warna, MC, PDG, atau motif" autocomplete="off" aria-label="Cari Pidang"></div>
+      <div class="pgrp" id="gPid" role="tablist" aria-label="Kelompok benang"></div>
       <div class="lnote" id="nPid"></div><div class="lstate" id="sPid"><div class="state">Memuat data...</div></div>
       <div class="table-wrap hidden" id="wPid"><table><thead><tr id="hPid"></tr></thead><tbody id="bPid"></tbody></table></div>
       <div class="pager" id="pPid" hidden>
@@ -901,16 +906,22 @@
   var TABS = [];
 
   /* ---------- Tab PIDANG (GRM > Sheet1, customer CORAK - ATBM) ---------- */
-  var PID = null, PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang1';
+  var PID = null, PIDGRP = '', PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang2';
   function pidRender() {
     if (!PID) return;
-    var q = nq($('#qPid').value).trim(), rows = PID.rows;
+    var cnt = {}, base = PID.rows;
+    base.forEach(function (r) { var g = r[2] || '(tanpa benang)'; cnt[g] = (cnt[g] || 0) + 1; });
+    var names = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || (a < b ? -1 : 1); });
+    if (PIDGRP && !cnt[PIDGRP]) PIDGRP = '';
+    $('#gPid').innerHTML = [''].concat(names).map(function (g) { return '<button type="button" data-g="' + esc(g) + '" class="' + (g === PIDGRP ? 'on' : '') + '">' + (g ? esc(g) : 'Semua') + '<small>' + fmtN(g ? cnt[g] : base.length) + '</small></button>'; }).join('');
+    if (PIDGRP) base = base.filter(function (r) { return (r[2] || '(tanpa benang)') === PIDGRP; });
+    var q = nq($('#qPid').value).trim(), rows = base;
     if (q) rows = rows.filter(function (r) { return nq(r.join(' ')).indexOf(q) >= 0; });
     var pages = Math.max(1, Math.ceil(rows.length / PIDSIZE)); if (PIDPG > pages) PIDPG = pages; if (PIDPG < 1) PIDPG = 1;
     var part = rows.slice((PIDPG - 1) * PIDSIZE, PIDPG * PIDSIZE), off = (PIDPG - 1) * PIDSIZE;
     $('#hPid').innerHTML = '<th>#</th>' + PID.headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
     $('#bPid').innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
-    $('#nPid').textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(PID.rows.length) + ')' : '');
+    $('#nPid').textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(base.length) + ')' : '');
     var empty = !rows.length;
     $('#sPid').innerHTML = empty ? '<div class="state">Data tidak ditemukan.</div>' : '';
     $('#wPid').classList.toggle('hidden', empty);
@@ -931,6 +942,7 @@
       else toast('Gagal memperbarui. ' + errMsg(e), 'warn', 5000);
     });
   }
+  $('#gPid').addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (!b) return; PIDGRP = b.getAttribute('data-g'); PIDPG = 1; pidRender(); });
   $('#qPid').addEventListener('input', function () { PIDPG = 1; pidRender(); });
   $('#pPid').addEventListener('click', function (e) {
     var b = e.target.closest('[data-pg]'); if (!b || !PID) return;
