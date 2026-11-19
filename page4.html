@@ -596,6 +596,13 @@
   }
   @media(max-width:400px){.top-actions .icon-btn{width:36px;height:36px}.top-actions{gap:5px}.brand h1{font-size:15px}.orb{width:28px;height:28px}.brand{gap:7px}}
   @media(max-width:340px){.orb{display:none}}
+  /* HP potret: ikon aksi pindah ke baris sendiri di bawah logo dan nama aplikasi, agar tidak menutupi */
+  @media(max-width:560px) and (min-height:481px){
+    .topbar{flex-wrap:wrap;row-gap:8px}
+    .brand{flex:1 1 100%}
+    .top-actions{flex:1 1 100%;justify-content:space-between}
+    .top-actions .icon-btn{width:44px;height:44px;border-radius:13px}
+  }
 
   /* HP potret: baris judul daftar (keterangan Plan) dan tombol Create/Resume/Reset/CSV disusun atas-bawah, tombol tidak lagi terdorong keluar layar */
   @media (max-width:600px){
@@ -1004,7 +1011,7 @@
     $$('#p' + I + ' [data-pg]').forEach(function (b) { var g = b.getAttribute('data-pg'); b.disabled = (g === 'first' || g === 'prev') ? w.pg <= 1 : w.pg >= pages; });
   }
   function wcLoad(k, force) {
-    var w = WC[k], I = w.id, key = 'wipyd_wc2_' + k, c = force ? '' : lsGet(key);
+    var w = WC[k], I = w.id, key = 'wipyd_wc3_' + k, c = force ? '' : lsGet(key);
     if (c) { try { w.d = JSON.parse(c); wcRender(k); } catch (e) { w.d = null; } }
     if (!w.d) $('#s' + I).innerHTML = '<div class="state">Memuat data...</div>';
     return gs('getWodCust', k, !!force).then(function (r) {
