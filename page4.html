@@ -995,7 +995,7 @@
     var off = (w.pg - 1) * PIDSIZE, part = rows.slice(off, off + PIDSIZE);
     $('#h' + I).innerHTML = '<th>#</th>' + w.d.headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
     $('#b' + I).innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
-    $('#n' + I).textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(w.d.rows.length) + ')' : '');
+    $('#n' + I).textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(w.d.rows.length) + ')' : '') + (w.d.missing && w.d.missing.length ? ' · kolom tidak ditemukan di WODMETA: ' + w.d.missing.join(', ') + ' (judul WODMETA: ' + (w.d.src || []).join(', ') + ')' : '');
     var empty = !rows.length;
     $('#s' + I).innerHTML = empty ? '<div class="state">Data tidak ditemukan.</div>' : '';
     $('#w' + I).classList.toggle('hidden', empty);
@@ -1004,7 +1004,7 @@
     $$('#p' + I + ' [data-pg]').forEach(function (b) { var g = b.getAttribute('data-pg'); b.disabled = (g === 'first' || g === 'prev') ? w.pg <= 1 : w.pg >= pages; });
   }
   function wcLoad(k, force) {
-    var w = WC[k], I = w.id, key = 'wipyd_wc_' + k, c = force ? '' : lsGet(key);
+    var w = WC[k], I = w.id, key = 'wipyd_wc2_' + k, c = force ? '' : lsGet(key);
     if (c) { try { w.d = JSON.parse(c); wcRender(k); } catch (e) { w.d = null; } }
     if (!w.d) $('#s' + I).innerHTML = '<div class="state">Memuat data...</div>';
     return gs('getWodCust', k, !!force).then(function (r) {
