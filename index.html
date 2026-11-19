@@ -34,7 +34,7 @@
      Nama tab: wod, grm, plan, data (WIP), mesin, clp (Celup). Hanya berlaku di mode Viewer. */
   if (q === 'viewer' || q === 'admin') {
     var tl = [];
-    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|packdetil|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^[a-z0-9_]+$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
       var hm = tl.filter(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); });
@@ -42,7 +42,7 @@
       if (hm.indexOf('miss') >= 0) css += 'html[data-mode="viewer"] .tabbar #tabMiss{display:flex !important}';
       if (!tl.some(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); })) css += '#btnPage2{display:none !important}';
       if (tl.indexOf('kimia') < 0) css += '#btnPage3{display:none !important}';
-      css += '#btnPage4{display:none !important}';
+      if (!tl.some(function (x) { return /^(pidang|amak|hank)$/.test(x); })) css += '#btnPage4{display:none !important}';
       var st = document.createElement('style');
       st.textContent = css;
       document.head.appendChild(st);
@@ -5783,12 +5783,13 @@ var Code128 = (function () {
   $('#btnPage3').addEventListener('click', openPage3);
   function openPage4() {   // Page 4 (sementara kosong)
     if (IN_GAS) {
-      gs('getPageUrl', 4, state.mode, '').then(function (u) {
+      gs('getPageUrl', 4, state.mode, '', TABS.join(',')).then(function (u) {
         if (u) window.open(u, '_top'); else toast('Alamat Page 4 tidak ditemukan. Buka aplikasi lewat alamat aslinya.', 'warn', 6000);
       }).catch(function (e) { toast('Page 4 gagal dibuka. ' + errMsg(e), 'err', 6000); });
       return;
     }
-    location.href = 'page4.html' + ((state.mode === 'viewer' || state.mode === 'pc') ? '?mode=' + state.mode : '');
+    var q4 = []; if (state.mode === 'viewer' || state.mode === 'pc') q4.push('mode=' + state.mode); if (TABS.length) { if (state.mode === 'admin') q4.push('mode=admin'); q4.push('tabs=' + TABS.join(',')); }
+    location.href = 'page4.html' + (q4.length ? '?' + q4.join('&') : '');
   }
   $('#btnPage4').addEventListener('click', openPage4);
   $('#sfGoSoft').addEventListener('click', function () { openPage2('soft'); });
@@ -5797,13 +5798,15 @@ var Code128 = (function () {
   /* ---------- Bagikan link Viewer dan PC (hanya Admin): tombol Share membuka daftar dua link; alamat web ikut dalam teks yang dibagikan ---------- */
   (function () {
     var URLS = { viewer: '', pc: '' }, LAB = { viewer: 'Viewer', pc: 'PC' }, SB = { gas: false, base: '', pc: '' };
-    var TAB_DEFS = [['wod', 'WOD'], ['grm', 'GRM'], ['plan', 'Plan'], ['form', 'Input'], ['data', 'WIP'], ['miss', 'Outstanding'], ['mesin', 'Mesin'], ['clp', 'Celup'], ['soft', 'SOFT'], ['pack', 'Pack'], ['packdetil', 'Pack Detil'], ['delivery', 'Delivery'], ['rph', 'RPH'], ['kimia', 'Kimia']];
+    var TAB_DEFS = [['wod', 'WOD'], ['grm', 'GRM'], ['plan', 'Plan'], ['form', 'Input'], ['data', 'WIP'], ['miss', 'Outstanding'], ['mesin', 'Mesin'], ['clp', 'Celup'], ['soft', 'SOFT'], ['pack', 'Pack'], ['packdetil', 'Pack Detil'], ['delivery', 'Delivery'], ['rph', 'RPH'], ['kimia', 'Kimia'], ['pidang', 'Pidang'], ['amak', 'AMAK'], ['hank', 'HANK']];
     var SEL = {};
     function homeTab(x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); }
     function viewerLink() {   // tab Input dipilih = link Admin terbatas (?mode=admin&tabs=); selain itu Viewer. Semua tab (kecuali Input) = link Viewer biasa
       var tl = TAB_DEFS.map(function (t) { return t[0]; }).filter(function (x) { return SEL[x]; });
       if (!tl.length) return '';
       var withForm = !!SEL.form, all = tl.length === TAB_DEFS.length, allNoForm = !withForm && tl.length === TAB_DEFS.length - 1, noHome = !tl.some(homeTab);
+      var onlyP4 = tl.every(function (x) { return /^(pidang|amak|hank)$/.test(x); });
+      if (onlyP4) { var q4 = '?mode=viewer&tabs=' + tl.join(','); return SB.gas ? SB.base + '?page=4&mode=viewer&tabs=' + tl.join(',') : SB.base + 'page4.html' + q4; }
       var onlyKimia = tl.length === 1 && tl[0] === 'kimia';
       if (onlyKimia) { var pm = SB.gas ? '?page=3&mode=viewer&tabs=kimia' : '?mode=viewer&tabs=kimia'; return SB.gas ? SB.base + pm : SB.base + 'page3.html' + pm; }
       var mode = withForm ? 'admin' : 'viewer';
@@ -5844,10 +5847,14 @@ var Code128 = (function () {
         if (!u.viewer && !u.pc) { toast('Alamat link tidak ditemukan. Buka aplikasi lewat alamat aslinya lalu coba lagi.', 'warn', 6000); return; }
         var vu = u.viewer || '';
         SB = { gas: /\?mode=viewer/.test(vu), base: /\?mode=viewer/.test(vu) ? vu.split('?')[0] : (u.base || vu.replace(/viewer\.html$/i, '')), pc: u.pc || '' };
-        TAB_DEFS.forEach(function (t) { SEL[t[0]] = t[0] !== 'form'; });   // awal: semua tab kecuali Input
-        URLS.pc = u.pc || ''; $('#shUrlPc').value = URLS.pc;
-        renderTabs();
-        $('#shareSheet').classList.add('show');
+        var go = function () {
+          TAB_DEFS.forEach(function (t) { SEL[t[0]] = t[0] !== 'form'; });   // awal: semua tab kecuali Input
+          URLS.pc = u.pc || ''; $('#shUrlPc').value = URLS.pc;
+          renderTabs();
+          $('#shareSheet').classList.add('show');
+        };
+        // Daftar tab dari server (SHARE_TABS di Kode.gs): tab baru otomatis ikut; bila gagal dipakai daftar bawaan
+        if (IN_GAS) gs('getShareTabs').then(function (l) { if (l && l.length) { TAB_DEFS.length = 0; l.forEach(function (t) { TAB_DEFS.push([t.key, t.label]); }); } go(); }).catch(go); else go();
       });
     });
     $('#shareClose').addEventListener('click', closeShare);

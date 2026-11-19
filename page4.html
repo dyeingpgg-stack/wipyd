@@ -27,14 +27,17 @@
   /* Viewer terbatas: ?mode=viewer&tabs=pack,rph (atau tanda WIPYD_TABS dari server) = hanya tab yang dibagikan */
   if (q === 'viewer' || q === 'admin') {
     var tl = [];
-    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|packdetil|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
+    try { tl = String(window.WIPYD_TABS || new URLSearchParams(location.search).get('tabs') || '').toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^[a-z0-9_]+$/.test(x) && a.indexOf(x) === i; }); } catch (e) { tl = []; }
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
-      var pt = tl.filter(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); });
-      if (!tl.some(function (x) { return !/^kimia$/.test(x); })) { var st0 = document.createElement('style'); st0.textContent = '#btnHome{display:none !important}'; document.head.appendChild(st0); }
-      var css = tl.indexOf('kimia') >= 0 ? '' : '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
+      var p4 = tl.filter(function (x) { return /^(pidang|amak|hank)$/.test(x); });
+      var css = '';
+      if (p4.length) {   // hanya tab Page 4 yang dibagikan yang tampil
+        css += '.tabbar .tab' + p4.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + p4.length + ',1fr) !important}';
+        window.WIPYD_P4 = p4;
+      }
       if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';
-      if (!pt.length) css += '#btnPage2{display:none !important}';
+      if (tl.indexOf('kimia') < 0) css += '#btnPage3{display:none !important}';
       var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     }
   }
@@ -940,10 +943,10 @@
     location.href = 'page3.html' + (q.length ? '?' + q.join('&') : '');
   }
   $('#btnPage3').addEventListener('click', openPage3);
-  var TABS = [];
+  var TABS = (ROOT.getAttribute('data-tabs') || '').split(',').filter(Boolean);
 
   /* ---------- Tab PIDANG (GRM > Sheet1, customer CORAK - ATBM) ---------- */
-  var PID = null, PIDGRP = '', PIDST = '', PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang4';
+  var PID = null, PIDGRP = '', PIDST = '', PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang5';
   function pidRender() {
     if (!PID) return;
     var cnt = {}, base = PID.rows;
@@ -952,15 +955,15 @@
     if (PIDGRP && !cnt[PIDGRP]) PIDGRP = '';
     $('#gPid').innerHTML = [''].concat(names).map(function (g) { return '<button type="button" data-g="' + esc(g) + '" class="' + (g === PIDGRP ? 'on' : '') + '">' + (g ? esc(g) : 'Semua') + '<small>' + fmtN(g ? cnt[g] : base.length) + '</small></button>'; }).join('');
     if (PIDGRP) base = base.filter(function (r) { return (r[2] || '(tanpa benang)') === PIDGRP; });
-    var sc = { SUDAH: 0, BELUM: 0 }; base.forEach(function (r) { if (sc[r[10]] !== undefined) sc[r[10]]++; });
+    var sc = { SUDAH: 0, BELUM: 0 }; base.forEach(function (r) { if (sc[r[11]] !== undefined) sc[r[11]]++; });
     $('#sgPid').innerHTML = [['', 'Semua', base.length], ['BELUM', 'Belum Packing', sc.BELUM], ['SUDAH', 'Sudah Packing', sc.SUDAH]].map(function (x) { return '<button type="button" data-s="' + x[0] + '" class="' + (x[0] === PIDST ? 'on' : '') + '">' + x[1] + '<small>' + fmtN(x[2]) + '</small></button>'; }).join('');
-    if (PIDST) base = base.filter(function (r) { return r[10] === PIDST; });
+    if (PIDST) base = base.filter(function (r) { return r[11] === PIDST; });
     var q = nq($('#qPid').value).trim(), rows = base;
     if (q) rows = rows.filter(function (r) { return nq(r.join(' ')).indexOf(q) >= 0; });
     var pages = Math.max(1, Math.ceil(rows.length / PIDSIZE)); if (PIDPG > pages) PIDPG = pages; if (PIDPG < 1) PIDPG = 1;
     var part = rows.slice((PIDPG - 1) * PIDSIZE, PIDPG * PIDSIZE), off = (PIDPG - 1) * PIDSIZE;
-    $('#hPid').innerHTML = '<th>#</th>' + PID.headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
-    $('#bPid').innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c, j) { return j === 10 ? '<td style="font-weight:700;color:var(--' + (c === 'SUDAH' ? 'lime' : 'amber') + ')">' + esc(c) + '</td>' : '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
+    $('#hPid').innerHTML = '<th>#</th>' + PID.headers.concat(['TGL PACK', 'PACKING']).map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
+    $('#bPid').innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c, j) { return j === 11 ? '<td style="font-weight:700;color:var(--' + (c === 'SUDAH' ? 'lime' : c === 'BELUM' ? 'amber' : 'dim') + ')">' + esc(c) + '</td>' : '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
     $('#nPid').textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(base.length) + ')' : '');
     var empty = !rows.length;
     $('#sPid').innerHTML = empty ? '<div class="state">Data tidak ditemukan.</div>' : '';
@@ -970,13 +973,27 @@
     $$('#pPid [data-pg]').forEach(function (b) { var g = b.getAttribute('data-pg'); b.disabled = (g === 'first' || g === 'prev') ? PIDPG <= 1 : PIDPG >= pages; });
   }
   function fmtN(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  /* Status packing: dihitung terpisah di server (METAPACK + spreadsheet pak) agar tabel tampil dulu */
+  function pidApply() {
+    var pm = PID.packMap || {}, pend = !PID.packDone;
+    PID.rows.forEach(function (r) { var d = pm[r[1]] || ''; r[10] = d; r[11] = d ? 'SUDAH' : (pend ? '...' : 'BELUM'); });
+  }
+  function pidPack(force) {
+    if (!PID || !PID.rows.length) return;
+    gs('getPidangPack', PID.rows.map(function (r) { return r[1]; }), !!force).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Gagal membaca data packing.');
+      PID.packMap = r.map || {}; PID.packDone = true; pidApply(); pidRender(); lsSet(PIDKEY, JSON.stringify(PID));
+    }).catch(function (e) { toast('Status packing belum bisa dimuat. ' + errMsg(e), 'warn', 6000); });
+  }
   function pidLoad(force) {
     var c = ''; if (!force) c = lsGet(PIDKEY);
-    if (c) { try { PID = JSON.parse(c); pidRender(); } catch (e) { PID = null; } }
+    if (c) { try { PID = JSON.parse(c); pidApply(); pidRender(); } catch (e) { PID = null; } }
     if (!PID) $('#sPid').innerHTML = '<div class="state">Memuat data...</div>';
     return gs('getPidang', !!force).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Data kosong.');
-      PID = r; lsSet(PIDKEY, JSON.stringify(r)); pidRender();
+      var old = PID && PID.packMap ? PID.packMap : {};
+      PID = r; PID.packMap = old; pidApply(); pidRender(); lsSet(PIDKEY, JSON.stringify(PID));
+      pidPack(!!force);
     }).catch(function (e) {
       if (!PID) $('#sPid').innerHTML = '<div class="state">' + esc(errMsg(e)) + '</div>';
       else toast('Gagal memperbarui. ' + errMsg(e), 'warn', 5000);
@@ -1040,6 +1057,7 @@
     if (v !== 'pidang' && !LOADED[v]) { LOADED[v] = true; wcLoad(v, false); }
   }
   $$('.tabbar .tab').forEach(function (t) { t.addEventListener('click', function () { showView(t.getAttribute('data-view')); }); });
+  if (window.WIPYD_P4 && window.WIPYD_P4[0] !== 'pidang') showView(window.WIPYD_P4[0]);
   $('#btnRefresh').addEventListener('click', function () { var b = $('#btnRefresh'); b.classList.add('spin'); (CURV === 'pidang' ? pidLoad(true) : wcLoad(CURV, true)).then(function () { b.classList.remove('spin'); }); });
 })();
 </script>
