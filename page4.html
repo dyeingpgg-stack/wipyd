@@ -769,11 +769,39 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
+    <section class="view list" id="viewAmak" aria-label="AMAK">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qAmak" type="search" placeholder="Cari di daftar AMAK" autocomplete="off" aria-label="Cari AMAK"></div>
+      <div class="lnote" id="nAmak"></div><div class="lstate" id="sAmak"><div class="state">Memuat data...</div></div>
+      <div class="table-wrap hidden" id="wAmak"><table><thead><tr id="hAmak"></tr></thead><tbody id="bAmak"></tbody></table></div>
+      <div class="pager" id="pAmak" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piAmak" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
+    <section class="view list" id="viewHank" aria-label="HANK">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qHank" type="search" placeholder="Cari di daftar HANK" autocomplete="off" aria-label="Cari HANK"></div>
+      <div class="lnote" id="nHank"></div><div class="lstate" id="sHank"><div class="state">Memuat data...</div></div>
+      <div class="table-wrap hidden" id="wHank"><table><thead><tr id="hHank"></tr></thead><tbody id="bHank"></tbody></table></div>
+      <div class="pager" id="pHank" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piHank" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
   </main>
 
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
   <nav class="tabbar" aria-label="Menu Page 4">
     <button type="button" class="tab active" data-view="pidang" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>Pidang</button>
+    <button type="button" class="tab" data-view="amak" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>AMAK</button>
+    <button type="button" class="tab" data-view="hank" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>HANK</button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -908,7 +936,7 @@
   var TABS = [];
 
   /* ---------- Tab PIDANG (GRM > Sheet1, customer CORAK - ATBM) ---------- */
-  var PID = null, PIDGRP = '', PIDST = '', PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang3';
+  var PID = null, PIDGRP = '', PIDST = '', PIDPG = 1, PIDSIZE = 50, PIDKEY = 'wipyd_pidang4';
   function pidRender() {
     if (!PID) return;
     var cnt = {}, base = PID.rows;
@@ -956,7 +984,56 @@
     PIDPG = g === 'first' ? 1 : g === 'prev' ? PIDPG - 1 : g === 'next' ? PIDPG + 1 : 1e9; pidRender();
   });
   pidLoad(false);
-  $('#btnRefresh').addEventListener('click', function () { var b = $('#btnRefresh'); b.classList.add('spin'); pidLoad(true).then(function () { b.classList.remove('spin'); }); });
+
+  /* ---------- Tab AMAK dan HANK (WODMETA, tampilan seperti tab WOD) ---------- */
+  var WC = { amak: { id: 'Amak', d: null, pg: 1 }, hank: { id: 'Hank', d: null, pg: 1 } };
+  function wcRender(k) {
+    var w = WC[k], I = w.id; if (!w.d) return;
+    var q = nq($('#q' + I).value).trim(), rows = w.d.rows;
+    if (q) rows = rows.filter(function (r) { return nq(r.join(' ')).indexOf(q) >= 0; });
+    var pages = Math.max(1, Math.ceil(rows.length / PIDSIZE)); if (w.pg > pages) w.pg = pages; if (w.pg < 1) w.pg = 1;
+    var off = (w.pg - 1) * PIDSIZE, part = rows.slice(off, off + PIDSIZE);
+    $('#h' + I).innerHTML = '<th>#</th>' + w.d.headers.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('');
+    $('#b' + I).innerHTML = part.map(function (r, i) { return '<tr><td>' + (off + i + 1) + '</td>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('');
+    $('#n' + I).textContent = fmtN(rows.length) + ' baris' + (q ? ' (dari ' + fmtN(w.d.rows.length) + ')' : '');
+    var empty = !rows.length;
+    $('#s' + I).innerHTML = empty ? '<div class="state">Data tidak ditemukan.</div>' : '';
+    $('#w' + I).classList.toggle('hidden', empty);
+    $('#p' + I).hidden = pages <= 1;
+    $('#pi' + I).textContent = w.pg + ' / ' + pages;
+    $$('#p' + I + ' [data-pg]').forEach(function (b) { var g = b.getAttribute('data-pg'); b.disabled = (g === 'first' || g === 'prev') ? w.pg <= 1 : w.pg >= pages; });
+  }
+  function wcLoad(k, force) {
+    var w = WC[k], I = w.id, key = 'wipyd_wc_' + k, c = force ? '' : lsGet(key);
+    if (c) { try { w.d = JSON.parse(c); wcRender(k); } catch (e) { w.d = null; } }
+    if (!w.d) $('#s' + I).innerHTML = '<div class="state">Memuat data...</div>';
+    return gs('getWodCust', k, !!force).then(function (r) {
+      if (!r || r.error) throw new Error((r && r.error) || 'Data kosong.');
+      w.d = r; lsSet(key, JSON.stringify(r)); wcRender(k);
+    }).catch(function (e) {
+      if (!w.d) $('#s' + I).innerHTML = '<div class="state">' + esc(errMsg(e)) + '</div>';
+      else toast('Gagal memperbarui. ' + errMsg(e), 'warn', 5000);
+    });
+  }
+  ['amak', 'hank'].forEach(function (k) {
+    var I = WC[k].id;
+    $('#q' + I).addEventListener('input', function () { WC[k].pg = 1; wcRender(k); });
+    $('#p' + I).addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pg]'); if (!b || !WC[k].d) return;
+      var g = b.getAttribute('data-pg'); WC[k].pg = g === 'first' ? 1 : g === 'prev' ? WC[k].pg - 1 : g === 'next' ? WC[k].pg + 1 : 1e9; wcRender(k);
+    });
+  });
+
+  /* ---------- Pindah tab ---------- */
+  var CURV = 'pidang', LOADED = { pidang: true };
+  function showView(v) {
+    CURV = v;
+    $$('.tabbar .tab').forEach(function (t) { var on = t.getAttribute('data-view') === v; t.classList.toggle('active', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    $$('main .view').forEach(function (s) { s.classList.toggle('active', s.id === 'view' + (v === 'pidang' ? 'Pidang' : WC[v].id)); });
+    if (v !== 'pidang' && !LOADED[v]) { LOADED[v] = true; wcLoad(v, false); }
+  }
+  $$('.tabbar .tab').forEach(function (t) { t.addEventListener('click', function () { showView(t.getAttribute('data-view')); }); });
+  $('#btnRefresh').addEventListener('click', function () { var b = $('#btnRefresh'); b.classList.add('spin'); (CURV === 'pidang' ? pidLoad(true) : wcLoad(CURV, true)).then(function () { b.classList.remove('spin'); }); });
 })();
 </script>
 </body>
