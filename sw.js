@@ -1,6 +1,6 @@
 /* Service worker DyePocket: cangkang aplikasi tersimpan agar cepat dibuka. Data selalu dari server. */
-const VER = 'wipyd-v109';
-const SHELL = ['./', 'index.html', 'page2.html', 'page3.html', 'page4.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'plan.html', 'manifest-planmesin.webmanifest', 'pc.html', 'manifest-pc.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
+const VER = 'wipyd-v110';
+const SHELL = ['./', 'index.html', 'page2.html', 'page3.html', 'page4.html', 'page5.html', 'manifest.webmanifest', 'manifest-viewer.webmanifest', 'viewer.html', 'plan.html', 'manifest-planmesin.webmanifest', 'pc.html', 'manifest-pc.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VER).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
 
   // Halaman: ambil terbaru dulu, jika offline pakai salinan
   if (req.mode === 'navigate') {
-    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : /page3\.html$/.test(url.pathname) ? 'page3.html' : /page4\.html$/.test(url.pathname) ? 'page4.html' : 'index.html';   // Home, Page 2 dan Page 3 disimpan terpisah
+    const key = /page2\.html$/.test(url.pathname) ? 'page2.html' : /page3\.html$/.test(url.pathname) ? 'page3.html' : /page4\.html$/.test(url.pathname) ? 'page4.html' : /page5\.html$/.test(url.pathname) ? 'page5.html' : 'index.html';   // Home, Page 2 dan Page 3 disimpan terpisah
     e.respondWith(
       fetch(req).then((res) => {
         const copy = res.clone();
