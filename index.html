@@ -336,7 +336,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   th.sticky{z-index:4}
   .c-act{left:0;width:94px;min-width:94px;padding:8px}
   .c-kikc{left:94px;min-width:104px;font:600 15px var(--display);color:var(--cyan);box-shadow:8px 0 14px -8px rgba(var(--c-rgb),.45)}
-  td.wrap{white-space:normal;min-width:190px;max-width:260px}
+  td.wrap{white-space:nowrap}
   .row-actions{display:flex;gap:6px}
   .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid var(--edge-strong);color:var(--soft)}
   .tag.pos{color:var(--cyan);border-color:rgba(var(--c-rgb),.6)}
@@ -2422,7 +2422,7 @@ var Code128 = (function () {
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
-    wod: { id: 'Wod', sub: 'WOD (status B) · urutan sheet WOD', key: 0, wrap: /^(KETERANGAN|SUPPLIER)$/, num: /^(KG|CONE)$/ },
+    wod: { id: 'Wod', sub: 'WOD (status B) · urutan sheet WOD', key: 0, wrap: /^SUPPLIER$/, num: /^(KG|CONE)$/ },
     grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(TANGGAL|TGL CELUP|TGL PACK)$/ },
     plan: { id: 'Plan', sub: 'Plan Harian · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(CELUP|TANGGAL)$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
@@ -2509,6 +2509,21 @@ var Code128 = (function () {
     lst.grm.page = 1; lst.grm.rk = '';
     renderList('grm');
   });
+  /* NO DBB di tab Plan: peta KIKC -> [no bon, status] dari WODMETA, diminta ke server hanya untuk KIKC yang tampil */
+  var DBB = { map: {}, asked: {}, v: 0, busy: false, queue: {} };
+  function dbbKey(x) { return String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function dbbEnsure(list) {
+    var need = [];
+    list.forEach(function (x) { var n = dbbKey(x); if (n && !DBB.asked[n]) { DBB.asked[n] = 1; DBB.queue[n] = String(x).trim(); } });
+    need = Object.keys(DBB.queue);
+    if (!need.length || DBB.busy) return;
+    DBB.busy = true; var batch = need.map(function (n) { return DBB.queue[n]; }); DBB.queue = {};
+    gs('getWodBon', batch).then(function (r) {
+      DBB.busy = false;
+      if (r && r.map) { Object.keys(r.map).forEach(function (n) { DBB.map[n] = r.map[n]; }); }
+      DBB.v++; if (lst.plan) lst.plan.rk = ''; renderList('plan');
+    }).catch(function () { DBB.busy = false; batch.forEach(function (x) { delete DBB.asked[dbbKey(x)]; }); });
+  }
   function renderList0(k) {
     var isPlan = k === 'plan';
     var d = LISTS[k], m = lst[k], q = nq(m.query.trim());
@@ -2528,7 +2543,7 @@ var Code128 = (function () {
       return;
     }
     var ps = pageSize();
-    var rk = S.sig + (psearch ? '|S' : '') + (wsearch ? '|W' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig : '');
+    var rk = S.sig + (psearch ? '|S' : '') + (wsearch ? '|W' : '') + '|' + q + (k === 'grm' ? '|G' + grmFilter + '|' + lst.clp.sig : '') + '|' + m.page + '|' + ps + '|' + state.mode + (isPlan ? '|' + planEditable() + '|' + lst.clp.sig + '|d' + DBB.v : '');
     if (rk === m.rk) return;   // tidak ada yang berubah: tabel tidak digambar ulang
     var rows = [], idx = [];   // idx = nomor baris di m.rows (dipakai untuk mengubah sel di sheet)
     var gsF = k === 'grm' ? grmFilter : '', gsC = { belum: 0, celup: 0, pack: 0 }, gC = k === 'grm' ? S.headers.indexOf('TGL CELUP') : -1, gP = k === 'grm' ? S.headers.indexOf('TGL PACK') : -1;
@@ -2557,6 +2572,10 @@ var Code128 = (function () {
     if (m.page < 1) m.page = 1;
     var start = (m.page - 1) * ps, shown = rows.slice(start, start + ps);
     var hd = S.headers;
+    if (isPlan) {   // kolom virtual NO DBB (dari WODMETA menurut KIKC), hanya tampilan
+      var ik0 = hd.indexOf('KIKC');
+      if (ik0 >= 0) { dbbEnsure(shown.map(function (r) { return r[ik0]; })); hd = hd.concat(['NO DBB']); shown = shown.map(function (r) { var e = DBB.map[dbbKey(r[ik0])]; return r.concat([e ? e[0] : '']); }); }
+    }
     var cls = function (i, h, td) {
       var c = [];
       if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
