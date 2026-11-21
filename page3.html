@@ -863,9 +863,9 @@
       <div class="lnote" id="nKritikal"></div><div class="lstate" id="sKritikal"></div>
       <div class="table-wrap hidden" id="wKritikal"><table><thead><tr id="hKritikal"></tr></thead><tbody id="bKritikal"></tbody></table></div>
     </section>
-    <section class="view list" id="viewCek" aria-label="Cek Lots">
+    <section class="view list" id="viewCek" aria-label="Lot Multi-Bon">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="input" id="qCek" type="search" placeholder="Cari KIKC, no DBB, recipe, atau status" autocomplete="off" aria-label="Cari cek lots"></div>
+        <input class="input" id="qCek" type="search" placeholder="Cari KIKC, no DBB, recipe, atau status" autocomplete="off" aria-label="Cari lot multi-bon"></div>
       <div class="scrow c4" id="scCek">
         <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsCek">0</b><span>lot dengan lebih dari 1 no DBB</span></div>
         <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonCek">0</b><span>tidak termasuk bon Finish</span></div>
@@ -942,7 +942,7 @@
     <button type="button" class="tab" data-view="lot" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>Resep per Lot</button>
     <button type="button" class="tab" data-view="mutasi" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>Stock Mutasi</button>
     <button type="button" class="tab" data-view="kritikal" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 18v.5"/></svg>Kritikal</button>
-    <button type="button" class="tab" data-view="cek" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg>Cek Lots</button>
+    <button type="button" class="tab" data-view="cek" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg>Lot Multi-Bon</button>
     <!-- Tab Kamus disembunyikan (section viewKamus tetap ada). Untuk menampilkan lagi, tambahkan tombol data-view="kamus" di sini. -->
   </nav>
 
@@ -1190,7 +1190,7 @@
   $('#selMutasi').addEventListener('change', function () { MUTPER = this.value; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   $('#allMutasi').addEventListener('click', function () { MUTPER = MUTPER === 'all' ? '' : 'all'; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   /* ---------- Kritikal: chip filter, scorecard, urut DoH terkecil, saran order, loncat ke Booking / Lot Confirmed, penanda status naik ---------- */
-  var KR = { chip: 'all', sort: lsGet('wipyd_krsort') === 'sheet' ? 'sheet' : 'doh', target: parseInt(lsGet('wipyd_krtarget'), 10) || 30, base: null, hasBase: false };
+  var KR = { chip: 'all', sort: /^(sheet|doh|booking)$/.test(lsGet('wipyd_krsort2')) ? lsGet('wipyd_krsort2') : 'booking', target: parseInt(lsGet('wipyd_krtarget'), 10) || 30, base: null, hasBase: false };
   var KRNAMES = { BOOKING: /^BOOKING KIMIA DI ERP/i, AFS: /^STOK GKD DIKURANGI BOOKING/i };
   function krFmt(x) { try { return x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (e) { return fmtId(x, 2); } }
   function krNum(s) { var n = parseFloat(String(s === undefined || s === null ? '' : s).replace(/[^\d.,\-]/g, '').replace(/\./g, '').replace(',', '.')); return isNaN(n) ? NaN : n; }
@@ -1254,13 +1254,19 @@
     $('#krChips').innerHTML = chips.map(function (c) { return '<button type="button" class="krchip' + (KR.chip === c[0] ? ' active' : '') + '" data-krchip="' + c[0] + '">' + c[1] + '<b>' + c[2] + '</b></button>'; }).join('');
     var pick = { all: null, order: isOrder, waspada: isWasp, booking: isBook, aman: isAman }[KR.chip];
     var rows = pick ? found.filter(pick) : found.slice();
-    if (KR.sort === 'doh') rows.sort(function (a, b) {
+    var iBk = fi(/^BOOKING$/i);
+    if (KR.sort === 'booking') rows.sort(function (a, b) {   // BOOKING terbesar di atas (baris tanpa angka paling bawah)
+      var x = iBk >= 0 ? krNum(a.r[iBk]) : NaN, y = iBk >= 0 ? krNum(b.r[iBk]) : NaN;
+      x = isNaN(x) ? -1e18 : x; y = isNaN(y) ? -1e18 : y;
+      return (y - x) || (a.n - b.n);
+    });
+    else if (KR.sort === 'doh') rows.sort(function (a, b) {
       var x = isNaN(a.doh) ? 1e9 : a.doh, y = isNaN(b.doh) ? 1e9 : b.doh;
       if (x !== y) return x - y;
       var gx = isNaN(a.dohg) ? 1e9 : a.dohg, gy = isNaN(b.dohg) ? 1e9 : b.dohg;
       return (gx - gy) || (a.n - b.n);
     });
-    $('#krSort').textContent = KR.sort === 'doh' ? 'Urut: DoH terkecil' : 'Urut: sesuai sheet';
+    $('#krSort').textContent = KR.sort === 'booking' ? 'Urut: Booking terbesar' : KR.sort === 'doh' ? 'Urut: DoH terkecil' : 'Urut: sesuai sheet';
     if (document.activeElement !== $('#krTarget')) $('#krTarget').value = KR.target;
     var num = function (i) { var i0 = i > ins ? i - 1 : i; return i === ins || (i0 >= 1 && i0 <= 7) || i0 === 10; };   // kolom angka (B..H dan K, ditambah RENCANA)
     $('#hKritikal').innerHTML = hd.map(function (h, i) { return '<th class="' + (i === 0 ? 'l-s l-s0 l-last ' : '') + (num(i) ? 'r' : '') + '">' + esc(h) + '</th>'; }).join('') + '<th class="r" title="Saran order = Target DoH x AVD+BUFF dikurangi sisa stok GKD+GKI (satuan kg, AVD+BUFF per hari mengikuti sheet)">SARAN ORDER (KG)</th>';
@@ -1289,7 +1295,7 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-krgo],[data-krchip],#krSort') : null;
     if (!t) return;
-    if (t.id === 'krSort') { KR.sort = KR.sort === 'doh' ? 'sheet' : 'doh'; lsSet('wipyd_krsort', KR.sort); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
+    if (t.id === 'krSort') { KR.sort = KR.sort === 'booking' ? 'doh' : KR.sort === 'doh' ? 'sheet' : 'booking'; lsSet('wipyd_krsort2', KR.sort); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
     if (t.hasAttribute('data-krchip')) { KR.chip = t.getAttribute('data-krchip'); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
     var td = t.closest('td'); if (td && td.getAttribute('data-krname')) krGo(t.getAttribute('data-krgo'), td.getAttribute('data-krname'));
   });
