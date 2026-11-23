@@ -32,8 +32,9 @@
       h.setAttribute('data-tabs', tl.join(','));
       var pt = tl.filter(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); });
       var css = '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
-      if (!tl.some(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); })) css += '#btnHome{display:none !important}';
-      if (tl.indexOf('kimia') < 0) css += '#btnPage3{display:none !important}';
+      var G = [/^(wod|grm|plan|form|data|mesin|clp|miss)$/, /^(rph|pack|packdetil|delivery|soft)$/, /^kimia$/, /^(pidang|amak|hank)$/], gn = 0;
+      ['#btnHome', '#btnPage2', '#btnPage3', '#btnPage4'].forEach(function (id, i) { if (tl.some(function (x) { return G[i].test(x); })) gn++; else css += id + '{display:none !important}'; });
+      if (gn < 2) css += '.grpnav{display:none !important}';
       var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     }
   }
@@ -46,7 +47,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>DyePocket - Page 2</title>
+<title>DyePocket - Packing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
@@ -699,6 +700,28 @@
   .sfed-err[hidden]{display:none}
   @media (max-width:480px){.sfed-grid{grid-template-columns:1fr 1fr}}
 </style>
+<style id="grpnavcss">
+  .grpnav{display:flex;gap:4px;padding:3px;border:1px solid var(--edge);border-radius:14px;background:rgba(var(--w-rgb),.04);min-width:0;flex:0 1 auto}
+  .grpnav .gbtn{appearance:none;-webkit-appearance:none;border:1px solid transparent;background:transparent;color:var(--dim);font:600 13px/1 var(--display);letter-spacing:.02em;padding:0 14px;min-height:36px;border-radius:11px;cursor:pointer;white-space:nowrap;flex:1 1 auto;transition:background .15s,color .15s,border-color .15s}
+  .grpnav .gbtn:hover{color:var(--text)}
+  .grpnav .gbtn.on{color:var(--cyan);background:rgba(var(--c-rgb),.14);border-color:rgba(var(--c-rgb),.4);cursor:default}
+  .topbar .grpnav{margin-left:auto;margin-right:4px}
+  html[data-mode="pc"] #btnPage3,html[data-mode="pc"] #btnPage4{display:none}
+  @media(max-width:560px) and (min-height:481px){
+    .topbar .grpnav{flex:1 1 100%;margin:0}
+    .grpnav .gbtn{padding:0 6px;min-height:40px;font-size:14px}
+  }
+  @media(max-width:560px) and (min-height:481px){
+    body .topbar{flex-wrap:wrap}
+    body .topbar .brand{flex:1 1 0}
+    body .topbar .top-actions{flex:0 0 auto;justify-content:flex-end;gap:8px}
+    body .topbar .top-actions .icon-btn{width:40px;height:40px}
+    body .topbar .grpnav{order:3}
+  }
+  @media(max-height:480px) and (orientation:landscape){
+    .grpnav .gbtn{min-height:30px;padding:0 10px;font-size:12px}
+  }
+</style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -712,16 +735,16 @@
       </svg>
       <div>
         <h1>DyePocket</h1>
-        <p id="subtitle">Page 2 · RPH</p>
+        <p id="subtitle">Packing · RPH</p>
       </div>
     </div>
+    <nav class="grpnav" id="grpNav" aria-label="Grup menu">
+      <button type="button" class="gbtn" id="btnHome" data-g="1">Produksi</button>
+      <button type="button" class="gbtn on" id="btnPage2" data-g="2" aria-current="page">Packing</button>
+      <button type="button" class="gbtn" id="btnPage3" data-g="3">Kimia</button>
+      <button type="button" class="gbtn" id="btnPage4" data-g="4">Corak</button>
+    </nav>
     <div class="top-actions">
-      <button type="button" class="icon-btn" id="btnHome" aria-label="Kembali ke Home" title="Kembali ke Home">
-        <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg>
-      </button>
-      <button type="button" class="icon-btn" id="btnPage3" aria-label="Page 3: Kimia" title="Page 3: Kimia">
-        <svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.2L4.6 18.5A1.6 1.6 0 0 0 6 21h12a1.6 1.6 0 0 0 1.4-2.5L14 9.2V3"/><path d="M7.5 15h9"/></svg>
-      </button>
       <button type="button" class="icon-btn" id="btnTheme" aria-label="Ganti mode terang atau gelap" title="Mode terang / gelap">
         <svg class="theme-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -1063,7 +1086,23 @@
     if (TABS.length) { if (MODE === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
     location.href = 'index.html' + (q.length ? '?' + q.join('&') : '');
   }
-  $('#btnHome').addEventListener('click', function () { goHome(''); });
+  /* ---------- Menu grup (Produksi, Packing, Kimia, Corak) ---------- */
+  var GRP_CUR = 2, GRP_FILES = ['index.html', 'page2.html', 'page3.html', 'page4.html'];
+  function grpOpen(n) {
+    if (n === GRP_CUR) return;
+    if (n === 1) lsDel('wipyd_hometab');
+    if (n === 2) lsDel('wipyd_p2tab');
+    if (IN_GAS) {
+      gs('getPageUrl', n, MODE, '', TABS.join(',')).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat halaman tidak ditemukan.', 'warn', 5000); })
+        .catch(function (e) { toast('Halaman gagal dibuka. ' + errMsg(e), 'err', 6000); });
+      return;
+    }
+    var q = [];
+    if (MODE !== 'admin') q.push('mode=' + MODE);
+    if (TABS.length) { if (MODE === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
+    location.href = GRP_FILES[n - 1] + (q.length ? '?' + q.join('&') : '');
+  }
+  $$('#grpNav .gbtn').forEach(function (b) { b.addEventListener('click', function () { grpOpen(parseInt(b.getAttribute('data-g'), 10)); }); });
   function openPage3() {   // Page 3: Kimia (daftar tab terbatas ikut dibawa)
     if (IN_GAS) {
       gs('getPageUrl', 3, MODE, '', TABS.join(',')).then(function (u) { if (u) window.open(u, '_top'); else toast('Alamat Page 3 tidak ditemukan.', 'warn', 5000); })
@@ -1075,7 +1114,6 @@
     if (TABS.length) { if (MODE === 'admin') q.push('mode=admin'); q.push('tabs=' + TABS.join(',')); }
     location.href = 'page3.html' + (q.length ? '?' + q.join('&') : '');
   }
-  $('#btnPage3').addEventListener('click', openPage3);
 
   /* ---------- Daftar RPH dan Pack (isi sheet menurut judul kolom baris 1; KIKC dipindah ke kolom pertama) ----------
      Periode (tanggal awal s/d akhir, default bulan berjalan) menyaring menurut kolom tanggal sheet. Kata kunci pencarian menelusuri SEMUA tanggal (periode diabaikan). */
@@ -1926,12 +1964,12 @@
       b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
     });
     if (name === 'delivery') {
-      $('#subtitle').textContent = 'Page 2 · Delivery · celup ke pack';
+      $('#subtitle').textContent = 'Packing · Delivery · celup ke pack';
       renderDelivery();
       loadDelivery();
       return;
     }
-    $('#subtitle').textContent = 'Page 2 · ' + LISTS[name].label + ' · terbaru di atas';
+    $('#subtitle').textContent = 'Packing · ' + LISTS[name].label + ' · terbaru di atas';
     renderList(name);
     loadList(name);
   }

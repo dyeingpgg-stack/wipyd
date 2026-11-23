@@ -104,7 +104,7 @@ const COL_PACK = 16;             // kolom P = Tanggal Pack (diisi dari sheet PAC
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.fn === 'ping') return json_({ ok: true, result: 'pong' });
-  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : str_(p.page) === '3' ? 'Page3' : str_(p.page) === '4' ? 'Page4' : 'Index');   // ?page=2 = Page 2 (Pack, RPH); ?page=3 = Page 3 (Kimia)
+  let page = HtmlService.createHtmlOutputFromFile(str_(p.page) === '2' ? 'Page2' : str_(p.page) === '3' ? 'Page3' : str_(p.page) === '4' ? 'Page4' : str_(p.page) === '5' ? 'Page5' : 'Index');   // ?page=2 = Page 2 (Pack, RPH); ?page=3 = Page 3 (Kimia)
   // Link Viewer: <URL web app>?mode=viewer. Halaman Apps Script berada di dalam iframe sehingga ?mode= tidak terbaca oleh halaman,
   // jadi server menyisipkan tandanya. Tanpa ?mode= (link utama) aplikasi terbuka sebagai Admin.
   const want = str_(p.mode).toLowerCase();
@@ -137,6 +137,10 @@ const API_FUNCS = {
   deleteData: function (a) { return deleteData(a[0], a[1], a[2]); },
   getList: function (a) { return getList(a[0], a[1]); },
   sinkronWodRph: function (a) { return sinkronWodRph(a[0]); },
+  getPidang: function (a) { return getPidang(a && a[0]); },
+  getPidangPack: function (a) { return getPidangPack(a && a[0], a && a[1]); },
+  getShareTabs: function () { return getShareTabs(); },
+  getWodCust: function (a) { return getWodCust(a && a[0], a && a[1]); },
   getLists: function (a) { return getLists(a[0]); },
   setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3], a[4]); },
   resetAlokasi: function (a) { return resetAlokasi(a[0], a[1]); },
@@ -145,6 +149,8 @@ const API_FUNCS = {
   planTambahBaru: function (a) { return planTambahBaru(a[0], a[1]); },
   getShareUrls: function () { return getShareUrls(); },
   savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1]); },
+  getWodBon: function (a) { return getWodBon(a && a[0]); },
+  getWipKikc: function (a) { return getWipKikc(a && a[0]); },
   getPlanHari: function (a) { return getPlanHari(a[0], a[1], a[2]); },
   cariData: function (a) { return cariData(a[0], a[1]); },
   cariPlan: function (a) { return cariPlan(a[0]); },
@@ -171,8 +177,20 @@ const API_FUNCS = {
 
 // Alamat link Viewer (URL web app + ?mode=viewer). Dipakai tombol Bagikan di aplikasi Admin.
 // tabs (opsional) = Viewer terbatas, mis. 'plan,mesin' (hanya tab Plan dan Mesin yang tampil)
+// DAFTAR TAB UNTUK TOMBOL SHARE ("Bagikan link"): SATU-SATUNYA daftar tab. Tab baru cukup ditambahkan SATU baris di sini:
+// otomatis muncul di pilihan tab (dikelompokkan per grup) dan dikenali link-nya.
+// [kunci, label, halaman, grup]  (halaman 1 = Home, 2 = Page 2, 3 = Page 3, 4 = Page 4, 5 = Page 5)
+const SHARE_GROUPS = { 1: 'Produksi', 2: 'Packing', 3: 'Kimia', 4: 'Corak', 5: 'Ringkasan' };
+const SHARE_TABS = [
+  ['plan', 'Plan', 1], ['form', 'Input', 1], ['data', 'WIP', 1], ['mesin', 'Mesin', 1], ['wod', 'WOD', 1], ['grm', 'GRM', 1], ['clp', 'Celup', 1], ['miss', 'Outstanding', 1],
+  ['rph', 'RPH', 2], ['pack', 'Pack', 2], ['packdetil', 'Pack Detil', 2], ['delivery', 'Delivery', 2], ['soft', 'SOFT', 2],
+  ['kimia', 'Kimia', 3],
+  ['pidang', 'Pidang', 4], ['amak', 'AMAK', 4], ['hank', 'HANK', 4]
+];
+function getShareTabs() { return SHARE_TABS.map(function (t) { return { key: t[0], label: t[1], page: t[2], group: t[3] || SHARE_GROUPS[t[2]] || '' }; }); }
 function cleanTabs_(t) {
-  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return /^(wod|grm|plan|form|data|mesin|clp|miss|rph|pack|packdetil|delivery|soft|kimia)$/.test(x) && a.indexOf(x) === i; });
+  const ok = SHARE_TABS.map(function (x) { return x[0]; });
+  return str_(t).toLowerCase().split(/[\s,;]+/).filter(function (x, i, a) { return ok.indexOf(x) >= 0 && a.indexOf(x) === i; });
 }
 // Dua link untuk tombol Share: Viewer dan PC (URL web app)
 function getShareUrls() {
@@ -190,7 +208,7 @@ function getPageUrl(page, mode, tab, tabs) {
   const u = ScriptApp.getService().getUrl();
   if (!u) return '';
   const q = [];
-  if (String(page) === '2' || String(page) === '3' || String(page) === '4') q.push('page=' + String(page));
+  if (String(page) === '2' || String(page) === '3' || String(page) === '4' || String(page) === '5') q.push('page=' + String(page));
   const tl0 = cleanTabs_(tabs);
   if (str_(mode) === 'viewer' || str_(mode) === 'pc' || (str_(mode) === 'admin' && tl0.length)) q.push('mode=' + str_(mode));
   if (String(page) === '2' && /^(rph|pack|packdetil|delivery|soft)$/.test(str_(tab).toLowerCase())) q.push('tab=' + str_(tab).toLowerCase());
@@ -568,7 +586,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst12_';
+const LIST_PREFIX = 'lst13_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -666,7 +684,7 @@ function buildList_(key) {
       const mesin = str_(r[WOD_MESIN_IDX]).replace(/\s+/g, '').toUpperCase();
       return mesin.indexOf(WOD_HIDE_MESIN) < 0;
     }, 0, { mdy: !!DATE_TEXT_MDY.wod, noSort: true, asc: true });   // tab WOD mengikuti urutan sheet WOD
-    return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN'], rows);
+    return listResult_(['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN', 'NO DBB', 'STATUS BON'], wodExpandBon_(rows, 9));   // NO DBB dan STATUS BON dari WODMETA (kolom J dan L), satu bon per baris
   }
   if (key === 'grm') {
     // Tab GRM dibaca dari sheet GRM (A TANGGAL | B KIKC | C NO BENANG | D WARNA | E MESIN | F KG | G CONE | H KETERANGAN)
@@ -1416,13 +1434,49 @@ function getPlanTanggal() {
   }
 }
 
-// Plan terakhir hanya dibawa ke hari ini sebelum jam PLAN_RESET_JAM (10.00). Lewat jam itu, hari ini tanpa Plan baru tampil kosong sampai Plan baru dibuat lewat Create > Get Plan > Save.
-// Tanggal lain (kemarin / besok) yang belum punya Plan juga tampil kosong.
-const PLAN_RESET_JAM = 10;
-function planCarryOpen_(iso) {
+// Plan terakhir dibawa ke hari ini (bila hari ini belum punya Plan baru) SELAMA masih ada lot di Plan itu yang belum terinput di WIP (sheet Jawaban),
+// tidak lagi memakai jam. Lot dianggap terinput bila ada baris Jawaban untuk KIKC itu pada/sesudah tanggal Plan. Lot PENDING tidak ditunggu.
+// Contoh: Plan Sabtu, Minggu libur, input WIP Senin: Plan Sabtu tetap tampil di Minggu dan Senin sampai semua lotnya terinput.
+// Batas pengaman: Plan yang lebih tua dari PLAN_CARRY_MAX_HARI hari tidak dibawa lagi. Tanggal lain (kemarin / besok) tanpa Plan tampil kosong.
+const PLAN_CARRY_MAX_HARI = 7;
+function planCarryDate_(iso) {   // tanggal Plan yang dibawa ke hari iso (hari ini), atau '' bila tidak ada / sudah semua terinput
   const now = new Date(), tz = planTz_();
-  return iso === Utilities.formatDate(now, tz, 'yyyy-MM-dd') && Number(Utilities.formatDate(now, tz, 'H')) < PLAN_RESET_JAM;
+  if (iso !== Utilities.formatDate(now, tz, 'yyyy-MM-dd')) return '';
+  const dates = (getPlanTanggal().dates || []).filter(function (d) { return d < iso; });
+  const prev = dates.length ? dates[dates.length - 1] : '';
+  if (!prev) return '';
+  if ((new Date(iso + 'T00:00:00Z').getTime() - new Date(prev + 'T00:00:00Z').getTime()) / 86400000 > PLAN_CARRY_MAX_HARI) return '';
+  const ck = 'carry_' + prev, hit = listCacheGet_(ck);
+  if (hit && hit.t) return hit.open ? prev : '';
+  let open = false;
+  try {
+    const sh = findSheet_(ss_(), SHEET_PLAN_HARIAN), want = prev.split('-').reverse().join('/');
+    const lots = {};
+    if (sh && sh.getLastRow() >= 2) {
+      sh.getRange(2, 1, sh.getLastRow() - 1, 2).getDisplayValues().forEach(function (r) { if (str_(r[0]).trim() === want) { const n = normKikc_(r[1]); if (n) lots[n] = 1; } });
+    }
+    let stl = {}; try { stl = readStatusLot_(); } catch (eS) { stl = {}; }
+    Object.keys(lots).forEach(function (n) { if (stl[n] && stl[n].s === 'PENDING') delete lots[n]; });
+    const need = Object.keys(lots);
+    if (need.length) {
+      const js = getJawabanSheet_(false), done = {};
+      if (js && js.getLastRow() >= 2) {
+        const n = Math.min(6000, js.getLastRow() - 1), st = js.getLastRow() - n + 1, jtz = js.getParent().getSpreadsheetTimeZone();
+        const ts = js.getRange(st, 1, n, 1).getValues(), ks = js.getRange(st, 3, n, 1).getValues();
+        for (let i = 0; i < n; i++) {
+          const d = ts[i][0];
+          if (!(d instanceof Date) || isNaN(d.getTime())) continue;
+          if (Utilities.formatDate(d, jtz, 'yyyy-MM-dd') < prev) continue;   // input sebelum tanggal Plan tidak dihitung
+          const kk = normKikc_(ks[i][0]); if (kk) done[kk] = 1;
+        }
+      }
+      open = need.some(function (x) { return !done[x]; });
+    }
+  } catch (e) { open = true; }   // gagal membaca: Plan tetap dibawa (lebih aman daripada menghilang)
+  listCachePut_(ck, { t: 1, open: open }, 60);
+  return open ? prev : '';
 }
+function planCarryOpen_(iso) { return !!planCarryDate_(iso); }
 
 // Riwayat Plan satu tanggal (yyyy-mm-dd).
 // fb (opsional, true): bila tanggal itu belum punya Plan, kembalikan Plan terakhir sebelum tanggal itu (date = tanggal Plan yang ditampilkan,
@@ -1434,8 +1488,8 @@ function getPlanHari(iso, fb, force) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error('Tanggal tidak valid.');
     const dates = getPlanTanggal().dates || [];
     let shown = iso, fell = false;
-    if (fb && dates.indexOf(iso) < 0 && planCarryOpen_(iso)) {
-      const prev = dates.filter(function (d) { return d < iso; }).pop();
+    if (fb && dates.indexOf(iso) < 0) {
+      const prev = planCarryDate_(iso);   // Plan terakhir yang lotnya belum semua terinput di WIP
       if (prev) { shown = prev; fell = true; }
     }
     const want = shown.split('-').reverse().join('/');
@@ -1608,6 +1662,35 @@ function exLots_(ket) {
   return out;
 }
 
+const PAK_SS_ID = '13P3mfSqADUmRWdwspO6AKKKgpKGpycWY';   // spreadsheet "pak": cadangan Tanggal Pack bila KIKC tidak ada di PACK (METAPACK)
+// Membaca semua sheet spreadsheet "pak": kolom KIKC dicari menurut judul baris 1 (jika tidak ada: kolom B), kolom tanggal menurut judul
+// "tanggal / tgl / date" (jika tidak ada: kolom A). Hasil {KIKC: 'dd/MM/yyyy'}, tanggal TERBARU bila ada beberapa.
+function pakExtraMap_() {
+  const hitP = listCacheGet_('pakmap1'); if (hitP) return hitP;
+  const id = PAK_SS_ID || PropertiesService.getScriptProperties().getProperty('PAK_SS_ID') || '';
+  if (!id) return {};
+  const out = {}, best = {};
+  SpreadsheetApp.openById(id).getSheets().forEach(function (sh) {
+    const last = sh.getLastRow(); if (last < 2) return;
+    const nc = Math.min(sh.getLastColumn(), 30); if (nc < 1) return;
+    const head = sh.getRange(1, 1, 1, nc).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); });
+    let kc = head.indexOf('KIKC') + 1; if (kc < 1) kc = 2;
+    let dc = 0; for (let j = 0; j < head.length; j++) { if (/TANGGAL|TGL|DATE/.test(head[j])) { dc = j + 1; break; } }
+    if (!dc) dc = 1;
+    if (kc > nc || dc > nc) return;
+    const kd = sh.getRange(2, kc, last - 1, 1).getDisplayValues(), disp = kd.map(function (r, i) { return []; }), dcd = sh.getRange(2, dc, last - 1, 1).getDisplayValues(), raw = sh.getRange(2, dc, last - 1, 1).getValues();
+    for (let z = 0; z < disp.length; z++) { disp[z][kc - 1] = kd[z][0]; disp[z][dc - 1] = dcd[z][0]; }
+    const tz = sh.getParent().getSpreadsheetTimeZone();
+    for (let i = 0; i < disp.length; i++) {
+      const k = normKikc_(disp[i][kc - 1]); if (!k || k === 'KIKC') continue;
+      const key = sortKey_(raw[i][0], disp[i][dc - 1], false); if (!key) continue;
+      if (best[k] === undefined || key > best[k]) { best[k] = key; out[k] = fmtDmy_(raw[i][0], disp[i][dc - 1], tz, false); }
+    }
+  });
+  listCachePut_('pakmap1', out, 3600);
+  return out;
+}
+
 function getPackMap_(force, cacheOnly) {
   if (!force) {
     const hit = listCacheGet_('packmap');
@@ -1645,6 +1728,11 @@ function getPackMap_(force, cacheOnly) {
       });
     }
   }
+  // Cadangan: KIKC yang belum ada di PACK (METAPACK) dicari di spreadsheet "pak" (PAK_SS_ID); yang sudah ada di PACK tidak diubah
+  try {
+    const pk = pakExtraMap_();
+    Object.keys(pk).forEach(function (x) { if (!res.map[x]) res.map[x] = pk[x]; });
+  } catch (eK) { res.pakErr = String(eK && eK.message || eK); }
   res.n = Object.keys(res.map).length;
   listCachePut_('packmap', res, PACK_TTL);
   return res;
@@ -2411,10 +2499,76 @@ function supplierMap_() {
 }
 
 // Pencarian tab WOD di SEMUA status (tab WOD biasa hanya status B dan tanpa mesin BAK-). Maksimal 500 hasil, baris terbaru dulu.
+// Peta KIKC -> [NO DBB, STATUS BON] dari sheet WODMETA (kolom B = KIKC, J = no bon, L = status_bon). Bila satu KIKC punya beberapa bon, semuanya digabung (urut sheet).
+function wodBonLists_() {
+  const hit = listCacheGet_('wodbon2');
+  if (hit && hit.m) return hit.m;
+  const m = {};
+  try {
+    const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
+    if (src && src.getLastRow() > 1) {
+      const v = src.getRange(2, 1, src.getLastRow() - 1, 12).getDisplayValues(), seen = {};
+      v.forEach(function (r) {
+        const kk = normKikc_(r[1]), bon = str_(r[9]).trim(), st = str_(r[11]).trim();
+        if (!kk || !bon || seen[kk + '|' + bon]) return;
+        seen[kk + '|' + bon] = 1;
+        (m[kk] = m[kk] || []).push([bon, st]);   // [no bon, status bon] urut sheet
+      });
+    }
+  } catch (e) { /* WODMETA tidak terbaca: kolom kosong */ }
+  listCachePut_('wodbon2', { m: m }, 120);
+  return m;
+}
+function wodBonMap_() {   // gabungan per KIKC (dipakai tab Plan): [no bon gabungan, status gabungan]
+  const L = wodBonLists_(), m = {};
+  Object.keys(L).forEach(function (x) { m[x] = [L[x].map(function (e) { return e[0]; }).join(', '), L[x].map(function (e) { return e[1]; }).join(', ')]; });
+  return m;
+}
+// Tab WOD: tiap NO DBB tampil di barisnya sendiri beserta Status Bon-nya (tidak digabung). Baris WOD ke-n dari satu KIKC memakai bon ke-n;
+// bila bon lebih banyak daripada baris WOD, baris tambahan dibuat; bila lebih sedikit, bon terakhir dipakai. Kolom disisipkan di posisi insertAt.
+function wodExpandBon_(rows, insertAt) {
+  const L = wodBonLists_(), cnt = {}, seen = {}, out = [];
+  rows.forEach(function (r) { const k = normKikc_(r[0]); cnt[k] = (cnt[k] || 0) + 1; });
+  const put = function (r, e) { return r.slice(0, insertAt).concat(e ? [e[0], e[1]] : ['', '']).concat(r.slice(insertAt)); };
+  rows.forEach(function (r) {
+    const k = normKikc_(r[0]), list = L[k] || [], i = seen[k] || 0;
+    seen[k] = i + 1;
+    out.push(put(r, list.length ? list[Math.min(i, list.length - 1)] : null));
+    if (seen[k] === cnt[k]) { for (let j = cnt[k]; j < list.length; j++) out.push(put(r, list[j])); }   // bon yang belum kebagian baris
+  });
+  return out;
+}
+
+// Kolom virtual NO DBB di tab Plan (dihitung di layar): daftar KIKC dari klien dicocokkan ke WODMETA lewat wodBonMap_
+function getWodBon(kikcs) {
+  try {
+    const wb = wodBonMap_(), out = {};
+    (kikcs || []).forEach(function (x) { const e = wb[normKikc_(x)]; if (e) out[normKikc_(x)] = e; });
+    return { success: true, map: out };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// Lot (KIKC) dari daftar yang sudah terinput di sheet Jawaban (tab WIP). Dipakai tab Kritikal untuk memotong stok kimia lot Plan yang sudah jalan.
+function getWipKikc(kikcs) {
+  try {
+    const want = {}; (kikcs || []).forEach(function (x) { const n = normKikc_(x); if (n) want[n] = 1; });
+    const sh = getJawabanSheet_(false), out = [];
+    if (sh && sh.getLastRow() >= 2) {
+      const seen = {};
+      sh.getRange(2, 3, sh.getLastRow() - 1, 1).getValues().forEach(function (r) { const n = normKikc_(r[0]); if (n && want[n] && !seen[n]) { seen[n] = 1; out.push(n); } });
+    }
+    return { success: true, list: out };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
 function cariWod(query) {
   try {
     const qn = normQ_(query).trim();
-    const headers = ['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN', 'STATUS'];
+    const headers = ['KIKC', 'TANGGAL', 'NO BENANG', 'WARNA', 'KG', 'CONE', 'MESIN', 'SUPPLIER', 'KETERANGAN', 'NO DBB', 'STATUS BON', 'STATUS'];
     const out = { success: true, headers: headers, rows: [], matches: 0, truncated: false };
     if (!qn) return out;
     const rows = readList_(getWodSheet_(), WOD_LIST_FIRST_COL, WOD_LIST_WIDTH, [2, 0, 3, 4, 5, 6, 8, 10, 11, 14], function (r) {
@@ -2424,7 +2578,7 @@ function cariWod(query) {
     }, 0, { mdy: !!DATE_TEXT_MDY.wod, noSort: true, asc: true });   // tab WOD mengikuti urutan sheet WOD
     out.matches = rows.length;
     out.truncated = rows.length > 500;
-    out.rows = rows.slice(0, 500);
+    out.rows = wodExpandBon_(rows.slice(0, 500), 9);   // setelah KETERANGAN, satu bon per baris
     return out;
   } catch (e) {
     return { error: e.message };
@@ -2732,7 +2886,7 @@ function getKimia(which, force) {
     which = str_(which).toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(KIMIA_SHEETS, which)) throw new Error('Daftar Kimia tidak dikenal: ' + which);
     if (typeof RSP_ID_DB === 'undefined') throw new Error('File resep.gs belum ada di project Apps Script ini (konstanta RSP_ID_DB tidak ditemukan).');
-    const ck = 'kim_' + which + (which === 'mutasi' ? '4' : '');
+    const ck = 'kim_' + which + (which === 'mutasi' ? '4' : (which === 'resep' || which === 'conf' || which === 'open' || which === 'booking') ? 'c' : '');
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
     if (which === 'open' || which === 'conf') {   // Lot Opened / Lot Confirmed dibaca langsung dari WODMETA (tanpa menunggu sinkron C.dbb)
       let ro = null;
@@ -2751,6 +2905,7 @@ function getKimia(which, force) {
     try { res.syncAt = PropertiesService.getScriptProperties().getProperty('rspSyncAt') || ''; } catch (eP) { res.syncAt = ''; }
     if (which === 'booking') kimiaBookingVirtual_(res);
     if (which === 'conf') kimiaTanggalWod_(res);
+    if (which === 'resep') { try { const cl = kimiaWodmeta_().clr || {}; res.headers = res.headers.concat(['Color']); res.rows = res.rows.map(function (r) { return r.concat([cl[String(r[0]).toUpperCase().replace(/[^A-Z0-9]/g, '')] || '']); }); } catch (eC) { /* tanpa Color */ } }
     listCachePut_(ck, res, 120);
     return res;
   } catch (e) {
@@ -2762,23 +2917,26 @@ function getKimia(which, force) {
 // Hasil: { tgl: {KIKC ringkas: tanggal}, headers, open: [baris OPEN] }. Tanggal hanya disimpan untuk baris Confirmed / Open.
 function kimiaWodmeta_() {
   const hit = listCacheGet_('kimwm');
-  if (hit && hit.tgl && hit.conf) return hit;
+  if (hit && hit.tgl && hit.conf && hit.clr && hit.cn) return hit;
   const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
   if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
   const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
   const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   const cols = [1, 8, 9, 11];
-  const headers = v.length ? cols.map(function (i) { return str_(v[0][i]).replace(/\s+/g, ' ').trim(); }).concat(['Tanggal WOD']) : [];
-  const tgl = {}, open = [], conf = [];
+  const headers = v.length ? cols.map(function (i) { return str_(v[0][i]).replace(/\s+/g, ' ').trim(); }).concat(['Tanggal WOD', 'Color']) : [];
+  const tgl = {}, open = [], conf = [], clr = {}, cn = [];
   v.slice(1).forEach(function (r) {
     const st = str_(r[11]).trim().toLowerCase();
+    if (st === 'canceled' || st === 'cancelled') { const cb = str_(r[9]).trim(); if (cb) cn.push(cb); return; }   // bon Canceled: dipakai untuk mengecualikan resepnya di Rencana
     if (str_(r[1]).trim() === '' || (st !== 'confirmed' && st !== 'open')) return;
     const k = kc(r[1]), d = str_(r[2]).trim();
     if (d && !tgl[k]) tgl[k] = d;
-    const rowX = cols.map(function (i) { return str_(r[i]).trim(); }).concat([d]);
+    const cc = str_(r[4]).trim();   // kolom E = color_code
+    if (cc && !clr[k]) clr[k] = cc;
+    const rowX = cols.map(function (i) { return str_(r[i]).trim(); }).concat([d, cc]);
     if (st === 'open') open.push(rowX); else conf.push(rowX);
   });
-  const res = { tgl: tgl, headers: headers, open: open, conf: conf };
+  const res = { tgl: tgl, headers: headers, open: open, conf: conf, clr: clr, cn: cn };
   listCachePut_('kimwm', res, 90);
   return res;
 }
@@ -2793,7 +2951,7 @@ function kimiaTanggalWod_(res) {
 // Tab Lot Confirmed: baris WODMETA dengan status_bon (kolom L) = Confirmed (urutan sheet WODMETA), kolom sama seperti C.dbb + Tanggal WOD
 function kimiaConf_() {
   const w = kimiaWodmeta_();
-  return { success: true, headers: w.headers, rows: w.conf, total: w.conf.length, name: 'WODMETA (Confirmed)' };
+  return { success: true, headers: w.headers, rows: w.conf, total: w.conf.length, name: 'WODMETA (Confirmed)', cancel: w.cn || [] };
 }
 // Tab Lot Opened: lot di WODMETA dengan status_bon (kolom L) = OPEN; kolom sama seperti Lot Confirmed
 function kimiaOpen_() {
@@ -2818,13 +2976,13 @@ function kimiaBookingVirtual_(res) {
       if (b) { kb[n] = kb[n] || []; if (kb[n].indexOf(b) < 0) kb[n].push(b); }
     });
   } catch (e) { /* tanpa kode: kolom kosong */ }
-  let lot = {};
-  try { lot = kimiaLotMap_(); } catch (e2) { lot = {}; }
+  let lot = {}, lotN = {};
+  try { lot = kimiaLotMap_(); lotN = kimiaLotMap_.lot || {}; } catch (e2) { lot = {}; }
   if (!Object.keys(lot).length) { try { lot = JSON.parse(PropertiesService.getScriptProperties().getProperty('bookingLot') || '{}'); } catch (e3) { lot = {}; } }
-  res.headers = res.headers.concat(['Kode Entry', 'Kode Kimia', 'Lot']);
+  res.headers = res.headers.concat(['Kode Entry', 'Kode Kimia', 'Lot', 'Jumlah Lot']);
   res.rows = res.rows.map(function (r) {
     const n = iItem >= 0 ? norm(r[iItem]) : '';
-    return r.concat([(ka[n] || []).slice(0, 3).join(', '), (kb[n] || []).slice(0, 3).join(', '), lot[n] ? String(lot[n]) : '']);
+    return r.concat([(ka[n] || []).slice(0, 3).join(', '), (kb[n] || []).slice(0, 3).join(', '), lot[n] ? String(lot[n]) : '', lotN[n] ? String(lotN[n]) : '']);
   });
 }
 
@@ -2832,7 +2990,7 @@ function kimiaBookingVirtual_(res) {
 // Lot C.dbb dicocokkan ke RESEP lewat KIKC + kode resep (awalan boleh beda panjang) + no bon; bila no bon tidak cocok cukup KIKC + kode resep. Hasil di-cache 10 menit.
 function kimiaLotMap_() {
   const hit = listCacheGet_('kimlot');
-  if (hit && hit.m) return hit.m;
+  if (hit && hit.m && hit.l) { kimiaLotMap_.lot = hit.l; return hit.m; }
   const ss = SpreadsheetApp.openById(RSP_ID_DB);
   const kc = function (v) { return String(v).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   const nm = function (v) { return String(v).replace(/\s+/g, ' ').trim().toUpperCase(); };
@@ -2858,9 +3016,10 @@ function kimiaLotMap_() {
     if (!item) return;
     (per[item] = per[item] || {})[pakai[i]] = 1;   // hitung BON (NO DBB) berbeda, bukan KIKC: satu KIKC bisa punya beberapa bon Confirmed
   });
-  const m = {};
-  Object.keys(per).forEach(function (k) { m[k] = Object.keys(per[k]).length; });
-  listCachePut_('kimlot', { m: m }, 120);
+  const m = {}, l = {};
+  Object.keys(per).forEach(function (k) { const ks = Object.keys(per[k]); m[k] = ks.length; const u = {}; ks.forEach(function (x) { u[x.split('|')[0]] = 1; }); l[k] = Object.keys(u).length; });   // m = jumlah BON, l = jumlah LOT (KIKC)
+  kimiaLotMap_.lot = l;
+  listCachePut_('kimlot', { m: m, l: l }, 120);
   return m;
 }
 
@@ -3045,4 +3204,91 @@ function kimiaCekLots_() {
     g.rows.sort(function (a, b) { return b.i - a.i; }).forEach(function (o) { rows.push(o.x.concat([n])); });
   });
   return { success: true, headers: ['KIKC', 'TANGGAL WOD', 'RECIPE', 'NO DBB', 'STATUS', 'JUMLAH BON'], rows: rows, total: rows.length, name: 'Cek Lots' };
+}
+
+
+/* ===== Page 4 > Tab PIDANG: spreadsheet GRM, Sheet1, hanya baris Customer = "CORAK - ATBM" ===== */
+const PIDANG_SS_ID = '1XSB-V8VngTAuXifFFfVk0N3zrhNTvDLz52eMCYfo-Z4';
+function getPidang(force) {
+  try {
+    if (!force) { const hit = listCacheGet_('pidang5'); if (hit) return hit; }
+    const ss = SpreadsheetApp.openById(PIDANG_SS_ID);
+    const sh = ss.getSheetByName('Sheet1') || ss.getSheets()[0];
+    const last = sh.getLastRow();
+    if (last < 2) return { success: true, headers: [], rows: [], total: 0 };
+    const n = last - 1;
+    const cA = sh.getRange(2, 1, n, 1).getDisplayValues(), dv = sh.getRange(2, 5, n, 1).getValues(), dd = sh.getRange(2, 5, n, 1).getDisplayValues();
+    const hit = [];   // baris CORAK - ATBM tahun 2026
+    for (let i = 0; i < n; i++) {
+      if (str_(cA[i][0]).replace(/\s+/g, ' ').trim().toUpperCase() !== 'CORAK - ATBM') continue;
+      let d = dv[i][0], ts = 0, yr = 0;
+      if (d instanceof Date && !isNaN(d.getTime())) { ts = d.getTime(); yr = d.getFullYear(); }
+      else {
+        const m = str_(dd[i][0]).match(/^\s*(\d{1,4})\D+(\d{1,2})\D+(\d{2,4})\s*$/);
+        if (m) { yr = +m[3]; if (yr < 100) yr += 2000; ts = new Date(yr, (+m[2]) - 1, +m[1]).getTime(); }
+      }
+      if (yr === 2026) hit.push({ i: i, ts: ts });
+    }
+    const headers = ['TANGGAL', 'KIKC', 'BENANG', 'WRN1', 'WRN2', 'WRN3', 'MC', 'PDG', 'KG', 'MOTIF'];
+    if (!hit.length) { const e0 = { success: true, headers: headers, rows: [], total: 0 }; listCachePut_('pidang5', e0, 120); return e0; }
+    const lo = hit.reduce(function (m, x) { return Math.min(m, x.i); }, n), m = n - lo;   // kolom lain hanya dibaca dari baris 2026 pertama sampai akhir
+    const cols = [25, 16, 17, 18, 19, 30, 39, 33, 48].map(function (c) { return sh.getRange(2 + lo, c, m, 1).getDisplayValues(); });   // Y, P, Q, R, S, AD, AM, AG, AV
+    hit.sort(function (a, b) { return (b.ts - a.ts) || (b.i - a.i); });   // terbaru di atas
+    const rows = hit.map(function (x) {
+      const g = function (c) { return str_(cols[c][x.i - lo][0]).trim(); };
+      return [str_(dd[x.i][0]).trim(), g(0), g(1), g(2), g(3), g(4), g(5), g(6), g(7), g(8)];
+    });
+    const res = { success: true, headers: headers, rows: rows, total: rows.length };
+    listCachePut_('pidang5', res, 120);
+    return res;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+// Status packing dihitung terpisah (agar tabel Pidang tampil cepat): daftar KIKC dari klien dicocokkan dengan peta PACK (METAPACK) + cadangan spreadsheet "pak".
+function getPidangPack(kikcs, force) {
+  try {
+    const pm = getPackMap_(!!force).map || {}, out = {};
+    (kikcs || []).forEach(function (x) { const d = pm[normKikc_(x)]; if (d) out[x] = d; });
+    return { success: true, map: out };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+/* ===== Page 4 > Tab AMAK dan HANK: baris sheet WODMETA menurut kolom cust_desc dan machine ===== */
+// AMAK = cust_desc "AMAK". HANK = machine berisi "WOO JIN", kecuali baris yang cust_desc-nya "AMAK". Urutan baris = urutan sheet WODMETA (seperti tab WOD).
+function getWodCust(which, force) {
+  try {
+    which = str_(which).toLowerCase();
+    if (which !== 'amak' && which !== 'hank') throw new Error('Daftar tidak dikenal: ' + which);
+    const ck = 'wmc3_' + which;
+    if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
+    const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
+    if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
+    const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
+    if (!v.length) return { success: true, headers: [], rows: [], total: 0 };
+    const nh = function (x) { return str_(x).toLowerCase().replace(/[^a-z0-9]/g, ''); };
+    const hd = v[0].map(nh);
+    const ic = hd.indexOf('custdesc'), im = hd.indexOf('machine');
+    if (ic < 0) throw new Error('Kolom "cust_desc" tidak ditemukan di baris 1 sheet WODMETA.');
+    if (which === 'hank' && im < 0) throw new Error('Kolom "machine" tidak ditemukan di baris 1 sheet WODMETA.');
+    // Kolom tetap menurut huruf kolom WODMETA: B wod_no (KIKC), C wod_date, Y JNS, E color_code, G qty, V Total Cone, H machine, O supp_alias, R keterangan
+    const spec = [['KIKC', 1], ['TANGGAL', 2], ['NO BENANG', 24], ['WARNA', 4], ['KG', 6], ['CONE', 21], ['MESIN', 7], ['SUPPLIER', 14], ['KETERANGAN', 17]];
+    const missing = [];
+    const headers = spec.map(function (s) { return s[0]; });
+    const up = function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); };
+    const rows = [];
+    for (let r = 1; r < v.length; r++) {
+      const row = v[r], cust = up(row[ic]);
+      if (which === 'amak') { if (cust !== 'AMAK') continue; }
+      else { if (cust === 'AMAK' || up(row[im]).indexOf('WOO JIN') < 0) continue; }
+      rows.push(spec.map(function (s) { return str_(row[s[1]]).trim(); }));
+    }
+    const res = { success: true, headers: headers, rows: rows, total: rows.length, missing: missing, src: v[0].map(function (h) { return str_(h).trim(); }).filter(String) };
+    listCachePut_(ck, res, 120);
+    return res;
+  } catch (e) {
+    return { error: e.message };
+  }
 }
