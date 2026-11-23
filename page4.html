@@ -32,8 +32,9 @@
       h.setAttribute('data-tabs', tl.join(','));
       var p4 = tl.filter(function (x) { return /^(pidang|amak|hank)$/.test(x); });
       var css = '';
-      if (p4.length) {   // hanya tab Page 4 yang dibagikan yang tampil
-        css += '.tabbar .tab' + p4.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + p4.length + ',1fr) !important}';
+      if (p4.length) {   // hanya tab Page 4 yang dibagikan yang tampil (HANK = sub-tab dari tab WOD bersama AMAK)
+        var p4v = p4.map(function (x) { return x === 'hank' ? 'amak' : x; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+        css += '.tabbar .tab[data-sub]{display:none !important}.tabbar .tab' + p4v.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + p4v.length + ',1fr) !important}';
         window.WIPYD_P4 = p4;
       }
       var G = [/^(wod|grm|plan|form|data|mesin|clp|miss)$/, /^(rph|pack|packdetil|delivery|soft)$/, /^kimia$/, /^(pidang|amak|hank)$/], gn = 0;
@@ -643,7 +644,7 @@
   }
 
   /* ---------- Page 2: tiga tab (Pack, RPH, Home) ---------- */
-  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(4,1fr)}
+  .tabbar,html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(2,1fr)}
   html[data-mode="pc"] .tabbar{grid-template-columns:repeat(2,1fr)}
   html[data-mode="pc"] #tabPack,html[data-mode="pc"] #tabDelivery{display:none !important}
   .daterow.period{flex-wrap:wrap}
@@ -753,6 +754,14 @@
     .grpnav .gbtn{min-height:30px;padding:0 10px;font-size:12px}
   }
 </style>
+<style id="subswcss">
+  .subsw{flex:none;display:flex;gap:4px;padding:3px;margin:10px 16px 0;border:1px solid var(--edge);border-radius:13px;background:rgba(var(--w-rgb),.04);max-width:520px}
+  .subsw[hidden]{display:none}
+  .subsw button{appearance:none;-webkit-appearance:none;flex:1 1 0;min-height:38px;padding:0 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--dim);font:600 14px var(--display);cursor:pointer;white-space:nowrap}
+  .subsw button:hover{color:var(--text)}
+  .subsw button.on{color:var(--cyan);background:rgba(var(--c-rgb),.14);border-color:rgba(var(--c-rgb),.4)}
+  .tabbar .tab[data-sub]{display:none !important}
+</style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -787,6 +796,7 @@
   </header>
 
   <main id="main" class="is-data">
+    <div class="subsw" id="wcSw" role="tablist" aria-label="Sub tab WOD" hidden></div>
     <section class="view list active" id="viewPidang" aria-label="Pidang">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qPid" type="search" placeholder="Cari KIKC, benang, warna, MC, PDG, atau motif" autocomplete="off" aria-label="Cari Pidang"></div>
@@ -833,8 +843,8 @@
   <!-- Tab bawah Page 3: tambahkan <button class="tab" data-view="..."> di sini -->
   <nav class="tabbar" aria-label="Menu Page 4">
     <button type="button" class="tab active" data-view="pidang" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>Pidang</button>
-    <button type="button" class="tab" data-view="amak" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>AMAK</button>
-    <button type="button" class="tab" data-view="hank" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>HANK</button>
+    <button type="button" class="tab" data-view="amak" data-grp="wod" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg><span id="wcLbl">WOD</span></button>
+    <button type="button" class="tab" data-view="hank" data-sub="1" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>HANK</button>
   </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1088,13 +1098,25 @@
 
   /* ---------- Pindah tab ---------- */
   var CURV = 'pidang', LOADED = { pidang: true };
+  /* Tab WOD = grup: sub-tab AMAK dan HANK */
+  var WG = { last: 'amak', all: [['amak', 'AMAK'], ['hank', 'HANK']] };
+  function wgSubs() { var P = window.WIPYD_P4; return WG.all.filter(function (x) { return !P || P.indexOf(x[0]) >= 0; }); }
+  function wgRender(v) {
+    var sw = $('#wcSw'), l = wgSubs(), inG = v === 'amak' || v === 'hank';
+    if (inG) WG.last = v;
+    sw.hidden = !(inG && l.length > 1);
+    sw.innerHTML = sw.hidden ? '' : l.map(function (x) { return '<button type="button" role="tab" class="' + (x[0] === v ? 'on' : '') + '" data-sv="' + x[0] + '" aria-selected="' + (x[0] === v) + '">' + x[1] + '</button>'; }).join('');
+    $('#wcLbl').textContent = l.length === 1 ? l[0][1] : 'WOD';
+  }
+  $('#wcSw').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-sv]') : null; if (b) showView(b.getAttribute('data-sv')); });
   function showView(v) {
     CURV = v;
-    $$('.tabbar .tab').forEach(function (t) { var on = t.getAttribute('data-view') === v; t.classList.toggle('active', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    $$('.tabbar .tab').forEach(function (t) { var on = t.getAttribute('data-grp') === 'wod' ? (v === 'amak' || v === 'hank') : t.getAttribute('data-view') === v; t.classList.toggle('active', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    wgRender(v);
     $$('main .view').forEach(function (s) { s.classList.toggle('active', s.id === 'view' + (v === 'pidang' ? 'Pidang' : WC[v].id)); });
     if (v !== 'pidang' && !LOADED[v]) { LOADED[v] = true; wcLoad(v, false); }
   }
-  $$('.tabbar .tab').forEach(function (t) { t.addEventListener('click', function () { showView(t.getAttribute('data-view')); }); });
+  $$('.tabbar .tab').forEach(function (t) { t.addEventListener('click', function () { var v = t.getAttribute('data-view'); if (t.getAttribute('data-grp') === 'wod') { var l = wgSubs(); v = l.some(function (x) { return x[0] === WG.last; }) ? WG.last : (l[0] ? l[0][0] : 'amak'); } showView(v); }); });
   if (window.WIPYD_P4 && window.WIPYD_P4[0] !== 'pidang') showView(window.WIPYD_P4[0]);
   $('#btnRefresh').addEventListener('click', function () { var b = $('#btnRefresh'); b.classList.add('spin'); (CURV === 'pidang' ? pidLoad(true) : wcLoad(CURV, true)).then(function () { b.classList.remove('spin'); }); });
 })();

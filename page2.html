@@ -31,7 +31,8 @@
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
       var pt = tl.filter(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); });
-      var css = '.tabbar .tab' + pt.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pt.length, 1) + ',1fr) !important}';
+      var pv = pt.map(function (x) { return x === 'packdetil' ? 'pack' : x; }).filter(function (x, i, a) { return a.indexOf(x) === i; });   // Pack Detil = sub-tab dari tab Pack
+      var css = '.tabbar .tab[data-sub]{display:none !important}.tabbar .tab' + pv.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}.tabbar{grid-template-columns:repeat(' + Math.max(pv.length, 1) + ',1fr) !important}';
       var G = [/^(wod|grm|plan|form|data|mesin|clp|miss)$/, /^(rph|pack|packdetil|delivery|soft)$/, /^kimia$/, /^(pidang|amak|hank)$/], gn = 0;
       ['#btnHome', '#btnPage2', '#btnPage3', '#btnPage4'].forEach(function (id, i) { if (tl.some(function (x) { return G[i].test(x); })) gn++; else css += id + '{display:none !important}'; });
       if (gn < 2) css += '.grpnav{display:none !important}';
@@ -419,7 +420,7 @@
   .mnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
 
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:repeat(8,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
   .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.7)}
@@ -722,6 +723,14 @@
     .grpnav .gbtn{min-height:30px;padding:0 10px;font-size:12px}
   }
 </style>
+<style id="subswcss">
+  .subsw{flex:none;display:flex;gap:4px;padding:3px;margin:10px 16px 0;border:1px solid var(--edge);border-radius:13px;background:rgba(var(--w-rgb),.04);max-width:520px}
+  .subsw[hidden]{display:none}
+  .subsw button{appearance:none;-webkit-appearance:none;flex:1 1 0;min-height:38px;padding:0 10px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--dim);font:600 14px var(--display);cursor:pointer;white-space:nowrap}
+  .subsw button:hover{color:var(--text)}
+  .subsw button.on{color:var(--cyan);background:rgba(var(--c-rgb),.14);border-color:rgba(var(--c-rgb),.4)}
+  .tabbar .tab[data-sub]{display:none !important}
+</style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -756,6 +765,7 @@
   </header>
 
   <main id="main" class="is-data">
+    <div class="subsw" id="pkSw" role="tablist" aria-label="Sub tab Pack" hidden></div>
     <section id="viewPack" class="view list" aria-label="Daftar Pack">
       <div class="daterow period" id="perPack">
         <input class="input" id="fPack" type="date" aria-label="Tanggal awal periode Pack">
@@ -937,11 +947,11 @@
       <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
       RPH
     </button>
-    <button type="button" class="tab" id="tabPack" data-view="pack" aria-selected="false">
+    <button type="button" class="tab" id="tabPack" data-view="pack" data-grp="pack" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
-      Pack
+      <span id="pkLbl">Pack</span>
     </button>
-    <button type="button" class="tab" id="tabPackDetil" data-view="packdetil" aria-selected="false">
+    <button type="button" class="tab" id="tabPackDetil" data-view="packdetil" data-sub="1" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/><path d="M7.5 5.5l9 5"/></svg>
       Pack Detil
     </button>
@@ -1953,6 +1963,18 @@
   });
 
   var TABS = (ROOT.getAttribute('data-tabs') || '').split(',').filter(Boolean), P2TABS = TABS.filter(function (x) { return /^(rph|pack|packdetil|delivery|soft)$/.test(x); });
+  /* Tab Pack = grup: sub-tab Pack dan Pack Detil */
+  var PK = { last: 'pack', all: [['pack', 'Pack'], ['packdetil', 'Pack Detil']] };
+  function pkSubs() { return PK.all.filter(function (x) { return !P2TABS.length || P2TABS.indexOf(x[0]) >= 0; }); }
+  function pkIn(n) { return n === 'pack' || n === 'packdetil'; }
+  function pkRenderSw(name) {
+    var sw = $('#pkSw'), l = pkSubs(), inG = pkIn(name);
+    if (inG) PK.last = name;
+    sw.hidden = !(inG && l.length > 1);
+    sw.innerHTML = sw.hidden ? '' : l.map(function (x) { return '<button type="button" role="tab" class="' + (x[0] === name ? 'on' : '') + '" data-sv="' + x[0] + '" aria-selected="' + (x[0] === name) + '">' + x[1] + '</button>'; }).join('');
+    $('#pkLbl').textContent = l.length === 1 ? l[0][1] : 'Pack';
+  }
+  $('#pkSw').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-sv]') : null; if (b) showView(b.getAttribute('data-sv')); });
   function showView(name) {
     if (MODE === 'pc' && name !== 'rph' && name !== 'soft') name = 'soft';   // mode PC: hanya tab SOFT dan RPH
     if (P2TABS.length && P2TABS.indexOf(name) < 0) name = P2TABS[0];   // Viewer terbatas: hanya tab yang dibagikan
@@ -1960,9 +1982,10 @@
     Object.keys(LISTS).forEach(function (k) { $('#view' + LISTS[k].id).classList.toggle('active', name === k); });
     $('#viewDelivery').classList.toggle('active', name === 'delivery');
     $$('.tab').forEach(function (b) {
-      var on = b.getAttribute('data-view') === name;
+      var on = b.getAttribute('data-grp') === 'pack' ? pkIn(name) : b.getAttribute('data-view') === name;
       b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
     });
+    pkRenderSw(name);
     if (name === 'delivery') {
       $('#subtitle').textContent = 'Packing · Delivery · celup ke pack';
       renderDelivery();
@@ -1974,7 +1997,7 @@
     loadList(name);
   }
   $('#tabRph').addEventListener('click', function () { showView('rph'); });
-  $('#tabPack').addEventListener('click', function () { showView('pack'); });
+  $('#tabPack').addEventListener('click', function () { var l = pkSubs(); showView(l.some(function (x) { return x[0] === PK.last; }) ? PK.last : (l[0] ? l[0][0] : 'pack')); });
   $('#tabPackDetil').addEventListener('click', function () { showView('packdetil'); });
   $('#tabDelivery').addEventListener('click', function () { showView('delivery'); });
   $('#tabSoft').addEventListener('click', function () { showView('soft'); });
