@@ -144,11 +144,11 @@ const API_FUNCS = {
   getLists: function (a) { return getLists(a[0]); },
   setAlokasi: function (a) { return setAlokasi(a[0], a[1], a[2], a[3], a[4]); },
   resetAlokasi: function (a) { return resetAlokasi(a[0], a[1]); },
-  getPlanSource: function (a) { return getPlanSource(a[0], a[1]); },
+  getPlanSource: function (a) { return getPlanSource(a[0], a[1], a[2]); },
   planBaruCek: function (a) { return planBaruCek(a[0], a[1]); },
   planTambahBaru: function (a) { return planTambahBaru(a[0], a[1]); },
   getShareUrls: function () { return getShareUrls(); },
-  savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1]); },
+  savePlanTanggal: function (a) { return savePlanTanggal(a[0], a[1], a[2]); },
   getWodBon: function (a) { return getWodBon(a && a[0]); },
   getWipKikc: function (a) { return getWipKikc(a && a[0]); },
   getPlanHari: function (a) { return getPlanHari(a[0], a[1], a[2]); },
@@ -380,7 +380,7 @@ function rphCols_(sh) {
   if (lastC < 1) return null;
   const head = sh.getRange(1, 1, 1, lastC).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toLowerCase(); });
   const find = function (re) { for (let i = 0; i < head.length; i++) { if (re.test(head[i])) return i; } return -1; };
-  const c = { kikc: find(/^kikc$/), noBenang: find(/benang/), warna: find(/^warna/), kg: find(/^(qty|kg|berat)\b/), cone: find(/^cones?\b/), mesin: find(/^(m\/c|mc|mesin)\b/), ket: find(/^(ket|keterangan|catatan|remark)/), n: lastC };
+  const c = { kikc: find(/^kikc$/), noBenang: find(/benang/), warna: find(/^warna/), kg: find(/^(qty|kg|berat)\b/), cone: find(/^cones?\b/), mesin: find(/^(m\/c|mc|mesin)\b/), supp: find(/^(supp|supplier)/), tgl: find(/^(tgl|tanggal|date)/), ket: find(/^(ket|keterangan|catatan|remark)/), n: lastC };
   return c.kikc < 0 ? null : c;
 }
 function mapRph_(r, c) {
@@ -1219,15 +1219,63 @@ function writePlanHarian_(iso, rows) {
   }
 }
 
+// ---- Sumber data Plan: sheet "Plan" (importrange) dan/atau sheet "RPH" ----
+// Aturan anti-ganda: satu KIKC hanya satu baris. Sheet Plan didahulukan; lot RPH hanya DITAMBAHKAN bila KIKC-nya belum ada di sheet Plan.
+// Dari RPH diabaikan: KIKC ganda di RPH (baris paling bawah dipakai), lot yang sudah celup sebelum tanggal Plan (tab Celup), dan baris RPH yang bertanggal lebih dari PLAN_RPH_HARI hari sebelum tanggal Plan (bila RPH punya kolom tanggal).
+const PLAN_RPH_HARI = 14;
+function planRphExtra_(plan, iso) {
+  const out = { rows: [], keys: [], dupPlan: 0, sudahCelup: 0, lama: 0, err: '' };
+  try {
+    const sh = rphSheet_(SHEET_RPH);
+    if (!sh || sh.getLastRow() < 2) { out.err = 'Sheet RPH kosong atau tidak ditemukan.'; return out; }
+    const c = rphCols_(sh);
+    if (!c) { out.err = 'Kolom KIKC tidak ditemukan di sheet RPH.'; return out; }
+    const h = plan.headers, ix = function (n) { return h.indexOf(n); }, iK = ix('KIKC');
+    if (iK < 0) return out;
+    const have = Object.create(null);
+    plan.rows.forEach(function (r) { const k = normKikc_(r[iK]); if (k) have[k] = 1; });
+    const clp = clpDateMap_(), seen = Object.create(null);
+    let minD = '';
+    if (iso) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - PLAN_RPH_HARI); minD = d.toISOString().slice(0, 10); }
+    const vals = sh.getRange(2, 1, sh.getLastRow() - 1, c.n).getDisplayValues();
+    const put = function (arr, name, v) { const i = ix(name); if (i >= 0) arr[i] = str_(v).trim(); };
+    for (let i = vals.length - 1; i >= 0; i--) {   // dari bawah: baris terbaru menang
+      const m = mapRph_(vals[i], c), k = normKikc_(m.kikc);
+      if (!k || seen[k]) continue;
+      seen[k] = 1;
+      if (have[k]) { out.dupPlan++; continue; }
+      const cd = clp[k] ? planIso_(clp[k]) : '';
+      if (cd && iso && cd < iso) { out.sudahCelup++; continue; }
+      if (c.tgl >= 0 && minD) { const td = planIso_(str_(vals[i][c.tgl]).trim()); if (td && td < minD) { out.lama++; continue; } }
+      const arr = new Array(h.length);
+      for (let j = 0; j < arr.length; j++) arr[j] = '';
+      put(arr, 'KIKC', m.kikc); put(arr, 'NO BENANG', m.noBenang); put(arr, 'WARNA', m.warna); put(arr, 'MESIN', m.mesin);
+      put(arr, 'KG', m.kg); put(arr, 'CONE', m.cone); put(arr, 'KETERANGAN', m.ketKikc);
+      if (c.supp >= 0) put(arr, 'SUPPLIER', vals[i][c.supp]);
+      out.rows.push(arr); out.keys.push(k);
+    }
+    out.rows.reverse(); out.keys.reverse();
+  } catch (e) { out.err = 'RPH gagal dibaca: ' + e.message; }
+  return out;
+}
+// src: 'plan' (hanya sheet Plan, bawaan) | 'both' (sheet Plan + lot RPH yang belum ada di Plan)
+function planSourceBuild_(src, iso) {
+  const raw = buildList_('plan');
+  if (str_(src) !== 'both') return { plan: raw, raw: raw, rph: null };
+  const ex = planRphExtra_(raw, iso);
+  return { plan: { headers: raw.headers, rows: raw.rows.concat(ex.rows) }, raw: raw, rph: { n: ex.rows.length, keys: ex.keys, dupPlan: ex.dupPlan, sudahCelup: ex.sudahCelup, lama: ex.lama, err: ex.err } };
+}
+
 // GET PLAN: membaca sheet "Plan" (importrange) langsung, tanpa cache, dan mengirim isinya untuk dilihat sebelum Save. Tidak menulis apa pun.
-function getPlanSource(iso, mode) {
+function getPlanSource(iso, mode, src) {
   needAdmin_(mode);
   iso = planIsoOk_(iso);
   if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
-  const built = planSnapshotBuild_(buildList_('plan'), iso);
+  const sb = planSourceBuild_(src, iso);
+  const built = planSnapshotBuild_(sb.plan, iso);
   const ex = getPlanHari(iso);
   return {
-    success: true, date: iso, headers: built.headers, rows: built.rows, total: built.rows.length, excluded: built.excluded || 0,
+    success: true, date: iso, planN: sb.raw.rows.length, rph: sb.rph ? { n: sb.rph.n, dupPlan: sb.rph.dupPlan, sudahCelup: sb.rph.sudahCelup, lama: sb.rph.lama, err: sb.rph.err } : null, headers: built.headers, rows: built.rows, total: built.rows.length, excluded: built.excluded || 0,
     exists: (ex && ex.rows) ? ex.rows.length : 0, savedAt: (ex && ex.savedAt) || ''
   };
 }
@@ -1406,15 +1454,16 @@ function planTambahBaru(iso, mode) {
 
 // SAVE: membaca ulang sheet "Plan" di server (bukan kiriman browser) lalu menyimpannya ke "Plan Harian" pada tanggal yang dipilih.
 // Plan kosong (mis. importrange sedang gagal) TIDAK disimpan, supaya salinan lama tidak terhapus.
-function savePlanTanggal(iso, mode) {
+function savePlanTanggal(iso, mode, src) {
   needAdmin_(mode);
   iso = planIsoOk_(iso);
   if (!planEditableIso_(iso)) throw new Error('Tanggal planning tidak boleh sebelum hari ini.');
-  const planSrc = buildList_('plan');
-  const built = planSnapshotBuild_(planSrc, iso);
+  const sb = planSourceBuild_(src, iso), planSrc = sb.raw;
+  const built = planSnapshotBuild_(sb.plan, iso);
   if (!built.rows.length) throw new Error(built.excluded ? 'Semua lot di sheet Plan sudah ada di tab Celup, jadi tidak ada yang bisa diplan. Plan tidak disimpan.' : 'Sheet Plan kosong (mis. IMPORTRANGE belum terisi). Plan tidak disimpan agar salinan lama aman.');
   const r = writePlanHarian_(iso, built.rows);
-  planSeenSet_(iso, planRawKeys_(planSrc));   // baseline notifikasi lot baru = isi sheet Plan saat Save
+  planSeenSet_(iso, planRawKeys_(planSrc));   // baseline notifikasi lot baru = isi sheet Plan saat Save (lot RPH tidak ikut)
+  if (sb.rph && sb.rph.keys.length) planLostIgnoreAdd_(iso, sb.rph.keys);   // lot dari RPH memang tidak ada di sheet Plan: jangan ditandai "hilang"
   return { success: true, saved: r.saved, date: iso, excluded: built.excluded || 0 };
 }
 

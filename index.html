@@ -38,8 +38,8 @@
     if (tl.length) {
       h.setAttribute('data-tabs', tl.join(','));
       var hm = tl.filter(function (x) { return /^(wod|grm|plan|form|data|mesin|clp|miss)$/.test(x); });
-      var DM = /^(wod|grm|clp|miss)$/, hmMain = hm.filter(function (x) { return !DM.test(x); }), hasDat = hm.some(function (x) { return DM.test(x); });
-      var css = '.tabbar .tab[data-sub]{display:none !important}.tabbar .tab[data-view]:not([data-sub])' + hmMain.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}' + (hasDat ? '' : '.tabbar .tab[data-grp]{display:none !important}') + '.tabbar{grid-template-columns:repeat(' + Math.max(hmMain.length + (hasDat ? 1 : 0), 1) + ',1fr) !important}';
+      var DM = /^(wod|grm|clp)$/, hmMain = hm.filter(function (x) { return !DM.test(x); }), hasDat = hm.some(function (x) { return DM.test(x); });
+      var css = '.tabbar .tab[data-sub]{display:none !important}.tabbar .tab[data-view]:not([data-sub])' + hmMain.map(function (x) { return ':not([data-view="' + x + '"])'; }).join('') + '{display:none !important}' + (hasDat ? '' : '.tabbar .tab[data-grp]{display:none !important}') + '.tabbar{grid-template-columns:repeat(' + Math.max(hmMain.length + (hasDat ? 1 : 0), 1) + ',1fr) !important}' + (hm.indexOf('miss') >= 0 ? 'html[data-mode="viewer"] .tabbar #tabMiss{display:flex !important}' : '');
       var G = [/^(wod|grm|plan|form|data|mesin|clp|miss)$/, /^(rph|pack|packdetil|delivery|soft)$/, /^kimia$/, /^(pidang|amak|hank)$/], gn = 0;
       ['#btnHome', '#btnPage2', '#btnPage3', '#btnPage4'].forEach(function (id, i) { if (tl.some(function (x) { return G[i].test(x); })) gn++; else css += id + '{display:none !important}'; });
       if (gn < 2) css += '.grpnav{display:none !important}';
@@ -255,6 +255,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .pcreate .btn-sm{flex:1;margin:0;min-height:48px}
   .pcreate .btn-sm.primary{color:var(--ink-c);border-color:var(--cyan);background:linear-gradient(135deg,var(--cyan),var(--cyan-2))}
   .pcreate .btn-sm:disabled{opacity:.45;cursor:not-allowed}
+  .pc-tg.on{color:var(--cyan);border-color:rgba(var(--c-rgb),.5);background:rgba(var(--c-rgb),.14)}
   .pc-msg{font:600 14px var(--body);color:var(--soft)}
   .pc-warn{font:600 14px var(--body);color:var(--amber)}
   .pc-prev{max-height:32vh;overflow:auto;border:1px solid var(--edge);border-radius:12px}
@@ -456,7 +457,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   .mnote{flex:none;margin:0 2px 8px;font-size:12.5px;color:var(--dim)}
 
   /* ---------- Tab bawah ---------- */
-  .tabbar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--edge);background:var(--bar);padding-bottom:var(--safe-bottom)}
   .tab{position:relative;min-width:0;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--dim);font:600 13px var(--body);cursor:pointer}
   .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tab.active{color:var(--cyan);text-shadow:0 0 10px rgba(var(--c-rgb),.7)}
@@ -574,7 +575,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   html[data-mode="admin"] .topbar{border-bottom-color:rgba(var(--a-rgb),.55)}
   .modebtn{display:none !important}
   html[data-mode="viewer"] .admin-only{display:none !important}
-  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(5,1fr)}
+  html[data-mode="viewer"] .tabbar{grid-template-columns:repeat(6,1fr)}
   @media(max-width:430px){.tab{font-size:11px;gap:3px}.tab svg{width:22px;height:22px}}
   .tab .bdg{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rose);color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 10px rgba(var(--r-rgb),.6)}
   @media (min-width:900px),(max-height:480px) and (orientation:landscape){.tab .bdg{position:static;margin-left:auto}}
@@ -1040,6 +1041,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <div class="pc-row"><input class="input" id="pcDate" type="date" aria-label="Tanggal planning"></div>
         <div class="pc-row">
           <button type="button" class="btn-sm" id="pcGet"><span>Get Plan</span></button>
+          <button type="button" class="btn-sm pc-tg on" id="pcRph" aria-pressed="true" title="Ikut ambil lot dari sheet RPH (tanpa ganda dengan sheet Plan)"><span>+ RPH</span></button>
           <button type="button" class="btn-sm primary" id="pcSave" disabled><span>Save</span></button>
           <button type="button" class="btn-sm" id="pcCancel"><span>Batal</span></button>
         </div>
@@ -1201,13 +1203,17 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
       <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
       WIP
     </button>
+    <button type="button" class="tab admin-only" id="tabMiss" data-view="miss" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      Outstanding<span class="bdg" id="missBadge" hidden></span>
+    </button>
     <button type="button" class="tab" id="tabMesin" data-view="mesin" aria-selected="false">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2"/><circle cx="16.5" cy="12" r="1.5"/></svg>
       Mesin
     </button>
     <button type="button" class="tab" id="tabDat" data-grp="dat" aria-selected="false">
       <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
-      <span id="datLbl">Data</span><span class="bdg" id="datBadge" hidden></span>
+      <span id="datLbl">Data</span>
     </button>
     <!-- Sub-tab grup Data (disembunyikan di tab bawah, dipilih lewat #dataSw) -->
     <button type="button" data-sub="1" class="tab" id="tabWod" data-view="wod" aria-selected="false">
@@ -1221,10 +1227,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
     <button type="button" data-sub="1" class="tab" id="tabClp" data-view="clp" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
       Celup
-    </button>
-    <button type="button" data-sub="1" class="tab admin-only" id="tabMiss" data-view="miss" aria-selected="false">
-      <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-      Outstanding<span class="bdg" id="missBadge" hidden></span>
     </button>
   </nav>
 
@@ -3004,19 +3006,28 @@ var Code128 = (function () {
   $('#mesinNext').addEventListener('click', function () { $('#planNext').click(); });
 
   // Create: 1) tentukan tanggal  2) Get Plan (baca sheet Plan)  3) Save (simpan ke sheet Plan Harian)
-  var pc = { rows: null, headers: null, date: '', exists: 0, savedAt: '' };
+  var pc = { rows: null, headers: null, date: '', exists: 0, savedAt: '', rph: true, info: null, src: 'plan' };   // rph = ikut ambil lot dari sheet RPH
   function pcReset() {
-    pc.rows = null; pc.headers = null; pc.date = ''; pc.exists = 0; pc.savedAt = ''; pc.excluded = 0;
+    pc.rows = null; pc.headers = null; pc.date = ''; pc.exists = 0; pc.savedAt = ''; pc.excluded = 0; pc.info = null;
     $('#pcPreview').hidden = true; $('#pcPreview').innerHTML = '';
     $('#pcWarn').hidden = true; $('#pcMsg').textContent = '';
     $('#pcSave').disabled = true; $('#pcSave span').textContent = 'Save';
+  }
+  function rphNote() {   // ringkasan lot RPH yang ikut / dilewati (anti-ganda)
+    var r = pc.info; if (!r) return '';
+    if (r.err) return ' RPH tidak ikut: ' + r.err;
+    var sk = [];
+    if (r.dupPlan) sk.push(r.dupPlan + ' sudah ada di Plan');
+    if (r.sudahCelup) sk.push(r.sudahCelup + ' sudah celup');
+    if (r.lama) sk.push(r.lama + ' terlalu lama');
+    return ' Dari sheet Plan ' + pc.planN + ' baris, dari RPH ' + r.n + ' lot tambahan' + (sk.length ? ' (dilewati: ' + sk.join(', ') + ')' : '') + '.';
   }
   function pcPreview() {
     var h = pc.headers, rows = pc.rows, ik = h.indexOf('KIKC'), ikg = h.indexOf('KG'), ic = h.indexOf('CONE');
     var lots = {}, kg = 0, cone = 0;
     rows.forEach(function (r) { var k = String(r[ik] || '').trim().toUpperCase(); if (k) lots[k] = 1; kg += ikg >= 0 ? parseNum(r[ikg]) : 0; cone += ic >= 0 ? parseNum(r[ic]) : 0; });
     var pd = pc.date.split('-').reverse().join('/');
-    $('#pcMsg').textContent = rows.length ? 'Plan dari sheet Plan: ' + rows.length + ' baris · ' + Object.keys(lots).length + ' lot · ' + fmtNum(kg) + ' Kg · ' + fmtNum(cone) + ' Cone. Ketuk Save untuk menyimpan ke tanggal ' + pd + '.' + (pc.excluded ? ' ' + pc.excluded + ' lot tidak ikut karena sudah ada di tab Celup.' : '') : (pc.excluded ? 'Semua lot di sheet Plan sudah ada di tab Celup (' + pc.excluded + ' lot). Tidak ada yang bisa diplan.' : 'Sheet Plan kosong. Tidak ada yang bisa disimpan.');
+    $('#pcMsg').textContent = rows.length ? (pc.info ? 'Plan + RPH: ' : 'Plan dari sheet Plan: ') + rows.length + ' baris · ' + Object.keys(lots).length + ' lot · ' + fmtNum(kg) + ' Kg · ' + fmtNum(cone) + ' Cone.' + rphNote() + ' Ketuk Save untuk menyimpan ke tanggal ' + pd + '.' + (pc.excluded ? ' ' + pc.excluded + ' lot tidak ikut karena sudah ada di tab Celup.' : '') : (pc.excluded ? 'Semua lot di sheet Plan sudah ada di tab Celup (' + pc.excluded + ' lot). Tidak ada yang bisa diplan.' : 'Sheet Plan kosong. Tidak ada yang bisa disimpan.');
     var w = $('#pcWarn');
     if (pc.exists) { w.hidden = false; w.textContent = 'Tanggal ' + pd + ' sudah punya Plan (' + pc.exists + ' baris' + (pc.savedAt ? ', disimpan ' + pc.savedAt : '') + '). Save akan menggantikannya; alokasi mesin yang sudah diisi tetap dipertahankan.'; }
     else w.hidden = true;
@@ -3039,16 +3050,18 @@ var Code128 = (function () {
   $('#btnPlanCreate').addEventListener('click', function () { pcToggle(); });
   $('#pcCancel').addEventListener('click', function () { pcToggle(false); });
   $('#pcDate').addEventListener('change', pcReset);   // ganti tanggal: Get Plan harus diulang
+  $('#pcRph').addEventListener('click', function () { pc.rph = !pc.rph; this.classList.toggle('on', pc.rph); this.setAttribute('aria-pressed', pc.rph); pcReset(); });
   $('#pcGet').addEventListener('click', function () {
     if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
     var dt = $('#pcDate').value, t = todayStr();
     if (!dt) { toast('Tentukan tanggal planning dulu.', 'warn'); return; }
     if (dt < t) { toast('Tanggal planning tidak boleh sebelum hari ini.', 'warn'); return; }
-    var b = this; b.disabled = true; pcReset(); $('#pcMsg').textContent = 'Mengambil data dari sheet Plan...';
-    gs('getPlanSource', dt, state.mode).then(function (r) {
+    var b = this; b.disabled = true; pcReset(); var src = pc.rph ? 'both' : 'plan';
+    $('#pcMsg').textContent = pc.rph ? 'Mengambil data dari sheet Plan dan RPH...' : 'Mengambil data dari sheet Plan...';
+    gs('getPlanSource', dt, state.mode, src).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       if ($('#pcDate').value !== dt) return;   // tanggal diganti selama menunggu
-      pc.rows = r.rows || []; pc.headers = r.headers || []; pc.date = dt; pc.exists = r.exists || 0; pc.savedAt = r.savedAt || ''; pc.excluded = r.excluded || 0;
+      pc.rows = r.rows || []; pc.headers = r.headers || []; pc.date = dt; pc.src = src; pc.info = r.rph || null; pc.planN = r.planN || 0; pc.exists = r.exists || 0; pc.savedAt = r.savedAt || ''; pc.excluded = r.excluded || 0;
       pcPreview();
     }).catch(function (e) {
       pcReset(); toast('Get Plan gagal. ' + errMsg(e), 'err', 7000);
@@ -3060,7 +3073,7 @@ var Code128 = (function () {
     var dt = pc.date;
     if ($('#pcDate').value !== dt) { toast('Tanggal diubah. Ketuk Get Plan lagi.', 'warn'); pcReset(); return; }
     var b = this; b.disabled = true; $('#pcMsg').textContent = 'Menyimpan ke sheet Plan Harian...';
-    gs('savePlanTanggal', dt, state.mode).then(function (r) {
+    gs('savePlanTanggal', dt, state.mode, pc.src).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       toast('Plan ' + dt.split('-').reverse().join('/') + ' disimpan (' + r.saved + ' baris).', 'ok');
       pcToggle(false); pcReset();
@@ -3569,10 +3582,8 @@ var Code128 = (function () {
     if (!d || d.date !== todayStr()) return;
     var n = d.counts ? d.counts.missing : 0;
     b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
-    MISSN = n || 0;
-    [['#datBadge'], ['#homeBadge']].forEach(function (q) { var e = $(q[0]); if (e) { e.hidden = !n || (q[0] === '#datBadge' && !missOk()); e.textContent = n > 99 ? '99+' : String(n); } });
-    datRenderSw(state.view);
-    if (n && !MS.notified) { MS.notified = true; toast(n + ' lot outstanding: pernah terdata tetapi belum terdata hari ini dan belum ada di sheet PACK. Lihat Data › Outstanding.', 'warn', 8000); }
+    var hb = $('#homeBadge'); if (hb) { hb.hidden = !n; hb.textContent = n > 99 ? '99+' : String(n); }
+    if (n && !MS.notified) { MS.notified = true; toast(n + ' lot outstanding: pernah terdata tetapi belum terdata hari ini dan belum ada di sheet PACK. Lihat tab Outstanding.', 'warn', 8000); }
   }
   function missState(html) { var el = $('#sMiss'); el.style.display = html ? '' : 'none'; el.innerHTML = html || ''; }
   function missFiltered() {
@@ -4013,19 +4024,18 @@ var Code128 = (function () {
 
   /* ---------- Tab ---------- */
   /* Grup "Data": WOD, GRM, Celup, Outstanding = sub-tab dalam satu tab bawah. Nama view tetap sama (wod/grm/clp/miss). */
-  var DAT = { last: 'wod', all: [['wod', 'WOD'], ['grm', 'GRM'], ['clp', 'Celup'], ['miss', 'Outstanding']] };
+  var DAT = { last: 'wod', all: [['wod', 'WOD'], ['grm', 'GRM'], ['clp', 'Celup']] };
   function datSubs() {
-    return DAT.all.filter(function (x) { return (!(TABS.length && HOME_TABS.length) || HOME_TABS.indexOf(x[0]) >= 0) && (x[0] !== 'miss' || missOk()); });
+    return DAT.all.filter(function (x) { return (!(TABS.length && HOME_TABS.length) || HOME_TABS.indexOf(x[0]) >= 0); });
   }
   function datGroupOf(name) { return DAT.all.some(function (x) { return x[0] === name; }); }
   function datRenderSw(name) {
     var sw = $('#dataSw'), l = datSubs(), inG = datGroupOf(name);
     if (inG) DAT.last = name;
     sw.hidden = !(inG && l.length > 1);
-    sw.innerHTML = sw.hidden ? '' : l.map(function (x) { return '<button type="button" role="tab" class="' + (x[0] === name ? 'on' : '') + '" data-sv="' + x[0] + '" aria-selected="' + (x[0] === name) + '">' + x[1] + (x[0] === 'miss' && MISSN ? '<span class="sbd">' + (MISSN > 99 ? '99+' : MISSN) + '</span>' : '') + '</button>'; }).join('');
+    sw.innerHTML = sw.hidden ? '' : l.map(function (x) { return '<button type="button" role="tab" class="' + (x[0] === name ? 'on' : '') + '" data-sv="' + x[0] + '" aria-selected="' + (x[0] === name) + '">' + x[1] + '</button>'; }).join('');
     var lb = $('#datLbl'); if (lb) lb.textContent = l.length === 1 ? l[0][1] : 'Data';
   }
-  var MISSN = 0;
   function showView(name) {
     sfClose();   // daftar pilihan Benang/Supplier ditutup saat pindah tab
     if (isPc()) name = 'form';   // mode PC: hanya Input SOFT
