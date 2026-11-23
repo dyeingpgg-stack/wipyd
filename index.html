@@ -1041,7 +1041,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
         <div class="pc-row"><input class="input" id="pcDate" type="date" aria-label="Tanggal planning"></div>
         <div class="pc-row">
           <button type="button" class="btn-sm" id="pcGet"><span>Get Plan</span></button>
-          <button type="button" class="btn-sm pc-tg on" id="pcRph" aria-pressed="true" title="Ikut ambil lot dari sheet RPH (tanpa ganda dengan sheet Plan)"><span>+ RPH</span></button>
+          <button type="button" class="btn-sm" id="pcRph" title="Ambil sheet Plan + lot dari sheet RPH (tanpa ganda)"><span>Get Plan + RPH</span></button>
           <button type="button" class="btn-sm primary" id="pcSave" disabled><span>Save</span></button>
           <button type="button" class="btn-sm" id="pcCancel"><span>Batal</span></button>
         </div>
@@ -3050,14 +3050,13 @@ var Code128 = (function () {
   $('#btnPlanCreate').addEventListener('click', function () { pcToggle(); });
   $('#pcCancel').addEventListener('click', function () { pcToggle(false); });
   $('#pcDate').addEventListener('change', pcReset);   // ganti tanggal: Get Plan harus diulang
-  $('#pcRph').addEventListener('click', function () { pc.rph = !pc.rph; this.classList.toggle('on', pc.rph); this.setAttribute('aria-pressed', pc.rph); pcReset(); });
-  $('#pcGet').addEventListener('click', function () {
+  function pcGetRun(btn, withRph) {
     if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
     var dt = $('#pcDate').value, t = todayStr();
     if (!dt) { toast('Tentukan tanggal planning dulu.', 'warn'); return; }
     if (dt < t) { toast('Tanggal planning tidak boleh sebelum hari ini.', 'warn'); return; }
-    var b = this; b.disabled = true; pcReset(); var src = pc.rph ? 'both' : 'plan';
-    $('#pcMsg').textContent = pc.rph ? 'Mengambil data dari sheet Plan dan RPH...' : 'Mengambil data dari sheet Plan...';
+    var b = btn; b.disabled = true; $('#pcGet').disabled = true; $('#pcRph').disabled = true; pcReset(); var src = withRph ? 'both' : 'plan';
+    $('#pcMsg').textContent = withRph ? 'Mengambil data dari sheet Plan dan RPH...' : 'Mengambil data dari sheet Plan...';
     gs('getPlanSource', dt, state.mode, src).then(function (r) {
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       if ($('#pcDate').value !== dt) return;   // tanggal diganti selama menunggu
@@ -3065,8 +3064,10 @@ var Code128 = (function () {
       pcPreview();
     }).catch(function (e) {
       pcReset(); toast('Get Plan gagal. ' + errMsg(e), 'err', 7000);
-    }).then(function () { b.disabled = false; });
-  });
+    }).then(function () { $("#pcGet").disabled = false; $("#pcRph").disabled = false; });
+  }
+  $("#pcGet").addEventListener("click", function () { pcGetRun(this, false); });
+  $("#pcRph").addEventListener("click", function () { pcGetRun(this, true); });
   $('#pcSave').addEventListener('click', function () {
     if (!isAdmin()) { toast(MSG_VIEWER, 'warn', 4000); return; }
     if (!pc.rows || !pc.rows.length) return;
