@@ -343,7 +343,7 @@
   .scrow.c4{grid-template-columns:repeat(4,1fr)}.scrow.c4.nogk{grid-template-columns:repeat(2,1fr)}@media(max-width:760px){.scrow.c4{grid-template-columns:repeat(2,1fr)}}
   .scrow.c5{grid-template-columns:repeat(5,1fr);gap:8px}@media(max-width:760px){.scrow.c5{grid-template-columns:repeat(2,1fr)}}
   .mres{margin:0 0 10px;border:1px solid var(--edge-strong);border-radius:14px;background:var(--surface);flex:none}.mres summary{cursor:pointer;padding:8px 14px;font-weight:700;color:var(--cyan);font-size:13px;letter-spacing:.04em}.mres-w{max-height:190px;min-height:0!important;margin:0 8px 8px;border-radius:10px}.mres td,.mres th{padding:6px 10px;font-size:13px}.mres td:not(:first-child),.mres th:not(:first-child){text-align:right}.mres tr.rt td{font-weight:800;color:var(--cyan);border-top:2px solid var(--cyan)}
-  .scrow.sm{grid-template-columns:repeat(3,1fr);gap:8px}.kr-cut{color:var(--amber)}
+  .scrow.sm{grid-template-columns:repeat(3,1fr);gap:8px}.kr-cut{color:var(--amber)}.kr-total td{font-weight:800;background:rgba(var(--c-rgb),.08)}#krDiff details{margin-top:4px}#krDiff summary{cursor:pointer;color:var(--cyan)}#krDiff ul{margin:6px 0 0 18px;padding:0}
   .sc.sm{padding:7px 12px;border-radius:12px}.sc.sm small{font-size:11px}.sc.sm b{font-size:18px}.sc.sm[data-cekst]{cursor:pointer;transition:border-color .15s,background .15s}.sc.sm[data-cekst]:hover{border-color:var(--cyan)}.sc.sm.active{border-color:var(--cyan);background:rgba(var(--c-rgb),.12);box-shadow:0 0 14px rgba(var(--c-rgb),.35)}.sc.sm span{font-size:11px;margin-left:6px;color:var(--dim)}
   .sc{padding:12px 14px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface);min-width:0}
   .sc small{display:block;color:var(--dim);font-size:12px;letter-spacing:.04em}.sc b{display:block;font:700 24px var(--display);color:var(--cyan);margin-top:2px;word-break:break-all}
@@ -838,6 +838,22 @@
       <div class="lnote" id="nRencana"></div><div class="lstate" id="sRencana"></div>
       <div class="table-wrap hidden" id="wRencana"><table><thead><tr id="hRencana"></tr></thead><tbody id="bRencana"></tbody></table></div>
     </section>
+    <section class="view list" id="viewReal" aria-label="Realisasi">
+      <div class="rcbar">
+        <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="input" id="qReal" type="search" placeholder="Cari item Realisasi" autocomplete="off" aria-label="Cari Realisasi"></div>
+        <input class="input" id="rlDate" type="date" aria-label="Tanggal Plan">
+      </div>
+      <div class="scrow c4" id="scReal" hidden>
+        <div class="sc"><small>JUMLAH LOTS (KIKC)</small><b id="scLotsRl">0</b><span id="scInfoRl"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonRl">0</b><span id="scInfoBonRl"></span></div>
+        <div class="sc"><small>JUMLAH GRAM</small><b id="scGramRl">0</b></div>
+        <div class="sc"><small>JUMLAH KG</small><b id="scKgRl">0</b></div>
+      </div>
+      <div class="lnote" id="rlInfo" style="line-height:1.5"></div>
+      <div class="lnote" id="nReal"></div><div class="lstate" id="sReal"></div>
+      <div class="table-wrap hidden" id="wReal"><table><thead><tr id="hReal"></tr></thead><tbody id="bReal"></tbody></table></div>
+    </section>
     <section class="view list" id="viewConf" aria-label="Lot Confirmed">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qConf" type="search" placeholder="Cari lot Confirmed" autocomplete="off" aria-label="Cari lot Confirmed"></div>
@@ -878,7 +894,7 @@
     </section>
     <section class="view list" id="viewKritikal" aria-label="Kritikal">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="input" id="qKritikal" type="search" placeholder="Cari nama kimia atau status" autocomplete="off" aria-label="Cari kritikal"></div>
+        <input class="input" id="qKritikal" type="search" placeholder="Cari nama kimia, kode, atau status" autocomplete="off" aria-label="Cari kritikal"></div>
       <div class="scrow c4" id="scKr">
         <div class="sc"><small>TOTAL ITEM</small><b id="scKrAll">0</b></div>
         <div class="sc"><small>ORDER SEKARANG</small><b id="scKrOrder" class="kr-red">0</b></div>
@@ -890,7 +906,7 @@
         <label class="krtgt">Target DoH <input class="input" id="krTarget" type="number" min="1" max="365" step="1" inputmode="numeric" aria-label="Target DoH dalam hari"> hari</label>
         <button type="button" class="btn-sm" id="krSort" title="Ganti urutan">Urut: DoH terkecil</button>
       </div>
-      <div class="lnote" id="nKritikal"></div><div class="lstate" id="sKritikal"></div>
+      <div class="lnote" id="nKritikal"></div><div class="lnote" id="krDiff" style="line-height:1.5"></div><div class="lstate" id="sKritikal"></div>
       <div class="table-wrap hidden" id="wKritikal"><table><thead><tr id="hKritikal"></tr></thead><tbody id="bKritikal"></tbody></table></div>
     </section>
     <section class="view list" id="viewCek" aria-label="Lot Multi-Bon">
@@ -1108,7 +1124,7 @@
   var TABS = [];
   var PG = { resep: 1, conf: 1, open: 1, cek: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
-  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null, cek: null }, KQ = { lot: '' }, LOTSEL = '';
+  var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null, cek: null, erp: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
   function key(v) { return String(v || '').replace(/\s+/g, ' ').trim().toUpperCase(); }
   var LABEL = {
@@ -1134,7 +1150,7 @@
       if (!r || r.error) throw new Error((r && r.error) || 'Server tidak mengembalikan data.');
       r.headers = (r.headers || []).map(function (h, i) { return relabel(k, h, i); });
       if (k === 'mutasi') r = mutasiNorm(r);
-      if (k !== 'resep') { try { lsSet('wipyd_kim_' + k + (k === 'mutasi' ? '4' : (k === 'conf' || k === 'open' || k === 'booking') ? 'c' : ''), JSON.stringify(r)); } catch (e) { /* abaikan */ } }
+      if (k !== 'resep' && k !== 'erp') { try { lsSet('wipyd_kim_' + k + (k === 'mutasi' ? '4' : (k === 'conf' || k === 'open' || k === 'booking') ? 'c' : ''), JSON.stringify(r)); } catch (e) { /* abaikan */ } }
       return r;
     }).then(function (r) { netSpin(-1); return r; }, function (e) { netSpin(-1); throw e; });
   }
@@ -1142,7 +1158,7 @@
   function loadKim(k, force) {
     if (KIM[k] && !force) return Promise.resolve(KIM[k]);
     var cached = null;
-    if (!force && k !== 'resep') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k + (k === 'mutasi' ? '4' : (k === 'conf' || k === 'open' || k === 'booking') ? 'c' : '')) || 'null'); } catch (e) { cached = null; } }
+    if (!force && k !== 'resep' && k !== 'erp') { try { cached = JSON.parse(lsGet('wipyd_kim_' + k + (k === 'mutasi' ? '4' : (k === 'conf' || k === 'open' || k === 'booking') ? 'c' : '')) || 'null'); } catch (e) { cached = null; } }
     var p = fetchKim(k, force).then(function (r) { KIM[k] = r; return r; });
     if (cached && cached.rows && cached.headers) {   // tampil dulu dari salinan terakhir, lalu diperbarui diam-diam
       KIM[k] = cached;
@@ -1152,7 +1168,7 @@
     return p;
   }
   function redrawKim(k) {   // data baru tiba: gambar ulang tab yang sedang dibuka
-    if (curView === 'rencana' && RC && KIM.booking && KIM.resep && KIM.conf && KIM.open) { if (k === 'booking' || k === 'resep' || k === 'conf' || k === 'open') rencanaShow(); return; }
+    if ((curView === 'rencana' || curView === 'real') && RC && KIM.booking && KIM.resep && KIM.conf && KIM.open) { if (k === 'booking' || k === 'resep' || k === 'conf' || k === 'open') planShow(curView); return; }
     if (curView === k && VIEWS[k] && KIM[k] && $('#q' + VIEWS[k])) showTable(k, VIEWS[k], $('#q' + VIEWS[k]).value);
   }
   function numId(v) {   // angka tampilan sheet (koma desimal / titik ribuan) -> angka
@@ -1230,7 +1246,7 @@
   $('#selMutasi').addEventListener('change', function () { MUTPER = this.value; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   $('#allMutasi').addEventListener('click', function () { MUTPER = MUTPER === 'all' ? '' : 'all'; PG.mutasi = 1; if (KIM.mutasi) showTable('mutasi', 'Mutasi', $('#qMutasi').value); });
   /* ---------- Kritikal: chip filter, scorecard, urut DoH terkecil, saran order, loncat ke Booking / Lot Confirmed, penanda status naik ---------- */
-  var KR = { chip: 'all', sort: /^(sheet|doh|booking)$/.test(lsGet('wipyd_krsort2')) ? lsGet('wipyd_krsort2') : 'booking', target: parseInt(lsGet('wipyd_krtarget'), 10) || 30, base: null, hasBase: false };
+  var KR = { chip: 'all', sort: 'booking', target: parseInt(lsGet('wipyd_krtarget'), 10) || 30, base: null, hasBase: false };
   var KRNAMES = { BOOKING: /^BOOKING KIMIA DI ERP/i, AFS: /^STOK GKD DIKURANGI BOOKING/i };
   function krFmt(x) { try { return x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (e) { return fmtId(x, 2); } }
   function krNum(s) { var n = parseFloat(String(s === undefined || s === null ? '' : s).replace(/[^\d.,\-]/g, '').replace(/\./g, '').replace(',', '.')); return isNaN(n) ? NaN : n; }
@@ -1238,42 +1254,96 @@
     var a = String(st || '').toUpperCase(), b = String(ind || '').toUpperCase();
     return /ORDER/.test(a) ? 3 : /WASPADA/.test(b) ? 1 : /BOOKING/.test(b) ? 2 : 0;
   }
-  /* Kritikal: Rencana (kimia lot Plan hari ini yang belum terinput di WIP) dan potongan KG (lot Plan yang sudah terinput di WIP, hanya bon Confirmed) */
+  /* Booking ERP (spreadsheet StockBalance kolom F "Booking"), peta kode item (dari tab Booking), dan pemuatan data Plan/WIP untuk Kritikal dan Booking */
+  var ERPST = { p: null, err: '' };
+  function erpRedraw() {
+    if (curView === 'kritikal' && KIM.kritikal) kritikalRender($('#qKritikal').value);
+    else if (curView === 'booking' && KIM.booking) showTable('booking', 'Booking', $('#qBooking').value);
+  }
+  function erpEnsure() {   // muat StockBalance di latar belakang; gagal tidak mengganggu tab lain
+    if (KIM.erp || ERPST.p || ERPST.err) return;
+    ERPST.p = loadKim('erp').catch(function (e) { ERPST.err = errMsg(e); }).then(function () { ERPST.p = null; erpRedraw(); });
+  }
+  var CM = { src: null, m: {} };
+  function codeMap() {   // nama item -> kode entry / kode kimia / kode ERP (dari tab Booking = sheet Kamus)
+    var B = KIM.booking; if (!B) return {};
+    if (CM.src === B) return CM.m;
+    var hb = B.headers, fi = function (re) { return hb.findIndex(function (h) { return re.test(h); }); };
+    var it = fi(/^item$/i), iy = fi(/^kode entry$/i), ik = fi(/^kode kimia$/i), ie = fi(/^kode erp$/i), m = {};
+    B.rows.forEach(function (r) { var n = key(r[it]); if (n && !m[n]) m[n] = { y: iy >= 0 ? r[iy] || '' : '', k: ik >= 0 ? r[ik] || '' : '', e: ie >= 0 ? r[ie] || '' : '' }; });
+    CM = { src: B, m: m };
+    return m;
+  }
+  function codesOf(n) { var c = codeMap()[n]; return c ? [c.y, c.k, c.e].join(' ') : ''; }
+  function erpOf(n) {   // Booking ERP (kg) per item: dicari lewat kode ERP, kode entry, kode kimia, lalu nama. null = tidak ketemu di StockBalance
+    var E = KIM.erp; if (!E || !E.idx) return null;
+    var c = codeMap()[n] || {}, ks = [];
+    [c.e, c.y, c.k].forEach(function (x) { String(x || '').split(',').forEach(function (z) { ks.push(key(z)); }); });
+    ks.push(key(n));
+    for (var i = 0; i < ks.length; i++) {
+      if (ks[i] && Object.prototype.hasOwnProperty.call(E.idx, ks[i])) { var v = E.idx[ks[i]]; return E.unit === 'g' ? v / 1000 : v; }
+    }
+    return null;
+  }
+  function bkNum(x) { return String(Math.round(x * 1000) / 1000).replace('.', ','); }
+  /* Kritikal / Booking: Rencana (kimia lot Plan yang BELUM terinput di WIP) dan Realisasi (lot Plan yang SUDAH terinput di WIP, hanya bon Confirmed).
+     Realisasi memotong KG dan BOOKING di Kritikal serta Booking (gram/kg) di tab Booking. */
   function krDeps() {
     if (KR.depP) return KR.depP;
     KR.depErr = '';
     var iso = isoLocal();
-    KR.depP = gs('getPlanHari', iso, true, false).then(function (plan) {
-      if (!plan || plan.error) throw new Error((plan && plan.error) || 'Plan tidak bisa dibaca.');
-      var ks = []; (plan.rows || []).forEach(function (r) { if (r[0]) ks.push(r[0]); });
-      return Promise.all([plan, ks.length ? gs('getWipKikc', ks) : { list: [] }, loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]);
-    }).then(function (a) {
-      if (a[1] && a[1].error) throw new Error(a[1].error);
-      var wip = {}; ((a[1] && a[1].list) || []).forEach(function (x) { wip[kc(x)] = 1; });
-      var res = rencanaHitung(a[0], wip), rem = {};
-      Object.keys(res.tot).forEach(function (n) { rem[n] = res.tot[n] - (res.totIn[n] || 0); });
-      KR.dep = { rem: rem, cut: res.totIn, lotsIn: res.lotsIn };
+    KR.depP = Promise.all([planDeps(iso, false), loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
+      var res = rencanaHitung(a[0].plan, a[0].wip);
+      KR.dep = { rem: res.rem, cut: res.totIn, lotsIn: res.lotsIn, lotsRem: res.lotsRem, date: a[0].plan.date || iso };
     }).catch(function (e) { KR.depErr = errMsg(e); }).then(function () {
       KR.depP = null;
       if (curView === 'kritikal' && KIM.kritikal) kritikalRender($('#qKritikal').value);
+      else if (curView === 'booking' && KIM.booking) showTable('booking', 'Booking', $('#qBooking').value);
     });
     return KR.depP;
   }
   function kritikalRender(query) {
     var d = KIM.kritikal, q = nq(String(query || '').trim());
-    if (!KR.dep && !KR.depP && !KR.depErr) krDeps();   // rencana Plan + lot yang sudah di WIP dimuat di latar belakang
-    var dep = KR.dep;
+    if (!KR.dep && !KR.depP && !KR.depErr) krDeps();   // rencana + realisasi Plan dimuat di latar belakang
+    erpEnsure();
+    var dep = KR.dep, erpOk = !!KIM.erp;
     var hd0 = d.headers.map(function (h) { return KRNAMES.BOOKING.test(h) ? 'BOOKING' : KRNAMES.AFS.test(h) ? 'AFS' : h; });
     var f0 = function (re) { return hd0.findIndex(function (h) { return re.test(h); }); };
     var iB0 = f0(/^BOOKING$/), ins = iB0 >= 0 ? iB0 + 1 : hd0.length, iKg0 = f0(/^KG$/i), iAfs0 = f0(/^AFS$/), iSisa0 = f0(/^SISA STOK/i);
-    var hd = hd0.slice(); hd.splice(ins, 0, 'RENCANA');   // kolom RENCANA tepat setelah BOOKING
-    var srcRows = d.rows.map(function (r) {
-      var nm0 = key(r[0]), cut = dep ? (dep.cut[nm0] || 0) / 1000 : 0, rem = dep ? (dep.rem[nm0] || 0) / 1000 : 0, r2 = r.slice();
-      if (cut > 0) [iKg0, iAfs0, iSisa0].forEach(function (ci) { if (ci >= 0) { var v = krNum(r2[ci]); if (!isNaN(v)) r2[ci] = krFmt(v - cut); } });   // stok dipotong pemakaian lot Plan yang sudah terinput di WIP
-      r2.splice(ins, 0, dep ? (rem > 0 ? krFmt(rem) : '') : '\u2026');
-      r2.cut = cut;
+    var hd = hd0.slice(); hd.splice(ins, 0, 'BOOKING ERP', 'RENCANA');   // BOOKING ERP lalu RENCANA tepat setelah BOOKING
+    var ori = function (i) { return i < ins ? i : (i >= ins + 2 ? i - 2 : -1); };   // indeks kolom asli sheet (-1 = kolom tambahan)
+    var isTot = function (r) { return nq(r[0]) === nq(d.headers[0]) || /^total\b/i.test(String(r[0]).trim()); };   // baris total sheet (judul kolom A yang sama)
+    // potong KG dan BOOKING dengan realisasi; AFS = KG - BOOKING dihitung ulang; SISA STOK ikut selisih AFS
+    var applyCut = function (r2, cut) {
+      var cc = {}; if (!(cut > 0)) return cc;
+      var kg = iKg0 >= 0 ? krNum(r2[iKg0]) : NaN, bk = iB0 >= 0 ? krNum(r2[iB0]) : NaN, afs = iAfs0 >= 0 ? krNum(r2[iAfs0]) : NaN, sisa = iSisa0 >= 0 ? krNum(r2[iSisa0]) : NaN;
+      if (!isNaN(kg)) { r2[iKg0] = krFmt(kg - cut); cc[iKg0] = 1; }
+      var nb = bk;
+      if (!isNaN(bk)) { nb = Math.max(0, bk - cut); r2[iB0] = krFmt(nb); cc[iB0] = 1; }
+      if (!isNaN(kg) && !isNaN(bk) && !isNaN(afs)) {
+        var na = (kg - cut) - nb; r2[iAfs0] = krFmt(na);
+        if (Math.abs(na - afs) > 0.004) { cc[iAfs0] = 1; if (!isNaN(sisa)) { r2[iSisa0] = krFmt(sisa + (na - afs)); cc[iSisa0] = 1; } }
+      }
+      return cc;
+    };
+    var items = [], totRow = null;
+    d.rows.forEach(function (r, n) { if (isTot(r)) { if (!totRow) totRow = { r: r, n: n }; } else items.push({ r: r, n: n }); });
+    var sumCut = 0, sumErp = 0, sumRem = 0, nErp = 0, bkSheet = 0;
+    var srcRows = items.map(function (it) {
+      var r = it.r, nm0 = key(r[0]), cut = dep ? (dep.cut[nm0] || 0) / 1000 : 0, rem = dep ? (dep.rem[nm0] || 0) / 1000 : 0, ev = erpOf(nm0), r2 = r.slice();
+      var b0 = iB0 >= 0 ? krNum(r[iB0]) : NaN; if (!isNaN(b0)) bkSheet += b0;
+      var cc = applyCut(r2, cut);
+      sumCut += cut; sumRem += rem; if (ev !== null) { sumErp += ev; nErp++; }
+      r2.splice(ins, 0, erpOk ? (ev === null ? '' : krFmt(ev)) : (ERPST.err ? '' : '…'), dep ? (rem > 0 ? krFmt(rem) : '') : '…');
+      r2.cut = cut; r2.cc = cc;
       return r2;
     });
+    var totR2 = null;
+    if (totRow) {   // baris total: KG/BOOKING dipotong total realisasi; BOOKING ERP dan RENCANA = jumlah semua item
+      var tr = totRow.r.slice(), tcc = applyCut(tr, sumCut);
+      tr.splice(ins, 0, erpOk ? (nErp ? krFmt(sumErp) : '') : (ERPST.err ? '' : '…'), dep ? (sumRem > 0 ? krFmt(sumRem) : '') : '…');
+      tr.cut = sumCut; tr.cc = tcc; totR2 = tr;
+    }
     var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
     var iSisa = fi(/^SISA STOK/i), iAvd = fi(/^AVD/i), iDoh = fi(/^DoH \(\+GKI\)/i), iDohG = fi(/^DoH GKD/i), iSt = fi(/^Status Stok/i), iInd = fi(/^Booking Indikator/i);
     if (KR.base === null) { try { var sv = lsGet('wipyd_krsnap'); KR.hasBase = !!sv; KR.base = sv ? JSON.parse(sv) : {}; } catch (e) { KR.base = {}; } }
@@ -1289,7 +1359,8 @@
     var isOrder = function (o) { return /ORDER/.test(o.st); }, isWasp = function (o) { return /WASPADA/.test(o.ind); }, isBook = function (o) { return /BOOKING/.test(o.ind) && !/WASPADA/.test(o.ind); }, isAman = function (o) { return /AMAN/.test(o.st); };
     $('#scKrAll').textContent = fmtId(all.length, 0); $('#scKrOrder').textContent = fmtId(cnt(isOrder), 0);
     $('#scKrBook').textContent = fmtId(cnt(isBook), 0); $('#scKrWasp').textContent = fmtId(cnt(isWasp), 0);
-    var found = all.filter(function (o) { return !q || nq(o.r.join(' ')).indexOf(q) >= 0; });
+    // pencarian: nama, kolom lain, dan KODE (kode entry / kode kimia / kode ERP dari tab Booking)
+    var found = all.filter(function (o) { return !q || nq(o.r.join(' ') + ' ' + codesOf(o.nm)).indexOf(q) >= 0; });
     var chips = [['all', 'Semua', found.length], ['aman', 'Aman', found.filter(isAman).length], ['booking', 'Booking Meningkat', found.filter(isBook).length], ['waspada', 'Waspada', found.filter(isWasp).length], ['order', 'Order Sekarang', found.filter(isOrder).length]];
     $('#krChips').innerHTML = chips.map(function (c) { return '<button type="button" class="krchip' + (KR.chip === c[0] ? ' active' : '') + '" data-krchip="' + c[0] + '">' + c[1] + '<b>' + c[2] + '</b></button>'; }).join('');
     var pick = { all: null, order: isOrder, waspada: isWasp, booking: isBook, aman: isAman }[KR.chip];
@@ -1306,23 +1377,44 @@
       var gx = isNaN(a.dohg) ? 1e9 : a.dohg, gy = isNaN(b.dohg) ? 1e9 : b.dohg;
       return (gx - gy) || (a.n - b.n);
     });
+    if (totR2 && !q && KR.chip === 'all') rows.unshift({ r: totR2, n: -1, saran: NaN, up: false, nm: '', tot: true });   // baris total selalu paling atas
     $('#krSort').textContent = KR.sort === 'booking' ? 'Urut: Booking terbesar' : KR.sort === 'doh' ? 'Urut: DoH terkecil' : 'Urut: sesuai sheet';
     if (document.activeElement !== $('#krTarget')) $('#krTarget').value = KR.target;
-    var num = function (i) { var i0 = i > ins ? i - 1 : i; return i === ins || (i0 >= 1 && i0 <= 7) || i0 === 10; };   // kolom angka (B..H dan K, ditambah RENCANA)
+    var num = function (i) { var o = ori(i); return o === -1 || (o >= 1 && o <= 7) || o === 10; };   // kolom angka (B..H dan K, ditambah BOOKING ERP dan RENCANA)
     $('#hKritikal').innerHTML = hd.map(function (h, i) { return '<th class="' + (i === 0 ? 'l-s l-s0 l-last ' : '') + (num(i) ? 'r' : '') + '">' + esc(h) + '</th>'; }).join('') + '<th class="r" title="Saran order = Target DoH x AVD+BUFF dikurangi sisa stok GKD+GKI (satuan kg, AVD+BUFF per hari mengikuti sheet)">SARAN ORDER (KG)</th>';
     $('#bKritikal').innerHTML = rows.map(function (o) {
-      return '<tr>' + o.r.map(function (c, i) {
+      return '<tr' + (o.tot ? ' class="kr-total"' : '') + '>' + o.r.map(function (c, i) {
         var cls = [];
         if (i === 0) cls.push('l-s', 'l-s0', 'l-last');
         if (num(i)) cls.push('r');
         if (i === iSt || i === iInd) { var t = String(c).toUpperCase(); if (/WASPADA|ORDER/.test(t)) cls.push('kr-yel'); else if (/BOOKING/.test(t)) cls.push('kr-red'); else if (/AMAN/.test(t)) cls.push('kr-grn'); }
-        var inner = i === 0 ? '<span class="krname" data-krgo="booking" title="Buka di tab Booking">' + esc(c) + '</span><span class="krlot" data-krgo="conf" title="Buka di tab Lot Confirmed">Lot</span>' + (o.up ? '<span class="krup" title="Status naik sejak terakhir dibuka">&#9650; naik</span>' : '') : (c ? esc(c) : '<span class="dim">-</span>');
-        var i0 = i > ins ? i - 1 : i, isCut = o.r.cut > 0 && i !== ins && (i0 === iKg0 || i0 === iAfs0 || i0 === iSisa0);
+        var inner = i === 0 ? (o.tot ? esc(c) : '<span class="krname" data-krgo="booking" title="Buka di tab Booking">' + esc(c) + '</span><span class="krlot" data-krgo="conf" title="Buka di tab Lot Confirmed">Lot</span>' + (o.up ? '<span class="krup" title="Status naik sejak terakhir dibuka">&#9650; naik</span>' : '')) : (c ? esc(c) : '<span class="dim">-</span>');
+        var oi = ori(i), isCut = oi >= 0 && o.r.cc && o.r.cc[oi];
         if (isCut) cls.push('kr-cut');
-        return '<td' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + (i === 0 ? ' data-krname="' + esc(c) + '"' : '') + (isCut ? ' title="Dipotong ' + krFmt(o.r.cut) + ' kg: kimia lot Plan yang sudah terinput di WIP"' : '') + '>' + inner + '</td>';
+        return '<td' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + (i === 0 && !o.tot ? ' data-krname="' + esc(c) + '"' : '') + (isCut ? ' title="Dipotong realisasi ' + krFmt(o.r.cut) + ' kg: kimia lot Plan yang sudah terinput di WIP"' : '') + '>' + inner + '</td>';
       }).join('') + '<td class="r' + (o.saran > 0 ? ' kr-yel' : '') + '">' + (isNaN(o.saran) ? '<span class="dim">-</span>' : o.saran > 0 ? fmtId(o.saran, 2) : '0') + '</td></tr>';
     }).join('');
-    $('#n' + 'Kritikal').textContent = rows.length + ' dari ' + all.length + ' baris' + (d.info ? ' \u00b7 ' + d.info : '') + ' \u00b7 saran order untuk target ' + KR.target + ' hari' + (dep ? ' \u00b7 Rencana = kimia lot Plan yang belum di WIP; ' + dep.lotsIn + ' lot Plan sudah di WIP (kimianya memotong KG)' : KR.depErr ? ' \u00b7 Rencana gagal dimuat: ' + KR.depErr : ' \u00b7 memuat Rencana...');
+    var nShown = rows.length - (rows.length && rows[0].tot ? 1 : 0);
+    $('#n' + 'Kritikal').textContent = nShown + ' dari ' + all.length + ' item' + (d.info ? ' · ' + d.info : '') + ' · saran order untuk target ' + KR.target + ' hari' + (dep ? ' · Rencana = kimia lot Plan yang belum di WIP (' + dep.lotsRem + ' lot); Realisasi = ' + dep.lotsIn + ' lot Plan sudah di WIP, kimianya memotong KG dan BOOKING (sel kuning)' : KR.depErr ? ' · Rencana gagal dimuat: ' + KR.depErr : ' · memuat Rencana...') + (ERPST.err ? ' · Booking ERP gagal dimuat: ' + ERPST.err : erpOk ? ' · Booking ERP: ' + nErp + ' item cocok di StockBalance' + (KIM.erp.hdr ? ' (kolom "' + KIM.erp.hdr + '")' : '') : '');
+    // selisih Booking Kritikal vs tab Booking (poin: kenapa totalnya bisa beda)
+    var df = '';
+    if (KIM.booking && iB0 >= 0) {
+      var hb = KIM.booking.headers, fb = function (re) { return hb.findIndex(function (h) { return re.test(h); }); }, ibk = fb(/^booking$/i), ibi = fb(/^item$/i), bkTab = {}, bkSum = 0;
+      if (ibk >= 0 && ibi >= 0) {
+        KIM.booking.rows.forEach(function (r) { var g = numId(r[ibk]); if (g > 0) { var n = key(r[ibi]); bkTab[n] = (bkTab[n] || 0) + g / 1000; bkSum += g / 1000; } });
+        var krMap = {}; items.forEach(function (it) { var v = krNum(it.r[iB0]); krMap[key(it.r[0])] = isNaN(v) ? 0 : v; });
+        var miss = [], beda = [];
+        Object.keys(bkTab).forEach(function (n) { if (!(n in krMap)) miss.push([n, bkTab[n]]); else if (Math.abs(krMap[n] - bkTab[n]) > 0.01) beda.push([n, krMap[n], bkTab[n]]); });
+        var selisih = Math.round((bkSum - bkSheet) * 100) / 100, totSheet = totRow ? krNum(totRow.r[iB0]) : NaN;
+        df = 'Booking Kritikal (jumlah ' + items.length + ' item): <b>' + krFmt(bkSheet) + '</b> kg · tab Booking: <b>' + krFmt(bkSum) + '</b> kg · selisih <b>' + krFmt(selisih) + '</b> kg' + (!isNaN(totSheet) && Math.abs(totSheet - bkSheet) > 0.05 ? ' · baris total di sheet Kritikal: ' + krFmt(totSheet) + ' kg' : '');
+        if (miss.length || beda.length) {
+          df += '<details><summary>Rincian selisih (' + (miss.length + beda.length) + ' item)</summary><ul>' +
+            miss.sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return '<li>' + esc(x[0]) + ': ada di tab Booking (' + krFmt(x[1]) + ' kg), tidak ada di daftar Kritikal</li>'; }).join('') +
+            beda.map(function (x) { return '<li>' + esc(x[0]) + ': Kritikal ' + krFmt(x[1]) + ' kg, tab Booking ' + krFmt(x[2]) + ' kg</li>'; }).join('') + '</ul></details>';
+        }
+      }
+    }
+    $('#krDiff').innerHTML = df;
     $('#sKritikal').style.display = rows.length ? 'none' : ''; $('#sKritikal').innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
     $('#wKritikal').classList.toggle('hidden', !rows.length);
   }
@@ -1335,7 +1427,7 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-krgo],[data-krchip],#krSort') : null;
     if (!t) return;
-    if (t.id === 'krSort') { KR.sort = KR.sort === 'booking' ? 'doh' : KR.sort === 'doh' ? 'sheet' : 'booking'; lsSet('wipyd_krsort2', KR.sort); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
+    if (t.id === 'krSort') { KR.sort = KR.sort === 'booking' ? 'doh' : KR.sort === 'doh' ? 'sheet' : 'booking'; if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
     if (t.hasAttribute('data-krchip')) { KR.chip = t.getAttribute('data-krchip'); if (KIM.kritikal) kritikalRender($('#qKritikal').value); return; }
     var td = t.closest('td'); if (td && td.getAttribute('data-krname')) krGo(t.getAttribute('data-krgo'), td.getAttribute('data-krname'));
   });
@@ -1393,6 +1485,15 @@
         var before = rows.length;
         rows = rows.filter(function (r) { return numId(r[ib]) > 0; });
         hidden = before - rows.length;
+        var dep = KR.dep; if (!dep && !KR.depP && !KR.depErr) krDeps();
+        erpEnsure(); var ier = hd.length;
+        rows = rows.map(function (r) {   // potong Booking dengan realisasi (lot Plan yang sudah terinput di WIP) + kolom virtual BOOKING ERP
+          var n = key(r[it]), g = numId(r[ib]), cg = dep ? Math.min(g, dep.cut[n] || 0) : 0, r2 = r.slice();
+          if (cg > 0) { var ng = g - cg; r2[ib] = bkNum(ng); if (ikg >= 0) r2[ikg] = bkNum(ng / 1000); r2.cg = cg; }
+          var ev = erpOf(n);
+          r2[ier] = KIM.erp ? (ev === null ? '' : bkNum(ev)) : '\u2026';
+          return r2;
+        });
         var gsum = rows.reduce(function (t, r) { return t + numId(r[ib]); }, 0);
         $('#scBooking').hidden = false;
         $('#scGramBk').textContent = fmtId(gsum, 2); $('#scKgBk').textContent = fmtId(gsum / 1000, 3);
@@ -1414,7 +1515,7 @@
           }
         }
         rows.sort(function (x, y) { return numId(y[ib]) - numId(x[ib]); });
-        var def = [[it, 'NAMA KIMIA'], [il, '\u2211 BON'], [ij, '\u2211 LOT'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)'], [iy, 'KODE ENTRY'], [ik, 'KODE KIMIA'], [ie, 'KODE ERP']];
+        var def = [[it, 'NAMA KIMIA'], [il, '\u2211 BON'], [ij, '\u2211 LOT'], [ib, 'BOOKING (GRAM)'], [ikg, 'BOOKING (KG)'], [ier, 'BOOKING ERP (KG)'], [iy, 'KODE ENTRY'], [ik, 'KODE KIMIA'], [ie, 'KODE ERP']];
         cols = def.map(function (x) { return x[0]; });
         heads = def.map(function (x) { return x[1]; });
         missingCols = def.some(function (x) { return x[0] < 0; });
@@ -1435,6 +1536,13 @@
     $('#b' + id).innerHTML = rows.slice(from, to).map(function (r, n0) { var n = from + n0;
       return '<tr>' + (virt ? '<td' + (k === 'mutasi' ? '' : ' class="l-s l-s0 l-last"') + '>' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (k === 'mutasi' ? (p === 2 ? ' class="l-s l-s0 l-last"' : '') : (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '')) + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
+    if (k === 'booking') {   // sel Booking yang dipotong realisasi diberi warna + keterangan
+      rows.slice(from, to).forEach(function (r, n0) {
+        if (!r.cg) return;
+        var tr = $('#bBooking').children[n0]; if (!tr) return;
+        [ib, ikg].forEach(function (ci) { var pp = cols.indexOf(ci); if (pp >= 0 && tr.children[pp + 1]) { tr.children[pp + 1].classList.add('kr-cut'); tr.children[pp + 1].title = 'Dipotong ' + fmtId(r.cg, 2) + ' gram: realisasi lot Plan yang sudah terinput di WIP'; } });
+      });
+    }
     if (k === 'mutasi') {   // scorecard dan resume per JENIS (baris yang tampil: periode + pencarian)
       var pn = function (v) { return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0; }, fm = function (x) { return fmtId(x, 2).replace(/,00$/, ''); };
       var sumT = [0, 0, 0, 0, 0], byJ = {}, jOrd = [];
@@ -1468,10 +1576,28 @@
     $('#s' + id).innerHTML = rows.length ? '' : '<div class="state">Tidak ada baris yang cocok.</div>';
     $('#w' + id).classList.toggle('hidden', !rows.length);
   }
-  /* Rencana: pemakaian kimia untuk lot di tab Plan (Page 1) pada tanggal terpilih (awal: hari ini). Gram per item = jumlah baris RESEP semua lot KIKC itu. */
-  var RC = null;
+  /* Rencana dan Realisasi: pemakaian kimia lot di tab Plan (Page 1) pada tanggal terpilih (awal: hari ini). Gram per item = jumlah baris RESEP semua lot KIKC itu.
+     Rencana = lot Plan yang BELUM terinput di WIP; Realisasi = lot Plan yang SUDAH terinput di WIP (input pada atau sesudah tanggal Plan). Hanya bon Confirmed. */
+  var RC = null, PLD = '', PD = { iso: '', at: 0, v: null, p: null };
   function isoLocal() { var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+  function planDeps(iso, force) {   // Plan tanggal iso + daftar lotnya yang sudah terinput di WIP; dipakai bersama Rencana, Realisasi, Kritikal, Booking (cache 60 detik)
+    if (!force && PD.v && PD.iso === iso && Date.now() - PD.at < 60000) return Promise.resolve(PD.v);
+    if (!force && PD.p && PD.iso === iso) return PD.p;
+    PD.iso = iso;
+    var p = gs('getPlanHari', iso, true, !!force).then(function (plan) {
+      if (!plan || plan.error) throw new Error((plan && plan.error) || 'Plan tidak bisa dibaca.');
+      var ks = []; (plan.rows || []).forEach(function (r) { if (r[0]) ks.push(r[0]); });
+      return (ks.length ? gs('getWipKikc', ks, plan.date || iso) : Promise.resolve({ list: [] })).then(function (w) {
+        if (w && w.error) throw new Error(w.error);
+        var wip = {}; ((w && w.list) || []).forEach(function (x) { wip[kc(x)] = 1; });
+        return { plan: plan, wip: wip };
+      });
+    }).then(function (v) { if (PD.p === p) { PD.v = v; PD.at = Date.now(); PD.p = null; } return v; }, function (e) { if (PD.p === p) PD.p = null; throw e; });
+    PD.p = p;
+    return p;
+  }
   function rencanaHitung(planIn, wipSet) {
+    if (!planIn) { planIn = RC.plan; wipSet = RC.wip; }
     var ix = resepIndex(), R = KIM.resep.rows, B = KIM.booking, hb = B.headers;
     var fi = function (re) { return hb.findIndex(function (h) { return re.test(h); }); };
     var ie = fi(/^kode erp$/i), it = fi(/^item$/i), iy = fi(/^kode entry$/i), ik = fi(/^kode kimia$/i);
@@ -1493,82 +1619,89 @@
       if (o) return 'open';
       return (confByK[k] || []).length || (openByK[k] || []).length ? 'cancel' : '';   // lot tanpa data bon sama sekali: tetap dihitung seperti semula
     };
-    var plan = planIn || RC.plan, kik = {}, noRes = [];
-    plan.rows.forEach(function (r) { var k = kc(r[0]); if (!k || kik[k]) return; if (plan.statusLot && plan.statusLot[String(r[0]).toUpperCase().replace(/\s+/g, ' ').trim()] === 'PENDING') return; kik[k] = r[0]; });
-    var tot = {}, totIn = {}, lotsIn = 0, lotsItem = {}, lotsOk = 0, bonOk = {}, exBon = {}, exLot = [];
+    var kik = {}, noRes = [];
+    planIn.rows.forEach(function (r) { var k = kc(r[0]); if (!k || kik[k]) return; if (planIn.statusLot && planIn.statusLot[String(r[0]).toUpperCase().replace(/\s+/g, ' ').trim()] === 'PENDING') return; kik[k] = r[0]; });
+    var totR = {}, totI = {}, lotsR = {}, lotsI = {}, bonR = {}, bonI = {}, lotsOk = 0, lotsRem = 0, lotsIn = 0, exBon = {}, exLot = [];
     Object.keys(kik).forEach(function (k) {
       var idx = ix.byK[k] || [];
       if (!idx.length) { noRes.push(kik[k]); return; }
-      var used = 0, skipped = 0, inWip = !!(wipSet && wipSet[k]);
+      var used = 0, skipped = 0, inWip = !!(wipSet && wipSet[k]), tot = inWip ? totI : totR, li = inWip ? lotsI : lotsR, bn = inWip ? bonI : bonR;
       idx.forEach(function (i) {
         var st = rowState(k, i);
         if (st === 'open') { skipped++; exBon[kc(R[i][1]) || (k + '|' + kc(R[i][2]))] = 1; return; }
         if (st === 'cancel') return;
-        used++; bonOk[kc(R[i][1]) || (k + '|' + kc(R[i][2]))] = 1;
+        used++; bn[kc(R[i][1]) || (k + '|' + kc(R[i][2]))] = 1;
         var n = key(R[i][4]); if (!n) return;
-        var g = numId(R[i][5]);
-        tot[n] = (tot[n] || 0) + g;
-        if (inWip) totIn[n] = (totIn[n] || 0) + g;
-        (lotsItem[n] = lotsItem[n] || {})[k] = 1;
+        tot[n] = (tot[n] || 0) + numId(R[i][5]);
+        (li[n] = li[n] || {})[k] = 1;
       });
-      if (used) { lotsOk++; if (inWip) lotsIn++; }
+      if (used) { lotsOk++; if (inWip) lotsIn++; else lotsRem++; }
       if (skipped) exLot.push(kik[k]);
     });
-    var rows = Object.keys(tot).filter(function (n) { return tot[n] > 0; }).map(function (n) {
-      var m = master[n] || { y: '', k: '', e: '' };
-      return { g: tot[n], r: [m.y, m.k, m.e, n, String(Object.keys(lotsItem[n]).length), fmtId(tot[n], 2), fmtId(tot[n] / 1000, 3)] };
-    }).sort(function (a, b) { return b.g - a.g; });
-    var gram = rows.reduce(function (a, o) { return a + o.g; }, 0);
-    return { tot: tot, totIn: totIn, lotsIn: lotsIn, rows: rows.map(function (o) { return o.r; }), lots: Object.keys(kik).length, lotsOk: lotsOk, bons: Object.keys(bonOk).length, exBons: Object.keys(exBon).length, exLots: exLot, noRes: noRes, gram: gram };
+    var mk = function (tot, li) {
+      var rr = Object.keys(tot).filter(function (n) { return tot[n] > 0; }).map(function (n) {
+        var m = master[n] || { y: '', k: '', e: '' };
+        return { g: tot[n], r: [m.y, m.k, m.e, n, String(Object.keys(li[n]).length), fmtId(tot[n], 2), fmtId(tot[n] / 1000, 3)] };
+      }).sort(function (a, b) { return b.g - a.g; });
+      return { rows: rr.map(function (o) { return o.r; }), gram: rr.reduce(function (a, o) { return a + o.g; }, 0) };
+    };
+    var a = mk(totR, lotsR), b = mk(totI, lotsI);
+    return { rem: totR, totIn: totI, rows: a.rows, gram: a.gram, rowsIn: b.rows, gramIn: b.gram, lots: Object.keys(kik).length, lotsOk: lotsOk, lotsRem: lotsRem, lotsIn: lotsIn, bons: Object.keys(bonR).length, bonsIn: Object.keys(bonI).length, exBons: Object.keys(exBon).length, exLots: exLot, noRes: noRes };
   }
-  function rencanaShow() {
-    var res = rencanaHitung(), q = nq($('#qRencana').value.trim()), p = RC.plan;
-    var rows = res.rows.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
-    $('#scRencana').hidden = false;
-    $('#scLotsRc').textContent = fmtId(res.lotsOk, 0);
-    $('#scInfoRc').textContent = res.lots !== res.lotsOk ? 'dari ' + res.lots + ' lot Plan' : 'lot Plan';
-    $('#scBonRc').textContent = fmtId(res.bons, 0);
-    $('#scInfoBonRc').textContent = res.exBons ? res.exBons + ' bon Open tidak dihitung' : 'bon Confirmed';
-    $('#scGramRc').textContent = fmtId(res.gram, 2);
-    $('#scKgRc').textContent = fmtId(res.gram / 1000, 3);
+  var PK = { rencana: { id: 'Rencana', sx: 'Rc', rows: 'rows', gram: 'gram', lots: 'lotsRem', bons: 'bons', lab: 'RENCANA' }, real: { id: 'Real', sx: 'Rl', rows: 'rowsIn', gram: 'gramIn', lots: 'lotsIn', bons: 'bonsIn', lab: 'REALISASI' } };
+  function planShow(kind) {
+    var c = PK[kind], res = rencanaHitung(), q = nq($('#q' + c.id).value.trim()), p = RC.plan, isR = kind === 'rencana';
+    var all = res[c.rows], rows = all.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
+    $('#sc' + c.id).hidden = false;
+    $('#scLots' + c.sx).textContent = fmtId(res[c.lots], 0);
+    $('#scInfo' + c.sx).textContent = 'dari ' + res.lotsOk + ' lot Plan' + (isR ? ' (belum di WIP)' : ' (sudah di WIP)');
+    $('#scBon' + c.sx).textContent = fmtId(res[c.bons], 0);
+    $('#scInfoBon' + c.sx).textContent = isR && res.exBons ? res.exBons + ' bon Open tidak dihitung' : 'bon Confirmed';
+    $('#scGram' + c.sx).textContent = fmtId(res[c.gram], 2);
+    $('#scKg' + c.sx).textContent = fmtId(res[c.gram] / 1000, 3);
     var msg = 'Plan tanggal ' + (p.date || '').split('-').reverse().join('/');
     if (p.fallback) msg += ' (tanggal ' + (p.requested || '').split('-').reverse().join('/') + ' belum punya Plan, memakai Plan terakhir)';
     msg += '. ';
+    if (isR) msg += 'Rencana = kimia lot Plan yang BELUM terinput di WIP (' + res.lotsRem + ' lot). ' + res.lotsIn + ' lot yang sudah di WIP pindah ke tab Realisasi. ';
+    else msg += 'Realisasi = kimia lot Plan yang SUDAH terinput di WIP (' + res.lotsIn + ' lot); jumlahnya memotong KG dan BOOKING di tab Kritikal serta Booking (gram/kg) di tab Booking. ';
     if (!res.lots) msg += 'Tidak ada lot di Plan.';
     if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
-    if (res.exBons) msg += ' ' + res.exBons + ' bon berstatus Open tidak dihitung (KIKC: ' + res.exLots.slice(0, 8).join(', ') + (res.exLots.length > 8 ? ', ...' : '') + ').';
+    if (isR && res.exBons) msg += ' ' + res.exBons + ' bon berstatus Open tidak dihitung (KIKC: ' + res.exLots.slice(0, 8).join(', ') + (res.exLots.length > 8 ? ', ...' : '') + ').';
     if (KIM.resep && KIM.resep.syncAt) msg += ' Resep terakhir disinkron: ' + KIM.resep.syncAt + '.';
-    $('#rcInfo').textContent = msg;
-    var heads = ['#', 'NAMA KIMIA', 'JUMLAH LOT', 'RENCANA (GRAM)', 'RENCANA (KG)', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP'], ord = [3, 4, 5, 6, 0, 1, 2];
-    $('#hRencana').innerHTML = heads.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + h + '</th>'; }).join('');
-    $('#bRencana').innerHTML = rows.map(function (r, n) {
-      return '<tr><td class="l-s l-s0 l-last">' + (n + 1) + '</td>' + ord.map(function (j) { var c = r[j]; return '<td>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+    $('#' + (isR ? 'rcInfo' : 'rlInfo')).textContent = msg;
+    var heads = ['#', 'NAMA KIMIA', 'JUMLAH LOT', c.lab + ' (GRAM)', c.lab + ' (KG)', 'KODE ENTRY', 'KODE KIMIA', 'KODE ERP'], ord = [3, 4, 5, 6, 0, 1, 2];
+    $('#h' + c.id).innerHTML = heads.map(function (h, i) { return '<th' + (i === 0 ? ' class="l-s l-s0 l-last"' : '') + '>' + h + '</th>'; }).join('');
+    $('#b' + c.id).innerHTML = rows.map(function (r, n) {
+      return '<tr><td class="l-s l-s0 l-last">' + (n + 1) + '</td>' + ord.map(function (j) { var cc = r[j]; return '<td>' + (cc ? esc(cc) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
-    $('#nRencana').textContent = (q ? rows.length + ' dari ' + res.rows.length : rows.length) + ' item';
-    $('#sRencana').style.display = rows.length ? 'none' : '';
-    $('#sRencana').innerHTML = rows.length ? '' : '<div class="state">Tidak ada item yang cocok.</div>';
-    $('#wRencana').classList.toggle('hidden', !rows.length);
+    $('#n' + c.id).textContent = (q ? rows.length + ' dari ' + all.length : rows.length) + ' item';
+    $('#s' + c.id).style.display = rows.length ? 'none' : '';
+    $('#s' + c.id).innerHTML = rows.length ? '' : '<div class="state">' + (all.length ? 'Tidak ada item yang cocok.' : (isR ? 'Tidak ada Rencana: semua lot Plan sudah terinput di WIP (lihat tab Realisasi).' : 'Belum ada lot Plan yang terinput di WIP.')) + '</div>';
+    $('#w' + c.id).classList.toggle('hidden', !rows.length);
   }
-  function openRencana(force) {
-    var dEl = $('#rcDate'); if (!dEl.value) dEl.value = isoLocal();
-    var iso = dEl.value;
-    $('#sRencana').style.display = ''; $('#sRencana').innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-    $('#wRencana').classList.add('hidden');
-    var planP = (RC && RC.iso === iso && !force) ? Promise.resolve(RC.plan) : (netSpin(1), gs('getPlanHari', iso, true, !!force)).then(function (r) {
+  function openPlan(kind, force) {
+    var c = PK[kind], iso = PLD || isoLocal();
+    $('#rcDate').value = iso; $('#rlDate').value = iso;
+    $('#s' + c.id).style.display = ''; $('#s' + c.id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    $('#w' + c.id).classList.add('hidden');
+    netSpin(1);
+    Promise.all([planDeps(iso, !!force), loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
       netSpin(-1);
-      if (!r || r.error) throw new Error((r && r.error) || 'Plan tidak bisa dibaca.');
-      return r;
-    }, function (e) { netSpin(-1); throw e; });
-    Promise.all([planP, loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
-      RC = { iso: iso, plan: a[0] };
-      rencanaShow();
+      RC = { iso: iso, plan: a[0].plan, wip: a[0].wip };
+      planShow(kind);
     }).catch(function (e) {
-      $('#sRencana').style.display = '';
-      $('#sRencana').innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="rencana">Coba lagi</button></div>';
+      netSpin(-1);
+      $('#s' + c.id).style.display = '';
+      $('#s' + c.id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + kind + '">Coba lagi</button></div>';
     });
   }
-  $('#rcDate').addEventListener('change', function () { RC = null; openRencana(false); });
-  (function () { var t = null; $('#qRencana').addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (RC && KIM.resep && KIM.booking && KIM.conf && KIM.open) rencanaShow(); }, 150); }); })();
+  function openRencana(force) { openPlan('rencana', force); }
+  function openReal(force) { openPlan('real', force); }
+  ['#rcDate', '#rlDate'].forEach(function (sel) { $(sel).addEventListener('change', function () { PLD = this.value; RC = null; PD.v = null; openPlan(curView === 'real' ? 'real' : 'rencana', false); }); });
+  [['qRencana', 'rencana'], ['qReal', 'real']].forEach(function (z) {
+    var t = null;
+    $('#' + z[0]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { if (RC && KIM.resep && KIM.booking && KIM.conf && KIM.open) planShow(z[1]); }, 150); });
+  });
   function openTable(k, id) {
     $('#s' + id).style.display = ''; $('#s' + id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
@@ -1582,6 +1715,9 @@
       if ((p[0] === 'conf' || p[0] === 'open') && $('#q' + p[1]).value.trim().length >= 3 && !KIM.resep) loadKim('resep').then(function () { showTable(p[0], p[1], $('#q' + p[1]).value); }).catch(function () { /* tetap pencarian biasa */ });
     }, 150); });
   });
+  /* Pencarian tab Stok (Booking, Rencana, Realisasi, Kritikal) dipakai bersama: ketikan di satu tab ikut mengisi tab lainnya */
+  var STOKQ = ['qBooking', 'qRencana', 'qReal', 'qKritikal'];
+  STOKQ.forEach(function (id) { $('#' + id).addEventListener('input', function () { var v = this.value; STOKQ.forEach(function (o) { if (o !== id) $('#' + o).value = v; }); }); });
   /* Resep per Lot: ketik KIKC, kartu info (dari Lot Confirmed) + daftar bahan (dari Resep) */
   function lotRender() {
     var q = key($('#qLot').value), el = $('#lotBody');
@@ -1630,10 +1766,10 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', real: 'Real', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
   /* Tab bawah = 4 kelompok; tiap kelompok punya sub tab (Stok: Booking/Rencana/Kritikal, Lot & Bon: Confirmed/Opened/Multi-Bon, Resep: Per Item/Per Lot) */
   var GROUPS = {
-    stok: { last: 'booking', subs: [['booking', 'Booking'], ['rencana', 'Rencana'], ['kritikal', 'Kritikal']] },
+    stok: { last: 'booking', subs: [['booking', 'Booking'], ['rencana', 'Rencana'], ['real', 'Realisasi'], ['kritikal', 'Kritikal']] },
     lot: { last: 'conf', subs: [['conf', 'Confirmed'], ['open', 'Opened'], ['cek', 'Multi-Bon']] },
     resep: { last: 'resep', subs: [['resep', 'Per Item'], ['lot', 'Per Lot']] },
     mutasi: { last: 'mutasi', subs: [['mutasi', 'Mutasi']] }
@@ -1647,7 +1783,7 @@
     var sw = $('#subSw'), subs = g ? GROUPS[g].subs : [];
     sw.hidden = subs.length < 2;
     sw.innerHTML = subs.length < 2 ? '' : subs.map(function (x) { return '<button type="button" role="tab" class="' + (x[0] === name ? 'on' : '') + '" data-sv="' + x[0] + '" aria-selected="' + (x[0] === name) + '">' + x[1] + '</button>'; }).join('');
-    if (name === 'lot') openLot(); else if (name === 'rencana') openRencana(false); else openTable(name, VIEWS[name]);
+    if (name === 'lot') openLot(); else if (name === 'rencana') openRencana(false); else if (name === 'real') openReal(false); else openTable(name, VIEWS[name]);
   }
   $$('.tab').forEach(function (b) { b.addEventListener('click', function () { var g = b.getAttribute('data-grp'); if (GROUPS[g]) showView(GROUPS[g].last); }); });
   $('#subSw').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-sv]') : null; if (b) showView(b.getAttribute('data-sv')); });
@@ -1662,9 +1798,9 @@
     var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
       .then(function (r) {
-        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = KIM.kritikal = KIM.cek = null; RC = null; KR.dep = null; KR.depErr = '';
+        KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = KIM.kritikal = KIM.cek = KIM.erp = null; RC = null; PD.v = null; KR.dep = null; KR.depErr = ''; ERPST.err = '';
         var need = ['booking', 'conf', 'open'];
-        if (curView === 'resep' || curView === 'lot' || curView === 'rencana') need.push('resep');
+        if (curView === 'resep' || curView === 'lot' || curView === 'rencana' || curView === 'real') need.push('resep');
         return Promise.all(need.map(function (k) { return loadKim(k, true); })).then(function () {
           showView(curView);
           var msg = 'Data diperbarui.';
@@ -1681,12 +1817,12 @@
     if (refreshing || document.hidden) return;
     lastAuto = Date.now();
     if (curView === 'lot' || curView === 'resep' || curView === 'kamus') return;
-    (curView === 'rencana' ? ['booking', 'conf', 'open'] : [curView]).forEach(function (k) {
+    (curView === 'rencana' || curView === 'real' ? ['booking', 'conf', 'open'] : [curView]).forEach(function (k) {
       fetchKim(k, false).then(function (r) { if (sigKim(r) !== sigKim(KIM[k])) { KIM[k] = r; redrawKim(k); } }).catch(function () { /* coba lagi nanti */ });
     });
-    if (curView === 'rencana' && RC) {
+    if ((curView === 'rencana' || curView === 'real') && RC) {
       netSpin(1);
-      gs('getPlanHari', RC.iso, true, false).then(function (p) { netSpin(-1); if (p && !p.error && RC && JSON.stringify(p.rows) !== JSON.stringify(RC.plan.rows)) { RC.plan = p; if (KIM.resep && KIM.booking && KIM.conf && KIM.open) rencanaShow(); } }, function () { netSpin(-1); });
+      planDeps(RC.iso, true).then(function (v) { netSpin(-1); if (RC && (JSON.stringify(v.plan.rows) !== JSON.stringify(RC.plan.rows) || JSON.stringify(v.wip) !== JSON.stringify(RC.wip))) { RC.plan = v.plan; RC.wip = v.wip; if (KIM.resep && KIM.booking && KIM.conf && KIM.open) planShow(curView); } }, function () { netSpin(-1); });
     }
   }
   setInterval(autoRefresh, 120000);

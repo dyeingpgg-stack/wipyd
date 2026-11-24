@@ -579,6 +579,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   @media(max-width:430px){.tab{font-size:11px;gap:3px}.tab svg{width:22px;height:22px}}
   .tab .bdg{position:absolute;top:5px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rose);color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 10px rgba(var(--r-rgb),.6)}
   @media (min-width:900px),(max-height:480px) and (orientation:landscape){.tab .bdg{position:static;margin-left:auto}}
+  .tag.part{color:var(--amber);border-color:rgba(var(--a-rgb),.65);background:rgba(var(--a-rgb),.1);margin-left:4px}.packsub{display:block;margin-top:2px;font-size:11.5px;color:var(--dim);white-space:nowrap}
   .tag.fin{color:var(--lime);border-color:rgba(var(--g-rgb),.65);background:rgba(var(--g-rgb),.1)}
   .fsep{flex:none;width:1px;margin:4px 2px;background:var(--edge-strong)}
   .fchip.pk{border-style:dashed}
@@ -2450,7 +2451,7 @@ var Code128 = (function () {
      (2) salinan terakhir tersimpan di HP, (3) tabel hanya digambar ulang jika datanya berubah,
      (4) hanya satu halaman (50 baris di HP, 100 di layar lebar) yang digambar. */
   var LISTS = {
-    wod: { id: 'Wod', sub: 'WOD (status B) · urutan sheet WOD', key: 0, wrap: /^SUPPLIER$/, num: /^(KG|CONE)$/ },
+    wod: { id: 'Wod', sub: 'WOD (status B) · urutan sheet WOD', key: 0, wrap: /^SUPPLIER$/, num: /^(KG|CONE)$/, date: /^(TANGGAL|TANGGAL BON)$/ },
     grm: { id: 'Grm', sub: 'GRM · terbaru di atas', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(TANGGAL|TGL CELUP|TGL PACK)$/ },
     plan: { id: 'Plan', sub: 'Plan Harian · urut menurut mesin', key: 0, wrap: /^KETERANGAN$/, num: /^(KG|CONE)$/, date: /^(CELUP|TANGGAL)$/ },
     clp: { id: 'Clp', sub: 'Celup · terbaru di atas', key: 0, wrap: /^KET$/, num: /^(KG|CONE)$/ }
@@ -4497,10 +4498,19 @@ var Code128 = (function () {
     }
     if (!rows.length) { setTableState('<div class="state">Tidak ada data yang cocok dengan pencarian atau filter ini.</div>'); return; }
 
+    /* Tgl Pack dari sheet DETIL (METAPACK): tanggal import terbaru; ada data DETIL = sudah terpacking/terkirim. Lot yang baru sebagian terpack diberi tanda Sebagian + Kg terpack, jumlah karung (baris DETIL), dan jumlah tanggal import */
+    var packPart = function (r) { var pk = parseNum(r.packKg), kg = parseNum(r.kg); return !!r.tglPack && pk > 0 && kg > 0 && pk < kg * 0.995; };
+    var packCell = function (r) {
+      if (!r.tglPack) return '';
+      var pk = parseNum(r.packKg), kg = parseNum(r.kg), n = Number(r.packN) || 0, t = Number(r.packTgl) || 0, part = packPart(r);
+      var tip = 'Sudah ada Tanggal Pack' + (pk > 0 ? ': terpack ' + fmtNum(pk) + ' kg' + (kg > 0 ? ' dari ' + fmtNum(kg) + ' kg' : '') + (n ? ', ' + n + ' karung' : '') + (t ? ', ' + t + ' tanggal import' : '') : '');
+      return '<span class="tag fin" title="' + esc(tip) + '">' + esc(r.tglPack) + '</span>' + (part ? '<span class="tag part" title="' + esc(tip) + '">Sebagian</span>' : '') +
+        (pk > 0 ? '<span class="packsub">' + fmtNum(pk) + ' kg' + (n ? ' \u00b7 ' + n + ' karung' : '') + (t > 1 ? ' \u00b7 ' + t + ' tgl' : '') + '</span>' : '');
+    };
     $('#tbody').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
       var n = dupInfo.kp[dupKey(r)] || 0, cls = n > 1 ? 'dup dup2' : '';
-      if (r.tglPack) cls = (cls ? cls + ' ' : '') + 'finrow';
+      if (r.tglPack && !packPart(r)) cls = (cls ? cls + ' ' : '') + 'finrow';   // sebagian terpack: belum hijau penuh
       return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
         (!isAdmin() ? '' : '<td class="sticky c-act"><div class="row-actions">' +
           '<button type="button" class="icon-btn sm" data-act="edit" data-row="' + r.rowIndex + '" aria-label="Ubah ' + esc(r.kikc) + '" title="Ubah">' + ICON_EDIT + '</button>' +
@@ -4517,7 +4527,7 @@ var Code128 = (function () {
         '<td>' + esc(shiftLabel(r.shift)) + '</td>' +
         '<td>' + esc(r.grup) + '</td>' +
         '<td class="date">' + esc(r.tglCelup) + '</td>' +
-        '<td>' + (r.tglPack ? '<span class="tag fin" title="Sudah ada Tanggal Pack: lot Finish">' + esc(r.tglPack) + '</span>' : '') + '</td>' +
+        '<td>' + packCell(r) + '</td>' +
         '<td>' + (r.posisi ? '<span class="tag pos">' + esc(r.posisi) + '</span>' : '') + '</td>' +
         '<td>' + (r.qc ? '<span class="tag ' + qc + '">' + esc(r.qc) + '</span>' : '') + '</td>' +
         '<td class="wrap">' + esc(r.keterangan) + '</td>' +
