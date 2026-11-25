@@ -185,7 +185,7 @@ const SHARE_TABS = [
   ['plan', 'Plan', 1], ['form', 'Input', 1], ['data', 'WIP', 1], ['mesin', 'Mesin', 1], ['wod', 'WOD', 1], ['grm', 'GRM', 1], ['clp', 'Celup', 1], ['miss', 'Outstanding', 1],
   ['rph', 'RPH', 2], ['pack', 'Pack', 2], ['packdetil', 'Pack Detil', 2], ['delivery', 'Delivery', 2], ['soft', 'SOFT', 2],
   ['kimia', 'Kimia', 3],
-  ['pidang', 'Pidang', 4], ['amak', 'AMAK', 4], ['hank', 'HANK', 4]
+  ['pidang', 'Pidang', 4], ['amak', 'AMAK', 4], ['goyor', 'GOYOR', 4], ['master', 'Masterpiece', 4]
 ];
 function getShareTabs() { return SHARE_TABS.map(function (t) { return { key: t[0], label: t[1], page: t[2], group: t[3] || SHARE_GROUPS[t[2]] || '' }; }); }
 function cleanTabs_(t) {
@@ -1537,7 +1537,9 @@ function getPlanHari(iso, fb, force) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error('Tanggal tidak valid.');
     const dates = getPlanTanggal().dates || [];
     let shown = iso, fell = false;
-    if (fb && dates.indexOf(iso) < 0) {
+    if (fb === 'latest') {   // Rencana / Realisasi / Kritikal: selalu Plan terakhir yang dibuat (Create Plan) sampai ada Create Plan baru, tanpa batas hari dan tanpa melihat lot sudah terinput atau belum
+      if (dates.length) { shown = dates[dates.length - 1]; fell = shown !== iso; }
+    } else if (fb && dates.indexOf(iso) < 0) {
       const prev = planCarryDate_(iso);   // Plan terakhir yang lotnya belum semua terinput di WIP
       if (prev) { shown = prev; fell = true; }
     }
@@ -3415,7 +3417,7 @@ function getPidang(force) {
       return [str_(dd[x.i][0]).trim(), g(0), g(1), g(2), g(3), g(4), g(5), g(6), g(7), g(8)];
     });
     const res = { success: true, headers: headers, rows: rows, total: rows.length };
-    listCachePut_('pidang5', res, 120);
+    listCachePut_('pidang5', res, 900);
     return res;
   } catch (e) {
     return { error: e.message };
@@ -3432,13 +3434,17 @@ function getPidangPack(kikcs, force) {
   }
 }
 
-/* ===== Page 4 > Tab AMAK dan HANK: baris sheet WODMETA menurut kolom cust_desc dan machine ===== */
-// AMAK = cust_desc "AMAK". HANK = machine berisi "WOO JIN", kecuali baris yang cust_desc-nya "AMAK". Urutan baris = urutan sheet WODMETA (seperti tab WOD).
+/* ===== Page 4 > Tab HANK: sub-tab AMAK, GOYOR, Masterpiece (baris sheet WODMETA) ===== */
+// AMAK = cust_desc "AMAK" (tidak berubah). GOYOR dan Masterpiece = machine berisi "WOO JIN", kecuali baris yang cust_desc-nya "AMAK",
+// dipisah menurut HURUF TERAKHIR kode warna (color_code): "G" = GOYOR (mis. E.H.10.G), "P" = Masterpiece (mis. C.H.01.P).
+// Urutan baris = urutan sheet WODMETA (seperti tab WOD). Nama lama "hank" dianggap GOYOR agar link lama tetap jalan.
+const WODCUST_SUFFIX = { goyor: 'G', master: 'P' };
 function getWodCust(which, force) {
   try {
     which = str_(which).toLowerCase();
-    if (which !== 'amak' && which !== 'hank') throw new Error('Daftar tidak dikenal: ' + which);
-    const ck = 'wmc3_' + which;
+    if (which === 'hank') which = 'goyor';
+    if (which !== 'amak' && !WODCUST_SUFFIX[which]) throw new Error('Daftar tidak dikenal: ' + which);
+    const ck = 'wmc4_' + which;
     if (!force) { const hit = listCacheGet_(ck); if (hit) return hit; }
     const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
     if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
@@ -3448,20 +3454,25 @@ function getWodCust(which, force) {
     const hd = v[0].map(nh);
     const ic = hd.indexOf('custdesc'), im = hd.indexOf('machine');
     if (ic < 0) throw new Error('Kolom "cust_desc" tidak ditemukan di baris 1 sheet WODMETA.');
-    if (which === 'hank' && im < 0) throw new Error('Kolom "machine" tidak ditemukan di baris 1 sheet WODMETA.');
+    if (which !== 'amak' && im < 0) throw new Error('Kolom "machine" tidak ditemukan di baris 1 sheet WODMETA.');
     // Kolom tetap menurut huruf kolom WODMETA: B wod_no (KIKC), C wod_date, Y JNS, E color_code, G qty, V Total Cone, H machine, O supp_alias, R keterangan
     const spec = [['KIKC', 1], ['TANGGAL', 2], ['NO BENANG', 24], ['WARNA', 4], ['KG', 6], ['CONE', 21], ['MESIN', 7], ['SUPPLIER', 14], ['KETERANGAN', 17]];
     const missing = [];
     const headers = spec.map(function (s) { return s[0]; });
     const up = function (x) { return str_(x).replace(/\s+/g, ' ').trim().toUpperCase(); };
-    const rows = [];
+    const sfx = WODCUST_SUFFIX[which] || '';
+    const rows = []; let lain = 0;
     for (let r = 1; r < v.length; r++) {
       const row = v[r], cust = up(row[ic]);
       if (which === 'amak') { if (cust !== 'AMAK') continue; }
-      else { if (cust === 'AMAK' || up(row[im]).indexOf('WOO JIN') < 0) continue; }
+      else {
+        if (cust === 'AMAK' || up(row[im]).indexOf('WOO JIN') < 0) continue;
+        const w = up(row[4]);
+        if (w.charAt(w.length - 1) !== sfx) { lain++; continue; }
+      }
       rows.push(spec.map(function (s) { return str_(row[s[1]]).trim(); }));
     }
-    const res = { success: true, headers: headers, rows: rows, total: rows.length, missing: missing, src: v[0].map(function (h) { return str_(h).trim(); }).filter(String) };
+    const res = { success: true, headers: headers, rows: rows, total: rows.length, missing: missing, lain: lain, src: v[0].map(function (h) { return str_(h).trim(); }).filter(String) };
     listCachePut_(ck, res, 120);
     return res;
   } catch (e) {

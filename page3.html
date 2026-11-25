@@ -942,7 +942,7 @@
         <div class="sc sm"><small>RETURN</small><b id="scMutRet">0</b></div>
         <div class="sc sm"><small>STOCK AKHIR</small><b id="scMutAkh">0</b></div>
       </div>
-      <details class="mres" id="mutRes" open><summary>Resume per Jenis</summary><div class="table-wrap mres-w"><table><thead><tr><th>JENIS</th><th>ITEM</th><th>STOCK AWAL</th><th>PEMASUKAN</th><th>PEMAKAIAN</th><th>RETURN</th><th>STOCK AKHIR</th></tr></thead><tbody id="bMutRes"></tbody></table></div></details>
+      <details class="mres" id="mutRes"><summary>Resume per Jenis</summary><div class="table-wrap mres-w"><table><thead><tr><th>JENIS</th><th>ITEM</th><th>STOCK AWAL</th><th>PEMASUKAN</th><th>PEMAKAIAN</th><th>RETURN</th><th>STOCK AKHIR</th></tr></thead><tbody id="bMutRes"></tbody></table></div></details>
       <div class="lnote" id="nMutasi"></div><div class="lstate" id="sMutasi"></div>
       <div class="table-wrap hidden" id="wMutasi"><table><thead><tr id="hMutasi"></tr></thead><tbody id="bMutasi"></tbody></table></div>
       <div class="pager" id="pMutasi" hidden>
@@ -1291,7 +1291,7 @@
   function krDeps() {
     if (KR.depP) return KR.depP;
     KR.depErr = '';
-    var iso = isoLocal();
+    var iso = PLD || 'latest';
     KR.depP = Promise.all([planDeps(iso, false), loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
       var res = rencanaHitung(a[0].plan, a[0].wip);
       KR.dep = { rem: res.rem, cut: res.totIn, lotsIn: res.lotsIn, lotsRem: res.lotsRem, date: a[0].plan.date || iso };
@@ -1584,7 +1584,7 @@
     if (!force && PD.v && PD.iso === iso && Date.now() - PD.at < 60000) return Promise.resolve(PD.v);
     if (!force && PD.p && PD.iso === iso) return PD.p;
     PD.iso = iso;
-    var p = gs('getPlanHari', iso, true, !!force).then(function (plan) {
+    var p = gs('getPlanHari', iso === 'latest' ? isoLocal() : iso, iso === 'latest' ? 'latest' : true, !!force).then(function (plan) {
       if (!plan || plan.error) throw new Error((plan && plan.error) || 'Plan tidak bisa dibaca.');
       var ks = []; (plan.rows || []).forEach(function (r) { if (r[0]) ks.push(r[0]); });
       return (ks.length ? gs('getWipKikc', ks, plan.date || iso) : Promise.resolve({ list: [] })).then(function (w) {
@@ -1660,7 +1660,8 @@
     $('#scGram' + c.sx).textContent = fmtId(res[c.gram], 2);
     $('#scKg' + c.sx).textContent = fmtId(res[c.gram] / 1000, 3);
     var msg = 'Plan tanggal ' + (p.date || '').split('-').reverse().join('/');
-    if (p.fallback) msg += ' (tanggal ' + (p.requested || '').split('-').reverse().join('/') + ' belum punya Plan, memakai Plan terakhir)';
+    if (RC && RC.iso === 'latest') msg += ' (Plan terakhir yang dibuat; tetap dipakai sampai ada Create Plan baru)';
+    else if (p.fallback) msg += ' (tanggal ' + (p.requested || '').split('-').reverse().join('/') + ' belum punya Plan, memakai Plan terakhir)';
     msg += '. ';
     if (isR) msg += 'Rencana = kimia lot Plan yang BELUM terinput di WIP (' + res.lotsRem + ' lot). ' + res.lotsIn + ' lot yang sudah di WIP pindah ke tab Realisasi. ';
     else msg += 'Realisasi = kimia lot Plan yang SUDAH terinput di WIP (' + res.lotsIn + ' lot); jumlahnya memotong KG dan BOOKING di tab Kritikal serta Booking (gram/kg) di tab Booking. ';
@@ -1680,14 +1681,15 @@
     $('#w' + c.id).classList.toggle('hidden', !rows.length);
   }
   function openPlan(kind, force) {
-    var c = PK[kind], iso = PLD || isoLocal();
-    $('#rcDate').value = iso; $('#rlDate').value = iso;
+    var c = PK[kind], iso = PLD || 'latest';   // tanpa pilihan tanggal: selalu Plan terakhir yang dibuat (Create Plan), sampai ada Create Plan baru
+    if (PLD) { $('#rcDate').value = PLD; $('#rlDate').value = PLD; }
     $('#s' + c.id).style.display = ''; $('#s' + c.id).innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     $('#w' + c.id).classList.add('hidden');
     netSpin(1);
     Promise.all([planDeps(iso, !!force), loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
       netSpin(-1);
       RC = { iso: iso, plan: a[0].plan, wip: a[0].wip };
+      if (a[0].plan && a[0].plan.date) { $('#rcDate').value = a[0].plan.date; $('#rlDate').value = a[0].plan.date; }
       planShow(kind);
     }).catch(function (e) {
       netSpin(-1);
@@ -1789,11 +1791,11 @@
   $('#subSw').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-sv]') : null; if (b) showView(b.getAttribute('data-sv')); });
   var refreshing = false;
   /* Tombol muat ulang: Admin = sinkron semua data (Kamus, WODMETA, RESEP) + hitung Booking di server, lalu SEMUA data halaman dibaca ulang. Viewer = hanya baca ulang. */
-  $('#btnRefresh').addEventListener('click', function () {
+  function softRefresh(heavy) {
     if (refreshing) return;
     refreshing = true;
     var btn = $('#btnRefresh'); btn.disabled = true; netSpin(1);
-    var adm = MODE === 'admin';
+    var adm = MODE === 'admin' && heavy;
     toast(adm ? 'Memuat ulang: sinkron semua data dan hitung Booking, mohon tunggu (bisa 1 menit lebih)...' : 'Memuat ulang data...', 'ok', 120000);
     var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
@@ -1810,7 +1812,25 @@
       })
       .catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
       .then(function () { refreshing = false; btn.disabled = false; netSpin(-1); });
-  });
+  }
+  /* ---------- Muat ulang BERSIH: hapus kuki + data tersimpan (cache), lalu muat ulang halaman. Pengaturan (URL, PIN, mode, tema, target) dan antrian input yang belum terkirim TIDAK dihapus. ---------- */
+  var HR_KEEP = /^(wipyd_(api|pin|mode|theme|queue|mstop|krtarget|afterref)$|dp_today_)/;
+  var hrBusy = false;
+  function hardRefresh(kind) {
+    if (hrBusy) return; hrBusy = true;
+    try { var hb = document.getElementById('btnRefresh'); if (hb) { hb.classList.add('spin'); hb.disabled = true; } } catch (e) { /* abaikan */ }
+    try { var ks = [], i; for (i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i)); ks.forEach(function (k) { if (!HR_KEEP.test(k)) localStorage.removeItem(k); }); localStorage.setItem('wipyd_afterref', kind || 'btn'); } catch (e) { /* abaikan */ }
+    try { sessionStorage.clear(); } catch (e) { /* abaikan */ }
+    try { String(document.cookie || '').split(';').forEach(function (c) { var n = c.split('=')[0].trim(); if (n) document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; }); } catch (e) { /* abaikan */ }
+    var jobs = [], done = false;
+    try { if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) { /* abaikan */ }
+    function go() { if (done) return; done = true; try { location.reload(); } catch (e) { hrBusy = false; } }
+    Promise.all(jobs).then(go, go); setTimeout(go, 1500);
+  }
+  function hrFlag() { var f = ''; try { f = localStorage.getItem('wipyd_afterref') || ''; localStorage.removeItem('wipyd_afterref'); } catch (e) { /* abaikan */ } return f; }
+  document.addEventListener('keydown', function (e) { var k = String(e.key || '').toLowerCase(); if (k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) { e.preventDefault(); hardRefresh('key'); } });
+  $('#btnRefresh').addEventListener('click', function () { hardRefresh('btn'); });
+  var HRF = hrFlag();   // tanda: baru dimuat ulang bersih; tombol = hitung Booking (Admin) juga, Ctrl+R = baca ulang saja
   /* Pembaruan otomatis: tiap 2 menit dan saat jendela kembali dibuka, data tab yang tampil dibaca ulang diam-diam (RESEP besar tidak ikut; ia mengikuti sinkron resep.gs) */
   var lastAuto = Date.now();
   function autoRefresh() {
@@ -1860,6 +1880,7 @@
   $('#btnHitung').addEventListener('click', function () { runBooking(false); });
   $('#btnSemua').addEventListener('click', function () { runBooking(true); });
   showView('booking');
+  if (HRF) setTimeout(function () { softRefresh(HRF === 'btn'); }, 400);
 })();
 </script>
 </body>

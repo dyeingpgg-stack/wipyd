@@ -4112,7 +4112,7 @@ var Code128 = (function () {
       return r;
     }).catch(function () { return null; }).then(function (r) { wrSync = false; return r; });
   }
-  $('#btnRefresh').addEventListener('click', function () {
+  function softRefresh() {
     syncWr(true);
     if (state.view === 'miss') loadMiss(true);
     else if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
@@ -4120,7 +4120,25 @@ var Code128 = (function () {
     else if (state.view === 'data') loadData();
     else if (state.view === 'form' && SF.kind === 'soft') sfLoadRef(true);
     else loadKikc();
-  });
+  }
+  /* ---------- Muat ulang BERSIH: hapus kuki + data tersimpan (cache), lalu muat ulang halaman. Pengaturan (URL, PIN, mode, tema, target) dan antrian input yang belum terkirim TIDAK dihapus. ---------- */
+  var HR_KEEP = /^(wipyd_(api|pin|mode|theme|queue|mstop|krtarget|afterref)$|dp_today_)/;
+  var hrBusy = false;
+  function hardRefresh(kind) {
+    if (hrBusy) return; hrBusy = true;
+    try { var hb = document.getElementById('btnRefresh'); if (hb) { hb.classList.add('spin'); hb.disabled = true; } } catch (e) { /* abaikan */ }
+    try { var ks = [], i; for (i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i)); ks.forEach(function (k) { if (!HR_KEEP.test(k)) localStorage.removeItem(k); }); localStorage.setItem('wipyd_afterref', kind || 'btn'); } catch (e) { /* abaikan */ }
+    try { sessionStorage.clear(); } catch (e) { /* abaikan */ }
+    try { String(document.cookie || '').split(';').forEach(function (c) { var n = c.split('=')[0].trim(); if (n) document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; }); } catch (e) { /* abaikan */ }
+    var jobs = [], done = false;
+    try { if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) { /* abaikan */ }
+    function go() { if (done) return; done = true; try { location.reload(); } catch (e) { hrBusy = false; } }
+    Promise.all(jobs).then(go, go); setTimeout(go, 1500);
+  }
+  function hrFlag() { var f = ''; try { f = localStorage.getItem('wipyd_afterref') || ''; localStorage.removeItem('wipyd_afterref'); } catch (e) { /* abaikan */ } return f; }
+  document.addEventListener('keydown', function (e) { var k = String(e.key || '').toLowerCase(); if (k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) { e.preventDefault(); hardRefresh('key'); } });
+  $('#btnRefresh').addEventListener('click', function () { hardRefresh('btn'); });
+  var HRF = hrFlag();   // tanda: baru dimuat ulang bersih -> baca ulang segar dari server
 
   /* ---------- Ganti mode Admin / Viewer (tanpa login; hanya pengaman agar tidak salah ketuk) ---------- */
   function syncModeUi() {
@@ -6036,7 +6054,7 @@ var Code128 = (function () {
     showView(HOME_TABS.length ? HOME_TABS[0] : 'data');   // Viewer: langsung ke tab WIP (Viewer terbatas: tab pertama yang dibagikan); daftar KIKC (untuk form Input) tidak perlu dimuat
     setTimeout(prefetchLists, 400);
   }
-  setTimeout(function () { syncWr(false); }, 600);   // sinkron WOD/RPH di latar belakang saat dibuka
+  setTimeout(function () { if (HRF) softRefresh(); else syncWr(false); }, 600);   // sinkron WOD/RPH di latar belakang saat dibuka
   setTimeout(function () { loadMiss(false); }, 2500);   // cek lot outstanding di latar belakang untuk notifikasi
   if (qLen()) flushQueue();
 })();
