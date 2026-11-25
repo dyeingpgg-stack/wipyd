@@ -1294,7 +1294,7 @@
     var iso = PLD || 'latest';
     KR.depP = Promise.all([planDeps(iso, false), loadKim('booking'), loadKim('resep'), loadKim('conf'), loadKim('open')]).then(function (a) {
       var res = rencanaHitung(a[0].plan, a[0].wip);
-      KR.dep = { rem: res.rem, cut: res.totIn, lotsIn: res.lotsIn, lotsRem: res.lotsRem, date: a[0].plan.date || iso };
+      KR.dep = { rem: res.all, cut: res.totIn, lotsIn: res.lotsIn, lotsRem: res.lotsRem, date: a[0].plan.date || iso };
     }).catch(function (e) { KR.depErr = errMsg(e); }).then(function () {
       KR.depP = null;
       if (curView === 'kritikal' && KIM.kritikal) kritikalRender($('#qKritikal').value);
@@ -1310,8 +1310,8 @@
     var hd0 = d.headers.map(function (h) { return KRNAMES.BOOKING.test(h) ? 'BOOKING' : KRNAMES.AFS.test(h) ? 'AFS' : h; });
     var f0 = function (re) { return hd0.findIndex(function (h) { return re.test(h); }); };
     var iB0 = f0(/^BOOKING$/), ins = iB0 >= 0 ? iB0 + 1 : hd0.length, iKg0 = f0(/^KG$/i), iAfs0 = f0(/^AFS$/), iSisa0 = f0(/^SISA STOK/i);
-    var hd = hd0.slice(); hd.splice(ins, 0, 'BOOKING ERP', 'RENCANA');   // BOOKING ERP lalu RENCANA tepat setelah BOOKING
-    var ori = function (i) { return i < ins ? i : (i >= ins + 2 ? i - 2 : -1); };   // indeks kolom asli sheet (-1 = kolom tambahan)
+    var hd = hd0.slice(); hd.splice(ins, 0, 'BOOKING ERP', 'RENCANA', 'REALISASI');   // BOOKING ERP, RENCANA (utuh dari Plan) lalu REALISASI tepat setelah BOOKING
+    var ori = function (i) { return i < ins ? i : (i >= ins + 3 ? i - 3 : -1); };   // indeks kolom asli sheet (-1 = kolom tambahan)
     var isTot = function (r) { return nq(r[0]) === nq(d.headers[0]) || /^total\b/i.test(String(r[0]).trim()); };   // baris total sheet (judul kolom A yang sama)
     // potong KG dan BOOKING dengan realisasi; AFS = KG - BOOKING dihitung ulang; SISA STOK ikut selisih AFS
     var applyCut = function (r2, cut) {
@@ -1334,14 +1334,14 @@
       var b0 = iB0 >= 0 ? krNum(r[iB0]) : NaN; if (!isNaN(b0)) bkSheet += b0;
       var cc = applyCut(r2, cut);
       sumCut += cut; sumRem += rem; if (ev !== null) { sumErp += ev; nErp++; }
-      r2.splice(ins, 0, erpOk ? (ev === null ? '' : krFmt(ev)) : (ERPST.err ? '' : '…'), dep ? (rem > 0 ? krFmt(rem) : '') : '…');
+      r2.splice(ins, 0, erpOk ? (ev === null ? '' : krFmt(ev)) : (ERPST.err ? '' : '…'), dep ? (rem > 0 ? krFmt(rem) : '') : '…', dep ? (cut > 0 ? krFmt(cut) : '') : '…');
       r2.cut = cut; r2.cc = cc;
       return r2;
     });
     var totR2 = null;
-    if (totRow) {   // baris total: KG/BOOKING dipotong total realisasi; BOOKING ERP dan RENCANA = jumlah semua item
+    if (totRow) {   // baris total: KG/BOOKING dipotong total realisasi; BOOKING ERP, RENCANA dan REALISASI = jumlah semua item
       var tr = totRow.r.slice(), tcc = applyCut(tr, sumCut);
-      tr.splice(ins, 0, erpOk ? (nErp ? krFmt(sumErp) : '') : (ERPST.err ? '' : '…'), dep ? (sumRem > 0 ? krFmt(sumRem) : '') : '…');
+      tr.splice(ins, 0, erpOk ? (nErp ? krFmt(sumErp) : '') : (ERPST.err ? '' : '…'), dep ? (sumRem > 0 ? krFmt(sumRem) : '') : '…', dep ? (sumCut > 0 ? krFmt(sumCut) : '') : '…');
       tr.cut = sumCut; tr.cc = tcc; totR2 = tr;
     }
     var fi = function (re) { return hd.findIndex(function (h) { return re.test(h); }); };
@@ -1395,7 +1395,7 @@
       }).join('') + '<td class="r' + (o.saran > 0 ? ' kr-yel' : '') + '">' + (isNaN(o.saran) ? '<span class="dim">-</span>' : o.saran > 0 ? fmtId(o.saran, 2) : '0') + '</td></tr>';
     }).join('');
     var nShown = rows.length - (rows.length && rows[0].tot ? 1 : 0);
-    $('#n' + 'Kritikal').textContent = nShown + ' dari ' + all.length + ' item' + (d.info ? ' · ' + d.info : '') + ' · saran order untuk target ' + KR.target + ' hari' + (dep ? ' · Rencana = kimia lot Plan yang belum di WIP (' + dep.lotsRem + ' lot); Realisasi = ' + dep.lotsIn + ' lot Plan sudah di WIP, kimianya memotong KG dan BOOKING (sel kuning)' : KR.depErr ? ' · Rencana gagal dimuat: ' + KR.depErr : ' · memuat Rencana...') + (ERPST.err ? ' · Booking ERP gagal dimuat: ' + ERPST.err : erpOk ? ' · Booking ERP: ' + nErp + ' item cocok di StockBalance' + (KIM.erp.hdr ? ' (kolom "' + KIM.erp.hdr + '")' : '') : '');
+    $('#n' + 'Kritikal').textContent = nShown + ' dari ' + all.length + ' item' + (d.info ? ' · ' + d.info : '') + ' · saran order untuk target ' + KR.target + ' hari' + (dep ? ' · Rencana = seluruh kimia Plan (' + (dep.lotsRem + dep.lotsIn) + ' lot); Realisasi = ' + dep.lotsIn + ' lot Plan sudah di WIP, kimianya memotong KG dan BOOKING (sel kuning)' : KR.depErr ? ' · Rencana gagal dimuat: ' + KR.depErr : ' · memuat Rencana...') + (ERPST.err ? ' · Booking ERP gagal dimuat: ' + ERPST.err : erpOk ? ' · Booking ERP: ' + nErp + ' item cocok di StockBalance' + (KIM.erp.hdr ? ' (kolom "' + KIM.erp.hdr + '")' : '') : '');
     // selisih Booking Kritikal vs tab Booking (poin: kenapa totalnya bisa beda)
     var df = '';
     if (KIM.booking && iB0 >= 0) {
@@ -1645,16 +1645,19 @@
       }).sort(function (a, b) { return b.g - a.g; });
       return { rows: rr.map(function (o) { return o.r; }), gram: rr.reduce(function (a, o) { return a + o.g; }, 0) };
     };
-    var a = mk(totR, lotsR), b = mk(totI, lotsI);
-    return { rem: totR, totIn: totI, rows: a.rows, gram: a.gram, rowsIn: b.rows, gramIn: b.gram, lots: Object.keys(kik).length, lotsOk: lotsOk, lotsRem: lotsRem, lotsIn: lotsIn, bons: Object.keys(bonR).length, bonsIn: Object.keys(bonI).length, exBons: Object.keys(exBon).length, exLots: exLot, noRes: noRes };
+    var totA = {}, lotsA = {}, bonA = {};
+    [[totR, lotsR], [totI, lotsI]].forEach(function (z) { Object.keys(z[0]).forEach(function (n) { totA[n] = (totA[n] || 0) + z[0][n]; Object.keys(z[1][n] || {}).forEach(function (k) { (lotsA[n] = lotsA[n] || {})[k] = 1; }); }); });
+    Object.keys(bonR).concat(Object.keys(bonI)).forEach(function (b) { bonA[b] = 1; });
+    var a = mk(totR, lotsR), b = mk(totI, lotsI), ca = mk(totA, lotsA);
+    return { all: totA, rowsAll: ca.rows, gramAll: ca.gram, bonsAll: Object.keys(bonA).length, rem: totR, totIn: totI, rows: a.rows, gram: a.gram, rowsIn: b.rows, gramIn: b.gram, lots: Object.keys(kik).length, lotsOk: lotsOk, lotsRem: lotsRem, lotsIn: lotsIn, bons: Object.keys(bonR).length, bonsIn: Object.keys(bonI).length, exBons: Object.keys(exBon).length, exLots: exLot, noRes: noRes };
   }
-  var PK = { rencana: { id: 'Rencana', sx: 'Rc', rows: 'rows', gram: 'gram', lots: 'lotsRem', bons: 'bons', lab: 'RENCANA' }, real: { id: 'Real', sx: 'Rl', rows: 'rowsIn', gram: 'gramIn', lots: 'lotsIn', bons: 'bonsIn', lab: 'REALISASI' } };
+  var PK = { rencana: { id: 'Rencana', sx: 'Rc', rows: 'rowsAll', gram: 'gramAll', lots: 'lotsOk', bons: 'bonsAll', lab: 'RENCANA' }, real: { id: 'Real', sx: 'Rl', rows: 'rowsIn', gram: 'gramIn', lots: 'lotsIn', bons: 'bonsIn', lab: 'REALISASI' } };
   function planShow(kind) {
     var c = PK[kind], res = rencanaHitung(), q = nq($('#q' + c.id).value.trim()), p = RC.plan, isR = kind === 'rencana';
     var all = res[c.rows], rows = all.filter(function (r) { return !q || nq(r.join(' ')).indexOf(q) >= 0; });
     $('#sc' + c.id).hidden = false;
     $('#scLots' + c.sx).textContent = fmtId(res[c.lots], 0);
-    $('#scInfo' + c.sx).textContent = 'dari ' + res.lotsOk + ' lot Plan' + (isR ? ' (belum di WIP)' : ' (sudah di WIP)');
+    $('#scInfo' + c.sx).textContent = (isR ? 'seluruh lot Plan' : 'dari ' + res.lotsOk + ' lot Plan (sudah di WIP)');
     $('#scBon' + c.sx).textContent = fmtId(res[c.bons], 0);
     $('#scInfoBon' + c.sx).textContent = isR && res.exBons ? res.exBons + ' bon Open tidak dihitung' : 'bon Confirmed';
     $('#scGram' + c.sx).textContent = fmtId(res[c.gram], 2);
@@ -1663,7 +1666,7 @@
     if (RC && RC.iso === 'latest') msg += ' (Plan terakhir yang dibuat; tetap dipakai sampai ada Create Plan baru)';
     else if (p.fallback) msg += ' (tanggal ' + (p.requested || '').split('-').reverse().join('/') + ' belum punya Plan, memakai Plan terakhir)';
     msg += '. ';
-    if (isR) msg += 'Rencana = kimia lot Plan yang BELUM terinput di WIP (' + res.lotsRem + ' lot). ' + res.lotsIn + ' lot yang sudah di WIP pindah ke tab Realisasi. ';
+    if (isR) msg += 'Rencana = pemakaian kimia SELURUH lot Plan (' + res.lotsOk + ' lot), tetap utuh sebagai pembanding. Yang sudah terinput di WIP (' + res.lotsIn + ' lot) terlihat di tab Realisasi. ';
     else msg += 'Realisasi = kimia lot Plan yang SUDAH terinput di WIP (' + res.lotsIn + ' lot); jumlahnya memotong KG dan BOOKING di tab Kritikal serta Booking (gram/kg) di tab Booking. ';
     if (!res.lots) msg += 'Tidak ada lot di Plan.';
     if (res.noRes.length) msg += res.noRes.length + ' lot belum ada resepnya di sheet RESEP: ' + res.noRes.slice(0, 8).join(', ') + (res.noRes.length > 8 ? ', ...' : '') + '.';
@@ -1677,7 +1680,7 @@
     }).join('');
     $('#n' + c.id).textContent = (q ? rows.length + ' dari ' + all.length : rows.length) + ' item';
     $('#s' + c.id).style.display = rows.length ? 'none' : '';
-    $('#s' + c.id).innerHTML = rows.length ? '' : '<div class="state">' + (all.length ? 'Tidak ada item yang cocok.' : (isR ? 'Tidak ada Rencana: semua lot Plan sudah terinput di WIP (lihat tab Realisasi).' : 'Belum ada lot Plan yang terinput di WIP.')) + '</div>';
+    $('#s' + c.id).innerHTML = rows.length ? '' : '<div class="state">' + (all.length ? 'Tidak ada item yang cocok.' : (isR ? 'Tidak ada Rencana: Plan belum punya lot.' : 'Belum ada lot Plan yang terinput di WIP.')) + '</div>';
     $('#w' + c.id).classList.toggle('hidden', !rows.length);
   }
   function openPlan(kind, force) {
