@@ -1079,8 +1079,7 @@
     var g = b.getAttribute('data-pg'), n = Math.max(1, Math.ceil(PID.rows.length / PIDSIZE));
     PIDPG = g === 'first' ? 1 : g === 'prev' ? PIDPG - 1 : g === 'next' ? PIDPG + 1 : 1e9; pidRender();
   });
-  var HRF = hrFlag();   // tanda: halaman ini baru dimuat ulang bersih -> baca segar dari server
-  pidLoad(!!HRF);
+  pidLoad(false);
 
   /* ---------- Tab HANK: sub-tab AMAK, GOYOR (warna berakhiran G), Masterpiece (warna berakhiran P) ---------- */
   var WC = { amak: { id: 'Amak', d: null, pg: 1, grp: '', st: '' }, goyor: { id: 'Goyor', d: null, pg: 1, grp: '', st: '' }, master: { id: 'Master', d: null, pg: 1, grp: '', st: '' } };
@@ -1167,28 +1166,12 @@
     $$('.tabbar .tab').forEach(function (t) { var on = t.getAttribute('data-grp') === 'wod' ? !!WC[v] : t.getAttribute('data-view') === v; t.classList.toggle('active', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); });
     wgRender(v);
     $$('main .view').forEach(function (s) { s.classList.toggle('active', s.id === 'view' + (v === 'pidang' ? 'Pidang' : WC[v].id)); });
-    if (v !== 'pidang' && !LOADED[v]) { LOADED[v] = true; wcLoad(v, !!HRF); }
+    if (v !== 'pidang' && !LOADED[v]) { LOADED[v] = true; wcLoad(v, false); }
   }
   $$('.tabbar .tab').forEach(function (t) { t.addEventListener('click', function () { var v = t.getAttribute('data-view'); if (t.getAttribute('data-grp') === 'wod') { var l = wgSubs(); v = l.some(function (x) { return x[0] === WG.last; }) ? WG.last : (l[0] ? l[0][0] : 'amak'); } showView(v); }); });
   if (window.WIPYD_P4 && window.WIPYD_P4[0] !== 'pidang') showView(window.WIPYD_P4[0]);
-  /* ---------- Muat ulang BERSIH: hapus kuki + data tersimpan (cache), lalu muat ulang halaman. Pengaturan (URL, PIN, mode, tema, target) dan antrian input yang belum terkirim TIDAK dihapus. ---------- */
-  var HR_KEEP = /^(wipyd_(api|pin|mode|theme|queue|mstop|krtarget|afterref)$|dp_today_)/;
-  var hrBusy = false;
-  function hardRefresh(kind) {
-    if (hrBusy) return; hrBusy = true;
-    try { var hb = document.getElementById('btnRefresh'); if (hb) { hb.classList.add('spin'); hb.disabled = true; } } catch (e) { /* abaikan */ }
-    try { var ks = [], i; for (i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i)); ks.forEach(function (k) { if (!HR_KEEP.test(k)) localStorage.removeItem(k); }); localStorage.setItem('wipyd_afterref', kind || 'btn'); } catch (e) { /* abaikan */ }
-    try { sessionStorage.clear(); } catch (e) { /* abaikan */ }
-    try { String(document.cookie || '').split(';').forEach(function (c) { var n = c.split('=')[0].trim(); if (n) document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; }); } catch (e) { /* abaikan */ }
-    var jobs = [], done = false;
-    try { if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) { /* abaikan */ }
-    function go() { if (done) return; done = true; try { location.reload(); } catch (e) { hrBusy = false; } }
-    Promise.all(jobs).then(go, go); setTimeout(go, 1500);
-  }
-  function hrFlag() { var f = ''; try { f = localStorage.getItem('wipyd_afterref') || ''; localStorage.removeItem('wipyd_afterref'); } catch (e) { /* abaikan */ } return f; }
-  document.addEventListener('keydown', function (e) { var k = String(e.key || '').toLowerCase(); if (k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) { e.preventDefault(); hardRefresh('key'); } });
   function softRefresh() { var b = $('#btnRefresh'); b.classList.add('spin'); (CURV === 'pidang' ? pidLoad(true) : wcLoad(CURV, true)).then(function () { b.classList.remove('spin'); }); }
-  $('#btnRefresh').addEventListener('click', function () { hardRefresh('btn'); });
+  $('#btnRefresh').addEventListener('click', softRefresh);
 })();
 </script>
 </body>

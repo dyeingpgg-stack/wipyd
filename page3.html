@@ -1798,7 +1798,7 @@
     if (refreshing) return;
     refreshing = true;
     var btn = $('#btnRefresh'); btn.disabled = true; netSpin(1);
-    var adm = MODE === 'admin' && heavy;
+    var adm = MODE === 'admin';
     toast(adm ? 'Memuat ulang: sinkron semua data dan hitung Booking, mohon tunggu (bisa 1 menit lebih)...' : 'Memuat ulang data...', 'ok', 120000);
     var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
@@ -1816,24 +1816,7 @@
       .catch(function (e) { toast('Gagal memuat ulang. ' + errMsg(e), 'err', 6000); })
       .then(function () { refreshing = false; btn.disabled = false; netSpin(-1); });
   }
-  /* ---------- Muat ulang BERSIH: hapus kuki + data tersimpan (cache), lalu muat ulang halaman. Pengaturan (URL, PIN, mode, tema, target) dan antrian input yang belum terkirim TIDAK dihapus. ---------- */
-  var HR_KEEP = /^(wipyd_(api|pin|mode|theme|queue|mstop|krtarget|afterref)$|dp_today_)/;
-  var hrBusy = false;
-  function hardRefresh(kind) {
-    if (hrBusy) return; hrBusy = true;
-    try { var hb = document.getElementById('btnRefresh'); if (hb) { hb.classList.add('spin'); hb.disabled = true; } } catch (e) { /* abaikan */ }
-    try { var ks = [], i; for (i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i)); ks.forEach(function (k) { if (!HR_KEEP.test(k)) localStorage.removeItem(k); }); localStorage.setItem('wipyd_afterref', kind || 'btn'); } catch (e) { /* abaikan */ }
-    try { sessionStorage.clear(); } catch (e) { /* abaikan */ }
-    try { String(document.cookie || '').split(';').forEach(function (c) { var n = c.split('=')[0].trim(); if (n) document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; }); } catch (e) { /* abaikan */ }
-    var jobs = [], done = false;
-    try { if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) { /* abaikan */ }
-    function go() { if (done) return; done = true; try { location.reload(); } catch (e) { hrBusy = false; } }
-    Promise.all(jobs).then(go, go); setTimeout(go, 1500);
-  }
-  function hrFlag() { var f = ''; try { f = localStorage.getItem('wipyd_afterref') || ''; localStorage.removeItem('wipyd_afterref'); } catch (e) { /* abaikan */ } return f; }
-  document.addEventListener('keydown', function (e) { var k = String(e.key || '').toLowerCase(); if (k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) { e.preventDefault(); hardRefresh('key'); } });
-  $('#btnRefresh').addEventListener('click', function () { hardRefresh('btn'); });
-  var HRF = hrFlag();   // tanda: baru dimuat ulang bersih; tombol = hitung Booking (Admin) juga, Ctrl+R = baca ulang saja
+  $('#btnRefresh').addEventListener('click', function () { softRefresh(true); });
   /* Pembaruan otomatis: tiap 2 menit dan saat jendela kembali dibuka, data tab yang tampil dibaca ulang diam-diam (RESEP besar tidak ikut; ia mengikuti sinkron resep.gs) */
   var lastAuto = Date.now();
   function autoRefresh() {
@@ -1883,7 +1866,6 @@
   $('#btnHitung').addEventListener('click', function () { runBooking(false); });
   $('#btnSemua').addEventListener('click', function () { runBooking(true); });
   showView('booking');
-  if (HRF) setTimeout(function () { softRefresh(HRF === 'btn'); }, 400);
 })();
 </script>
 </body>

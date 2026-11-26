@@ -942,24 +942,8 @@
   }
   var TABS = (ROOT.getAttribute('data-tabs') || '').split(',').filter(Boolean);
 
-  /* ---------- Muat ulang BERSIH: hapus kuki + data tersimpan (cache), lalu muat ulang halaman. Pengaturan (URL, PIN, mode, tema, target) dan antrian input yang belum terkirim TIDAK dihapus. ---------- */
-  var HR_KEEP = /^(wipyd_(api|pin|mode|theme|queue|mstop|krtarget|afterref)$|dp_today_)/;
-  var hrBusy = false;
-  function hardRefresh(kind) {
-    if (hrBusy) return; hrBusy = true;
-    try { var hb = document.getElementById('btnRefresh'); if (hb) { hb.classList.add('spin'); hb.disabled = true; } } catch (e) { /* abaikan */ }
-    try { var ks = [], i; for (i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i)); ks.forEach(function (k) { if (!HR_KEEP.test(k)) localStorage.removeItem(k); }); localStorage.setItem('wipyd_afterref', kind || 'btn'); } catch (e) { /* abaikan */ }
-    try { sessionStorage.clear(); } catch (e) { /* abaikan */ }
-    try { String(document.cookie || '').split(';').forEach(function (c) { var n = c.split('=')[0].trim(); if (n) document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; }); } catch (e) { /* abaikan */ }
-    var jobs = [], done = false;
-    try { if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) { /* abaikan */ }
-    function go() { if (done) return; done = true; try { location.reload(); } catch (e) { hrBusy = false; } }
-    Promise.all(jobs).then(go, go); setTimeout(go, 1500);
-  }
-  function hrFlag() { var f = ''; try { f = localStorage.getItem('wipyd_afterref') || ''; localStorage.removeItem('wipyd_afterref'); } catch (e) { /* abaikan */ } return f; }
-  document.addEventListener('keydown', function (e) { var k = String(e.key || '').toLowerCase(); if (k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) { e.preventDefault(); hardRefresh('key'); } });
-  $('#btnRefresh').addEventListener('click', function () { hardRefresh('btn'); });
-  hrFlag();
+  $('#btnRefresh').addEventListener('click', function () { location.reload(); });
+
 })();
 </script>
 </body>
