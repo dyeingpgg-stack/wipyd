@@ -599,7 +599,7 @@ function getKikcData() {
 const LIST_KEYS = ['wod', 'grm', 'plan', 'clp'];
 const LIST_TTL = 90;
 const LIST_CHUNK = 40000;
-const LIST_PREFIX = 'lst14_';
+const LIST_PREFIX = 'lst15_';
 
 // Membaca teks tanggal menjadi {y, m, d}; null jika bukan tanggal.
 // Format yyyy-mm-dd dikenali apa adanya. Untuk a/b/yyyy: mdy = true dibaca bulan/hari (MM/DD/YYYY), selain itu hari/bulan (DD/MM/YYYY).
@@ -1759,39 +1759,43 @@ function pakExtraMap_() {
 // (boleh sebagian: beberapa tanggal import / beberapa karung). Kolom dicari menurut judul baris 1: KIKC; tanggal = judul berisi "import" (cadangan: tanggal/tgl/date); qty = qty/weight/berat/netto/kg.
 // Hasil { KIKC: [tanggal import TERBARU dd/MM/yyyy, jumlah kg, jumlah baris, jumlah tanggal berbeda] }. Cache 10 menit.
 function detilPackMap_() {
-  const hit = listCacheGet_('detilmap2');
+  const hit = listCacheGet_('detilmap4');
   if (hit && hit.m) return hit.m;
   const id = METAPACK_SS_ID || PropertiesService.getScriptProperties().getProperty('METAPACK_SS_ID') || '';
   if (!id) return {};
   const sh = findSheet_(SpreadsheetApp.openById(id), 'DETIL');
   const m = {};
-  if (!sh || sh.getLastRow() < 2) { listCachePut_('detilmap2', { m: m }, 300); return m; }
+  if (!sh || sh.getLastRow() < 2) { listCachePut_('detilmap4', { m: m }, 300); return m; }
   const nc = Math.min(sh.getLastColumn(), 60), last = sh.getLastRow(), tz = sh.getParent().getSpreadsheetTimeZone();
   const head = sh.getRange(1, 1, 1, nc).getDisplayValues()[0].map(function (x) { return str_(x).replace(/\s+/g, ' ').trim().toLowerCase(); });
   const find = function (re) { for (let i = 0; i < head.length; i++) { if (re.test(head[i])) return i; } return -1; };
-  const ik = find(/^kikc$/) >= 0 ? find(/^kikc$/) : find(/kikc/);
+  const ik = find(/^barcode/) >= 0 ? find(/^barcode/) : (find(/^kikc$/) >= 0 ? find(/^kikc$/) : find(/kikc|barcode/));   // kolom E "barcode (WOD/KIKC)" = kunci lot
   if (ik < 0) return m;
-  let idt = find(/import/); if (idt < 0) idt = find(/^(tanggal|tgl|date)/); if (idt < 0) idt = find(/tanggal|tgl|date/);
+  const ipk = find(/^(tgl|tanggal)[ _.]?pack/);   // kolom B "tgl_pack" = tanggal pack utama
+  let idt = find(/import/); if (idt < 0) idt = find(/^(tanggal|tgl|date)/); if (idt < 0) idt = find(/tanggal|tgl|date/);   // cadangan: kolom C "tgl_import" bila tgl_pack kosong
+  let ic = -1; for (let i = 0; i < head.length; i++) { if (/cone/.test(head[i]) && !/type|desc|jenis/.test(head[i])) { ic = i; break; } }   // jumlah cone terpacking (bila ada kolomnya)
   let iq = find(/^(qty|weight|berat|netto|net\b|kg)/); if (iq < 0) iq = find(/qty|weight|berat|netto|jumlah/);
   const n = last - 1, col = function (c) { return sh.getRange(2, c + 1, n, 1); };
-  const kd = col(ik).getDisplayValues(), dd = idt >= 0 ? col(idt).getDisplayValues() : null, dr = idt >= 0 ? col(idt).getValues() : null, qr = iq >= 0 ? col(iq).getValues() : null;
+  const kd = col(ik).getDisplayValues(), pd = ipk >= 0 ? col(ipk).getDisplayValues() : null, pr = ipk >= 0 ? col(ipk).getValues() : null, cr = ic >= 0 ? col(ic).getValues() : null, dd = idt >= 0 ? col(idt).getDisplayValues() : null, dr = idt >= 0 ? col(idt).getValues() : null, qr = iq >= 0 ? col(iq).getValues() : null;
   const num = function (v) { if (typeof v === 'number') return v; const t = str_(v).trim(); if (!t) return 0; const x = parseFloat(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : t); return isNaN(x) ? 0 : x; };
   const best = {}, ds = {};
   for (let i = 0; i < n; i++) {
     const k = normKikc_(kd[i][0]);
     if (!k || k === 'KIKC') continue;
     let dmy = '', key = 0;
-    if (dd) { key = sortKey_(dr[i][0], dd[i][0], false); dmy = key ? fmtDmy_(dr[i][0], dd[i][0], tz, false) : ''; }
-    const e = m[k] || (m[k] = ['', 0, 0, 0]);
+    if (pd) { key = sortKey_(pr[i][0], pd[i][0], false); dmy = key ? fmtDmy_(pr[i][0], pd[i][0], tz, false) : ''; }
+    if (!dmy && dd) { key = sortKey_(dr[i][0], dd[i][0], false); dmy = key ? fmtDmy_(dr[i][0], dd[i][0], tz, false) : ''; }
+    const e = m[k] || (m[k] = ['', 0, 0, 0, 0]);
     e[2]++;
     if (qr) e[1] += num(qr[i][0]);
+    if (cr) e[4] += num(cr[i][0]);
     if (dmy) {
       if (best[k] === undefined || key > best[k]) { best[k] = key; e[0] = dmy; }
       (ds[k] = ds[k] || {})[dmy] = 1;
     } else if (!e[0]) e[0] = '-';   // ada data DETIL tetapi tanggal import kosong: tetap dianggap sudah pack
   }
   Object.keys(m).forEach(function (k) { m[k][1] = Math.round(m[k][1] * 100) / 100; m[k][3] = ds[k] ? Object.keys(ds[k]).length : 0; });
-  listCachePut_('detilmap2', { m: m }, 600);
+  listCachePut_('detilmap4', { m: m }, 600);
   return m;
 }
 
@@ -2554,7 +2558,7 @@ function jawabanRows_(sheet, start, end, tz, keys, want) {
       // 3) cadangan terakhir: tab Celup dibaca langsung dari sheet (tanpa cache daftar). Shift dan Grup: tab Celup, lalu Plan, lalu isian input di sheet Jawaban (tidak dikosongkan).
       tglCelup: cl.tanggal || cpm[k] || ((pl.celup && !/sisa\s*order/i.test(pl.celup)) ? kemarin : '') || (k ? (clpF || (clpF = clpFreshMap_()))[compactKikc_(k)] || '' : ''),
       tglPack: packMap[k] || fmtDmy_(r[COL_PACK - 1], r[COL_PACK - 1], tz, false),
-      packKg: packDet[k] ? packDet[k][1] : '', packN: packDet[k] ? packDet[k][2] : '', packTgl: packDet[k] ? packDet[k][3] : '',   // dari DETIL: kg terpacking, jumlah baris (karung), jumlah tanggal import
+      packKg: packDet[k] ? packDet[k][1] : '', packN: packDet[k] ? packDet[k][2] : '', packTgl: packDet[k] ? packDet[k][3] : '', packCone: packDet[k] && packDet[k][4] ? packDet[k][4] : '',   // dari DETIL: kg terpacking, jumlah baris (karung), jumlah tanggal import
       shiftIn: r[8], grupIn: r[9], mesinIn: r[5],   // isian asli di sheet (dipakai form Ubah)
       posisi: stripNum_(r[10]),
       qc: stripNum_(r[11]),
@@ -3007,7 +3011,7 @@ function tesKecepatanCariKikc() {
 // ================= Page 3: Kimia (RESEPDB) =================
 // Membaca sheet hasil sinkron resep.gs di spreadsheet RESEPDB (konstanta RSP_ID_DB dari resep.gs, satu project yang sama). Hanya baca.
 //   resep = sheet RESEP | conf = sheet C.dbb (lot Confirmed) | kamus = sheet Kamus. Baris 1 = judul kolom; kolom pertama = KIKC.
-const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI', kritikal: 'Kritikal', cek: 'WODMETA', erp: 'StockBalance' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
+const KIMIA_SHEETS = { resep: 'RESEP', conf: 'C.dbb', kamus: 'Kamus', booking: 'Booking', open: 'WODMETA', mutasi: 'MUTASI', kritikal: 'Kritikal', cek: 'WODMETA', erp: 'StockBalance', fin: 'WODMETA' };   // open = langsung dari WODMETA (status_bon = OPEN), bukan sheet RESEPDB
 function getKimia(which, force) {
   try {
     which = str_(which).toLowerCase();
@@ -3020,6 +3024,7 @@ function getKimia(which, force) {
       try { ro = which === 'open' ? kimiaOpen_() : kimiaConf_(); } catch (eW) { if (which === 'open') throw eW; ro = null; }
       if (ro) { listCachePut_(ck, ro, 90); return ro; }
     }
+    if (which === 'fin') { const rf = kimiaFin_(); listCachePut_(ck, rf, 90); return rf; }
     if (which === 'erp') { const re = kimiaErp_(); listCachePut_(ck, re, 300); return re; }
     if (which === 'cek') { const rc = kimiaCekLots_(); listCachePut_(ck, rc, 120); return rc; }
     if (which === 'kritikal') { const rk = kimiaKritikal_(); listCachePut_(ck, rk, 120); return rk; }
@@ -3074,17 +3079,26 @@ function kimiaRspTgl_() {
 // Hasil: { tgl: {KIKC ringkas: tanggal}, headers, open: [baris OPEN] }. Tanggal hanya disimpan untuk baris Confirmed / Open.
 function kimiaWodmeta_() {
   const hit = listCacheGet_('kimwm');
-  if (hit && hit.tgl && hit.conf && hit.clr && hit.cn) return hit;
+  if (hit && hit.tgl && hit.conf && hit.clr && hit.cn && hit.fin) return hit;
   const src = SpreadsheetApp.openById(RSP_ID_WODMETA).getSheetByName('WODMETA');
   if (!src) throw new Error('Sheet "WODMETA" tidak ditemukan.');
   const v = src.getLastRow() ? src.getDataRange().getDisplayValues() : [];
   const kc = function (x) { return String(x).toUpperCase().replace(/[^A-Z0-9]/g, ''); };
   const cols = [1, 8, 9, 11];
   const headers = v.length ? cols.map(function (i) { return str_(v[0][i]).replace(/\s+/g, ' ').trim(); }).concat(['Tanggal WOD', 'Color']) : [];
-  const tgl = {}, open = [], conf = [], clr = {}, cn = [];
+  const tgl = {}, open = [], conf = [], clr = {}, cn = [], fin = [];
+  let iCone = 5;   // kolom F "cone_type_desc"
+  if (v.length) { const hh = v[0].map(function (x) { return str_(x).toLowerCase().replace(/[^a-z0-9]/g, ''); }).indexOf('conetypedesc'); if (hh >= 0) iCone = hh; }
   v.slice(1).forEach(function (r) {
     const st = str_(r[11]).trim().toLowerCase();
     if (st === 'canceled' || st === 'cancelled') { const cb = str_(r[9]).trim(); if (cb) cn.push(cb); return; }   // bon Canceled: dipakai untuk mengecualikan resepnya di Rencana
+    if (/^fin/.test(st)) {   // status bon Finish: sementara hanya cone_type_desc selain PIDANG (lot Pidang punya perlakuan khusus: satu lot bisa lebih dari satu warna / bon)
+      if (str_(r[1]).trim() === '') return;
+      const ct = str_(r[iCone]).trim();
+      if (ct.toUpperCase().indexOf('PIDANG') >= 0) return;
+      fin.push(cols.map(function (i) { return str_(r[i]).trim(); }).concat([str_(r[2]).trim(), str_(r[4]).trim(), ct]));
+      return;
+    }
     if (str_(r[1]).trim() === '' || (st !== 'confirmed' && st !== 'open')) return;
     const k = kc(r[1]), d = str_(r[2]).trim();
     if (d && !tgl[k]) tgl[k] = d;
@@ -3093,7 +3107,7 @@ function kimiaWodmeta_() {
     const rowX = cols.map(function (i) { return str_(r[i]).trim(); }).concat([d, cc]);
     if (st === 'open') open.push(rowX); else conf.push(rowX);
   });
-  const res = { tgl: tgl, headers: headers, open: open, conf: conf, clr: clr, cn: cn };
+  const res = { tgl: tgl, headers: headers, open: open, conf: conf, clr: clr, cn: cn, fin: fin };
   listCachePut_('kimwm', res, 90);
   return res;
 }
@@ -3109,6 +3123,11 @@ function kimiaTanggalWod_(res) {
 function kimiaConf_() {
   const w = kimiaWodmeta_();
   return { success: true, headers: w.headers, rows: w.conf, total: w.conf.length, name: 'WODMETA (Confirmed)', cancel: w.cn || [] };
+}
+// Tab Lot Finish: bon berstatus Finish (kolom L), cone_type_desc (kolom F) bukan PIDANG; kolom sama seperti Lot Opened + Cone Type
+function kimiaFin_() {
+  const w = kimiaWodmeta_();
+  return { success: true, headers: w.headers.concat(['Cone Type']), rows: w.fin, total: w.fin.length, name: 'WODMETA (Finish)' };
 }
 // Tab Lot Opened: lot di WODMETA dengan status_bon (kolom L) = OPEN; kolom sama seperti Lot Confirmed
 function kimiaOpen_() {
