@@ -508,6 +508,19 @@ function lock_() {
 function unlock_(l) {
   if (l) { try { l.releaseLock(); } catch (e) { /* abaikan */ } }
 }
+/* Kunci KHUSUS pekerjaan latar yang lama (sinkron WOD/RPH, hitung Booking). Kunci skrip global (lock_) hanya dipegang sekejap untuk memasang tanda,
+   bukan selama sinkron berjalan, jadi simpan input WIP / Plan / SOFT tidak lagi menunggu sinkron yang bisa berjalan 1 sampai 4 menit. */
+function bgLock_(name, waitMs, maxAgeMs) {
+  const l = LockService.getScriptLock();
+  try { l.waitLock(waitMs); } catch (e) { return false; }
+  try {
+    const props = PropertiesService.getScriptProperties(), k = 'bg_' + name, t = parseInt(props.getProperty(k) || '0', 10);
+    if (t && Date.now() - t < maxAgeMs) return false;   // masih berjalan (tanda lebih tua dari maxAgeMs dianggap basi, mis. skrip terhenti)
+    props.setProperty(k, String(Date.now()));
+    return true;
+  } finally { try { l.releaseLock(); } catch (e2) { /* abaikan */ } }
+}
+function bgUnlock_(name) { try { PropertiesService.getScriptProperties().deleteProperty('bg_' + name); } catch (e) { /* abaikan */ } }
 
 // ================= 2. Daftar KIKC untuk dropdown =================
 function getKikcData() {
@@ -3171,13 +3184,13 @@ function kimiaLotMap_() {
 function hitungBooking(mode, semua) {
   needAdmin_(mode);
   if (typeof rspSyncBooking !== 'function') throw new Error('File resep.gs belum ada di project Apps Script ini.');
-  const lock = lock_();
+  if (!bgLock_('rsp', 15000, 330000)) throw new Error('Server sedang sibuk melayani pengguna lain. Coba lagi beberapa detik lagi.');
   let res = null;
   try {
     if (semua === true || semua === 'true') { rspSyncAll(); res = { semua: true }; }
     else { if (typeof rspSyncWodmeta === 'function') rspSyncWodmeta(); res = rspSyncBooking() || {}; }   // C.dbb (kecil) disegarkan dulu agar Booking memakai lot Confirmed terbaru
   } finally {
-    unlock_(lock);
+    bgUnlock_('rsp');
   }
   Object.keys(KIMIA_SHEETS).forEach(function (k) { try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kim_' + k + '_n'); } catch (e) { /* abaikan */ } });
   try { CacheService.getScriptCache().remove(LIST_PREFIX + 'kimlot_n'); } catch (e) { /* abaikan */ }
@@ -3193,13 +3206,12 @@ function sinkronWodRph(force) {
     const props = PropertiesService.getScriptProperties();
     const last = parseInt(props.getProperty('wodRphSyncMs') || '0', 10);
     if (!force && Date.now() - last < 180000) return { success: true, skipped: true };
-    const lock = LockService.getScriptLock();
-    if (!lock.tryLock(force ? 20000 : 500)) return { success: true, skipped: true };
+    if (!bgLock_('rsp', force ? 20000 : 1500, 330000)) return { success: true, skipped: true };   // sinkron lain / Hitung Booking sedang berjalan
     let hasil;
     try {
       hasil = syncWodRph(force ? 270000 : 200000);
       props.setProperty('wodRphSyncMs', String(Date.now()));
-    } finally { lock.releaseLock(); }
+    } finally { bgUnlock_('rsp'); }
     try {
       const keys = ['wod', 'shl_rph', 'supmap', 'sup2'].map(function (x) { return LIST_PREFIX + x + '_n'; });
       CacheService.getScriptCache().removeAll(keys);

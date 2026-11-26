@@ -4117,7 +4117,7 @@ var Code128 = (function () {
     }).catch(function () { return null; }).then(function (r) { wrSync = false; return r; });
   }
   function softRefresh() {
-    syncWr(true);
+    syncWr(false);   // sinkron WOD/RPH paling sering tiap 3 menit (server membatasi); dipaksa tiap klik membuat refresh dan simpan input lambat
     if (state.view === 'miss') loadMiss(true);
     else if (state.view === 'mesin') { loadList('plan', true); loadList('clp', true); }
     else if (LISTS[state.view]) { loadList(state.view, true); if (state.view === 'plan') { loadList('clp', true); loadPlanDates(true); } }
@@ -4199,7 +4199,7 @@ var Code128 = (function () {
     }
     flushP = next().then(function (done) {
       flushP = null;
-      if (done === false) retryT = setTimeout(flushQueue, 8000);
+      if (done === false) retryT = setTimeout(flushQueue, 3000);
       else if (sent) toast(sent > 1 ? sent + ' data tersimpan di Sheet.' : 'Tersimpan di Sheet.', 'ok', 2200);
       if (state.view === 'data') loadData();
       if (sent) loadMiss(true);   // angka notifikasi Outstanding ikut diperbarui setelah input terkirim

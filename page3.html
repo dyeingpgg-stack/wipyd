@@ -1799,8 +1799,8 @@
     refreshing = true;
     var btn = $('#btnRefresh'); btn.disabled = true; netSpin(1);
     var adm = MODE === 'admin';
-    toast(adm ? 'Memuat ulang: sinkron semua data dan hitung Booking, mohon tunggu (bisa 1 menit lebih)...' : 'Memuat ulang data...', 'ok', 120000);
-    var pre = adm ? gs('hitungBooking', MODE, true).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }) : Promise.resolve(null);
+    toast('Memuat ulang data...', 'ok', 120000);
+    var pre = Promise.resolve(null);   // tombol Refresh hanya membaca ulang (cepat); hitung Booking / sinkron semua lewat tombolnya sendiri dan otomatis tiap 30 menit
     pre.catch(function (e) { toast('Sinkron/hitung Booking gagal: ' + errMsg(e) + '. Data tetap dibaca ulang.', 'warn', 7000); return null; })
       .then(function (r) {
         KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = KIM.mutasi = KIM.kritikal = KIM.cek = KIM.erp = null; RC = null; PD.v = null; KR.dep = null; KR.depErr = ''; ERPST.err = '';

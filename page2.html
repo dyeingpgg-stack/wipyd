@@ -2014,7 +2014,7 @@
       return r;
     }).catch(function () { return null; }).then(function (r) { wrSync = false; return r; });
   }
-  function softRefresh() { if (MODE !== 'pc') syncWr(true); if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); }
+  function softRefresh() { if (MODE !== 'pc') syncWr(false); if (view === 'delivery') loadDelivery({ force: true, reread: true }); else loadList(view, { force: true, reread: true }); }
   $('#btnRefresh').addEventListener('click', softRefresh);
   $('.brand').addEventListener('dblclick', function () {
     if (IN_GAS) return;
