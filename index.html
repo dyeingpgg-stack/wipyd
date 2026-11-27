@@ -373,8 +373,8 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   th.l-s{z-index:4}
   td.l-s{font:600 15px var(--display);color:var(--cyan)}
   th.l-s0,td.l-s0{left:0}
-  th.l-s1,td.l-s1{left:76px}
-  th.nu,td.nu{width:76px;min-width:76px;max-width:76px;white-space:nowrap;box-sizing:border-box;text-align:center}
+  th.l-s1,td.l-s1{left:56px}
+  th.nu,td.nu{width:56px;min-width:56px;max-width:56px;white-space:nowrap;box-sizing:border-box;text-align:center}
   td.l-s.nu{font:600 14px var(--body);color:var(--dim)}
   td.date{white-space:nowrap;color:var(--dim)}
   td.chkc{text-align:center}
@@ -2606,11 +2606,12 @@ var Code128 = (function () {
     var hd = S.headers;
     if (isPlan) {   // kolom virtual NO DBB (dari WODMETA menurut KIKC), hanya tampilan
       var ik0 = hd.indexOf('KIKC');
-      if (ik0 >= 0) { dbbEnsure(shown.map(function (r) { return r[ik0]; })); hd = hd.concat(['NO DBB', 'NO. URUT']); shown = shown.map(function (r, si) { var e = DBB.map[dbbKey(r[ik0])]; var rr = r.concat([e ? e[0] : '', String(idx[start + si] + 1)]); rr.dbbSt = e ? e[1] : ''; return rr; }); }
+      if (ik0 >= 0) { dbbEnsure(shown.map(function (r) { return r[ik0]; })); hd = hd.concat(['NO DBB', '#']); shown = shown.map(function (r, si) { var e = DBB.map[dbbKey(r[ik0])]; var rr = r.concat([e ? e[0] : '', String(idx[start + si] + 1)]); rr.dbbSt = e ? e[1] : ''; return rr; }); }
     }
+    if (k === 'wod') { hd = hd.concat(['#']); shown = shown.map(function (r, si) { return r.concat([String(idx[start + si] + 1)]); }); }   // kolom virtual # (nomor urut) tab WOD
     var cls = function (i, h, td) {
       var c = [];
-      if (isPlan && hd.indexOf('NO. URUT') >= 0) { if (h === 'NO. URUT') c.push('l-s', 'l-s0', 'nu'); else if (h === 'KIKC') c.push('l-s', 'l-s1', 'l-last'); }   // Plan: No. Urut dan KIKC menempel di kiri
+      if (hd.indexOf('#') >= 0) { if (h === '#') c.push('l-s', 'l-s0', 'nu'); else if (h === 'KIKC') c.push('l-s', 'l-s1', 'l-last'); }   // Plan: No. Urut dan KIKC menempel di kiri
       else if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
       if (td) { if ((d.date || /^TANGGAL$/).test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
       return c.length ? ' class="' + c.join(' ') + '"' : '';
@@ -2618,6 +2619,11 @@ var Code128 = (function () {
     // Urutan kolom tampil. Di tab Plan kolom ALOKASI dipindah ke tepat setelah MESIN (hanya tampilan; data dan tab Mesin tetap membaca menurut nama kolom)
     var order = colOrder(k, hd);
     var iCel = isPlan ? hd.indexOf('CELUP') : -1, iK = hd.indexOf('KIKC');
+    var wMulti = null, iWB = -1, iWS = -1;   // tab WOD: lot dengan lebih dari satu NO DBB -> NO DBB dan STATUS BON diberi warna (hijau Confirmed, merah Canceled)
+    if (k === 'wod') {
+      iWB = hd.indexOf('NO DBB'); iWS = hd.indexOf('STATUS BON');
+      if (iWB >= 0 && iK >= 0) { wMulti = {}; S.rows.forEach(function (r) { var kk = dbbKey(r[iK]), b = String(r[iWB] || '').trim(); if (kk && b) (wMulti[kk] = wMulti[kk] || {})[b] = 1; }); }
+    }
     var stCols = isPlan && !psearch && iK >= 0;   // kolom virtual SISA ORDER dan PENDING (centang) hanya di tab Plan per tanggal
     var delCol = stCols && isAdmin() && planEditable();   // kolom AKSI (tombol Delete) hanya untuk Admin pada Plan hari ini / ke depan
     $('#h' + d.id).innerHTML = order.map(function (c, p) { return '<th' + cls(p, hd[c], false) + '>' + esc(hd[c]) + '</th>'; }).join('') +
@@ -2633,6 +2639,10 @@ var Code128 = (function () {
         var j = order[p], cell = r[j] === undefined || r[j] === null ? '' : r[j];
         if (j === alokJ) tr += '<td>' + alokSelect(cell, idx[start + i]) + '</td>';
         else if (sisa && j === iCel) { var sf = !psearch && m.sisaFrom && m.sisaFrom[String(r[iK] || '').replace(/\s+/g, ' ').trim().toUpperCase()]; tr += '<td' + cls(p, hd[j], true) + '><span class="tag-sisa"' + (sf ? ' title="Sisa dari Plan ' + esc(fmtDMY(sf)) + '"' : '') + '>Sisa Order</span></td>'; }
+        else if (wMulti && (j === iWB || j === iWS) && cell && Object.keys(wMulti[dbbKey(r[iK])] || {}).length > 1) {
+          var wst = String(r[iWS] || ''), wc = /^confirm/i.test(wst) ? 'var(--lime)' : /^cancel/i.test(wst) ? 'var(--rose)' : '';
+          tr += '<td' + cls(p, hd[j], true) + '>' + (wc ? '<span style="color:' + wc + ';font-weight:700">' + esc(cell) + '</span>' : esc(cell)) + '</td>';
+        }
         else if (isPlan && hd[j] === 'NO DBB' && cell && r.dbbSt && String(cell).split(', ').length > 1) {   // NO DBB ganda: hijau = bon Confirmed, merah = bon Canceled
           var bl = String(cell).split(', '), sl = String(r.dbbSt).split(', ');
           tr += '<td' + cls(p, hd[j], true) + '>' + bl.map(function (b, bi) { var st = sl[bi] || '', c = /^confirm/i.test(st) ? 'var(--lime)' : /^cancel/i.test(st) ? 'var(--rose)' : ''; return '<span' + (c ? ' style="color:' + c + ';font-weight:700"' : '') + (st ? ' title="' + esc(st) + '"' : '') + '>' + esc(b) + '</span>'; }).join(', ') + '</td>';
@@ -2732,8 +2742,8 @@ var Code128 = (function () {
     if (k === 'plan') {
       var ia = hd.indexOf('ALOKASI'), im = hd.indexOf('MESIN');
       if (ia >= 0 && im >= 0 && ia !== im + 1) { order.splice(order.indexOf(ia), 1); order.splice(order.indexOf(im) + 1, 0, ia); }
-      var inu = hd.indexOf('NO. URUT'); if (inu >= 0) { order.splice(order.indexOf(inu), 1); order.unshift(inu); }   // kolom virtual No. Urut paling kiri
     }
+    var inu = hd.indexOf('#'); if (inu >= 0) { order.splice(order.indexOf(inu), 1); order.unshift(inu); }   // kolom virtual # (nomor urut) paling kiri
     return order;
   }
   // Cadangan CSV tab Plan: baris yang sedang tampil (ikut pencarian), urutan kolom sama dengan layar, pemisah titik koma agar rapi di Excel Indonesia
@@ -2798,7 +2808,7 @@ var Code128 = (function () {
     toast('Menyiapkan file Excel...', 'ok', 8000);
     Promise.all([loadExcelJs(), dbbFetchAll(picked.map(function (o) { return o.r[iK]; }))]).then(function (a) {
       var EJ = a[0], wb = new EJ.Workbook(), ws = wb.addWorksheet('Plan');
-      var cols = [['No. Urut', 9], ['KIKC', 16], ['No Benang', 20], ['Supplier', 14], ['Warna', 14], ['Mesin', 9], ['Kg', 9], ['Cone', 9], ['Keterangan', 34], ['Celup', 13], ['No DBB', 30]];
+      var cols = [['#', 6], ['KIKC', 16], ['No Benang', 20], ['Supplier', 14], ['Warna', 14], ['Mesin', 9], ['Kg', 9], ['Cone', 9], ['Keterangan', 34], ['Celup', 13], ['No DBB', 30]];
       ws.columns = cols.map(function (c) { return { header: c[0], width: c[1] }; });
       var hr = ws.getRow(1); hr.font = { bold: true, color: { argb: 'FFFFFFFF' } }; hr.alignment = { vertical: 'middle', horizontal: 'center' };
       hr.eachCell(function (c) { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }; });
@@ -4864,7 +4874,7 @@ var Code128 = (function () {
 
     // kolom tabel
     var cols = [
-      { k: 'no', w: 24, a: 'c', t: ['NO'] }, { k: 'tgl', w: 42, a: 'l', t: ['TGL', 'CELUP'] }, { k: 'kikc', w: 66, a: 'l', t: ['KIKC'] }, { k: 'nb', w: 74, a: 'l', t: ['NO BENANG'] },
+      { k: 'no', w: 24, a: 'c', t: ['#'] }, { k: 'tgl', w: 42, a: 'l', t: ['TGL', 'CELUP'] }, { k: 'kikc', w: 66, a: 'l', t: ['KIKC'] }, { k: 'nb', w: 74, a: 'l', t: ['NO BENANG'] },
       { k: 'warna', w: 56, a: 'l', t: ['WARNA'] }, { k: 'kg', w: 48, a: 'r', t: ['KG'] }, { k: 'cone', w: 34, a: 'r', t: ['CONE'] }, { k: 'ket', w: 176, a: 'l', t: ['KETERANGAN'] },
       { k: 'shift', w: 46, a: 'c', t: ['SHIFT', 'CELUP'] }, { k: 'grup', w: 30, a: 'c', t: ['GROUP'] }, { k: 'pos', w: 62, a: 'c', t: ['POSISI'] }, { k: 'qc', w: 46, a: 'c', t: ['UJI QC'] }, { k: 'cat', w: 0, a: 'l', t: ['CATATAN'] }
     ];
@@ -5235,7 +5245,7 @@ var Code128 = (function () {
   function dailyBuild(Doc, rep, extra) {
     var W = 1200, M = 30, IW = W - 2 * M, MGAP = 4, GH = 24, CHH = 26, GGAP = 14;
     var colDef = [
-      { k: 'mc', a: 'c', t: ['MC'] }, { k: 'no', a: 'c', t: ['NO'] }, { k: 'warna', a: 'l', t: ['WARNA'] },
+      { k: 'mc', a: 'c', t: ['MC'] }, { k: 'no', a: 'c', t: ['#'] }, { k: 'warna', a: 'l', t: ['WARNA'] },
       { k: 'kikc', a: 'l', t: ['KIKC'] }, { k: 'nb', a: 'l', t: ['NO. BENANG'] }, { k: 'sup', a: 'c', t: ['SUPPLIER'] },
       { k: 'qty', a: 'r', t: ['QTY', '(KG)'] }, { k: 'cone', a: 'r', t: ['CONE /', 'STR'] }, { k: 'std', a: 'r', t: ['STD'] },
       { k: 'ikt', a: 'c', t: ['IKT'] }, { k: 'kon', a: 'l', t: ['KONSUMSI'] }, { k: 'sh', a: 'c', t: ['SHIFT', 'CELUP'] },
@@ -5506,7 +5516,7 @@ var Code128 = (function () {
     var nx = M, nw = 560;
     font(true, 6.8, C.dim); spaced('NOTES', nx, NOTE_Y - 5, 2);
     hex('#0b2412', 'f'); doc.rect(nx, NOTE_Y, nw, NHH, 'F');
-    var nc = [['NO.', 44, 'c'], ['NO. BENANG', 250, 'l'], ['STD', 100, 'r'], ['QTY (KG)', 166, 'r']], ncx = [nx], nhs = Math.min(9, NF - 0.6);
+    var nc = [['#', 44, 'c'], ['NO. BENANG', 250, 'l'], ['STD', 100, 'r'], ['QTY (KG)', 166, 'r']], ncx = [nx], nhs = Math.min(9, NF - 0.6);
     nc.forEach(function (c, i) { ncx.push(ncx[i] + c[1]); });
     nc.forEach(function (c, i) {
       font(true, nhs, '#d9ffc0');
