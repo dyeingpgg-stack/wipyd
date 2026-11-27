@@ -892,25 +892,6 @@
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
     </section>
-    <section class="view list" id="viewFin" aria-label="Lot Fined">
-      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="input" id="qFin" type="search" placeholder="Cari lot Finished" autocomplete="off" aria-label="Cari lot Finished"></div>
-      <div class="scrow c4 nogk" id="scFin">
-        <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsFin">0</b><span id="scItemFin"></span></div>
-        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonFin">0</b></div>
-        <div class="sc gk"><small>JUMLAH GRAM</small><b id="scGramFin">0</b></div>
-        <div class="sc gk"><small>JUMLAH KG</small><b id="scKgFin">0</b></div>
-      </div>
-      <div class="lnote" id="nFin"></div><div class="lstate" id="sFin"></div>
-      <div class="table-wrap hidden" id="wFin"><table><thead><tr id="hFin"></tr></thead><tbody id="bFin"></tbody></table></div>
-      <div class="pager" id="pFin" hidden>
-        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
-        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-        <div class="pg-info" id="piFin" aria-live="polite"></div>
-        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
-        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
-      </div>
-    </section>
     <section class="view list" id="viewKritikal" aria-label="Kritikal">
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="input" id="qKritikal" type="search" placeholder="Cari nama kimia, kode, atau status" autocomplete="off" aria-label="Cari kritikal"></div>
@@ -1141,7 +1122,7 @@
     location.href = 'page2.html' + (q.length ? '?' + q.join('&') : '');
   }
   var TABS = [];
-  var PG = { resep: 1, conf: 1, open: 1, cek: 1, fin: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1, fin: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1, cek: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
   var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null, cek: null, erp: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
@@ -1149,8 +1130,7 @@
   var LABEL = {
     resep: ['KIKC', 'NO DBB', 'KODE RESEP', 'KODE BRG', 'NAMA KIMIA', 'GRAM'],
     conf: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD'],
-    open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD'],
-    fin: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
+    open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
   };
   function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
   var NET = 0;
@@ -1486,8 +1466,8 @@
       rows.forEach(function (r) { if (kc(r[0])) cl[kc(r[0])] = 1; if (kc(r[3])) cb[kc(r[3])] = 1; });
       $('#scLotsCek').textContent = fmtId(Object.keys(cl).length, 0); $('#scBonCek').textContent = fmtId(Object.keys(cb).length, 0);
     }
-    if (k === 'conf' || k === 'open' || k === 'fin') {
-      cols = [0, 4, 5, 1, 2, 3].concat(k === 'fin' ? [6] : info ? [6] : []); virt = true;
+    if (k === 'conf' || k === 'open') {
+      cols = [0, 4, 5, 1, 2, 3].concat(info ? [6] : []); virt = true;
       var lotSet = {}, bonSet = {};
       rows.forEach(function (r) { if (kc(r[0])) lotSet[kc(r[0])] = 1; if (kc(r[2])) bonSet[kc(r[2])] = 1; });
       $('#sc' + id).classList.toggle('nogk', !info);
@@ -1732,7 +1712,7 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['fin', 'Fin'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal'], ['cek', 'Cek']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal'], ['cek', 'Cek']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
       PG[p[0]] = 1;
@@ -1780,7 +1760,7 @@
   document.addEventListener('click', function (e) {
     var pb = e.target.closest ? e.target.closest('.pager [data-pg]') : null;
     if (pb && !pb.disabled) {
-      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewFin' ? 'fin' : sid === 'viewCek' ? 'cek' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'fin' ? 'Fin' : pk === 'cek' ? 'Cek' : 'Conf', g = pb.getAttribute('data-pg');
+      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewCek' ? 'cek' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'cek' ? 'Cek' : 'Conf', g = pb.getAttribute('data-pg');
       PG[pk] = g === 'first' ? 1 : g === 'prev' ? PG[pk] - 1 : g === 'next' ? PG[pk] + 1 : 999999;
       showTable(pk, pid, $('#q' + pid).value);
       var wr = $('#w' + pid); if (wr) wr.scrollTop = 0;
@@ -1791,11 +1771,11 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', fin: 'Fin', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', real: 'Real', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', real: 'Real', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
   /* Tab bawah = 4 kelompok; tiap kelompok punya sub tab (Stok: Booking/Rencana/Kritikal, Lot & Bon: Confirmed/Opened/Multi-Bon, Resep: Per Item/Per Lot) */
   var GROUPS = {
     stok: { last: 'booking', subs: [['booking', 'Booking'], ['rencana', 'Rencana'], ['real', 'Realisasi'], ['kritikal', 'Kritikal']] },
-    lot: { last: 'conf', subs: [['conf', 'Confirmed'], ['open', 'Opened'], ['fin', 'Finish'], ['cek', 'Multi-Bon']] },
+    lot: { last: 'conf', subs: [['conf', 'Confirmed'], ['open', 'Opened'], ['cek', 'Multi-Bon']] },
     resep: { last: 'resep', subs: [['resep', 'Per Item'], ['lot', 'Per Lot']] },
     mutasi: { last: 'mutasi', subs: [['mutasi', 'Mutasi']] }
   };

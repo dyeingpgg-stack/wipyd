@@ -373,9 +373,6 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
   th.l-s{z-index:4}
   td.l-s{font:600 15px var(--display);color:var(--cyan)}
   th.l-s0,td.l-s0{left:0}
-  th.l-s1,td.l-s1{left:76px}
-  th.nu,td.nu{width:76px;min-width:76px;max-width:76px;white-space:nowrap;box-sizing:border-box;text-align:center}
-  td.l-s.nu{font:600 14px var(--body);color:var(--dim)}
   td.date{white-space:nowrap;color:var(--dim)}
   td.chkc{text-align:center}
   .btn-sm.danger{color:var(--rose-2);border-color:rgba(var(--r-rgb),.55)}.btn-sm.danger:hover:not(:disabled){border-color:var(--rose);box-shadow:0 0 12px rgba(var(--r-rgb),.35)}
@@ -1073,7 +1070,7 @@ if (document.documentElement.hasAttribute('data-lock')) document.querySelector('
           <button type="button" class="btn-sm admin-only" id="btnPlanCreate" aria-expanded="false" aria-controls="planCreate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Create</span></button>
           <button type="button" class="btn-sm" id="btnResumePlan" aria-expanded="false" aria-controls="resumePlan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg><span>Resume</span></button>
           <button type="button" class="btn-sm admin-only" id="rsPlan" aria-label="Reset semua alokasi mesin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg><span>Reset Alokasi</span></button>
-          <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai Excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh Excel</button>
+          <button type="button" class="btn-sm" id="dlPlan" aria-label="Unduh daftar Plan sebagai CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Unduh CSV</button>
         </div>
       </div>
       <div class="resume" id="resumePlan" hidden></div>
@@ -2606,12 +2603,11 @@ var Code128 = (function () {
     var hd = S.headers;
     if (isPlan) {   // kolom virtual NO DBB (dari WODMETA menurut KIKC), hanya tampilan
       var ik0 = hd.indexOf('KIKC');
-      if (ik0 >= 0) { dbbEnsure(shown.map(function (r) { return r[ik0]; })); hd = hd.concat(['NO DBB', 'NO. URUT']); shown = shown.map(function (r, si) { var e = DBB.map[dbbKey(r[ik0])]; var rr = r.concat([e ? e[0] : '', String(idx[start + si] + 1)]); rr.dbbSt = e ? e[1] : ''; return rr; }); }
+      if (ik0 >= 0) { dbbEnsure(shown.map(function (r) { return r[ik0]; })); hd = hd.concat(['NO DBB']); shown = shown.map(function (r) { var e = DBB.map[dbbKey(r[ik0])]; var rr = r.concat([e ? e[0] : '']); rr.dbbSt = e ? e[1] : ''; return rr; }); }
     }
     var cls = function (i, h, td) {
       var c = [];
-      if (isPlan && hd.indexOf('NO. URUT') >= 0) { if (h === 'NO. URUT') c.push('l-s', 'l-s0', 'nu'); else if (h === 'KIKC') c.push('l-s', 'l-s1', 'l-last'); }   // Plan: No. Urut dan KIKC menempel di kiri
-      else if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
+      if (i === d.key) c.push('l-s', 'l-s0', 'l-last');   // KIKC menempel di kiri saat tabel digeser
       if (td) { if ((d.date || /^TANGGAL$/).test(h)) c.push('date'); if (d.wrap.test(h)) c.push('wrap'); if (d.num.test(h)) c.push('num'); }
       return c.length ? ' class="' + c.join(' ') + '"' : '';
     };
@@ -2732,12 +2728,11 @@ var Code128 = (function () {
     if (k === 'plan') {
       var ia = hd.indexOf('ALOKASI'), im = hd.indexOf('MESIN');
       if (ia >= 0 && im >= 0 && ia !== im + 1) { order.splice(order.indexOf(ia), 1); order.splice(order.indexOf(im) + 1, 0, ia); }
-      var inu = hd.indexOf('NO. URUT'); if (inu >= 0) { order.splice(order.indexOf(inu), 1); order.unshift(inu); }   // kolom virtual No. Urut paling kiri
     }
     return order;
   }
-  // Cadangan CSV tab Plan: baris yang sedang tampil (ikut pencarian), urutan kolom sama dengan layar, pemisah titik koma agar rapi di Excel Indonesia
-  function exportPlanCsv() {   // cadangan bila pustaka Excel tidak bisa dimuat (tanpa warna)
+  // Unduh CSV tab Plan: baris yang sedang tampil (ikut pencarian), urutan kolom sama dengan layar, pemisah titik koma agar rapi di Excel Indonesia
+  function exportPlanCsv() {
     var hist = planHistOn(), m = planView(), hd = m.headers;
     if (!hd.length || !m.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
     var q = nq(m.query.trim());
@@ -2764,82 +2759,7 @@ var Code128 = (function () {
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     toast(rows.length + ' baris diunduh: ' + name, 'ok');
   }
-  /* Unduh Excel tab Plan (.xlsx): kolom No. Urut, KIKC, No Benang, Supplier, Warna, Mesin, Kg, Cone, Keterangan, Celup, No DBB.
-     No DBB ganda diberi warna font menurut status bon: hijau = Confirmed, merah = Canceled (CSV tidak bisa menyimpan warna, jadi memakai Excel). */
-  var EXCELJS_URL = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
-  var exceljsLoading = null;
-  function loadExcelJs() {
-    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
-    if (exceljsLoading) return exceljsLoading;
-    exceljsLoading = new Promise(function (resolve, reject) {
-      var sc = document.createElement('script');
-      sc.src = EXCELJS_URL; sc.async = true;
-      sc.onload = function () { if (window.ExcelJS) resolve(window.ExcelJS); else { exceljsLoading = null; reject(new Error('Pustaka Excel tidak lengkap.')); } };
-      sc.onerror = function () { exceljsLoading = null; reject(new Error('Pustaka Excel tidak bisa dimuat. Cek internet lalu coba lagi.')); };
-      document.head.appendChild(sc);
-    });
-    return exceljsLoading;
-  }
-  function dbbFetchAll(kikcs) {   // lengkapi peta NO DBB untuk semua KIKC yang diunduh (layar hanya memuat halaman yang tampil)
-    var need = [], seen = {};
-    kikcs.forEach(function (x) { var n = dbbKey(x); if (n && !DBB.map[n] && !seen[n]) { seen[n] = 1; need.push(String(x).trim()); } });
-    if (!need.length) return Promise.resolve();
-    return gs('getWodBon', need).then(function (r) { if (r && r.map) Object.keys(r.map).forEach(function (n) { DBB.map[n] = r.map[n]; }); }).catch(function () { /* tanpa status: NO DBB tetap tampil, tanpa warna */ });
-  }
-  function exportPlanXlsx() {
-    var hist = planHistOn(), m = planView(), hd = m.headers;
-    if (!hd.length || !m.rows.length) { toast('Belum ada data Plan untuk diunduh.', 'warn'); return; }
-    var q = nq(m.query.trim());
-    var picked = [];
-    m.rows.forEach(function (r, i) { if (!q || nq(r.join(' ')).indexOf(q) >= 0) picked.push({ r: r, no: i + 1 }); });   // No. Urut = urutan di Plan (sama dengan layar), bukan urutan hasil pencarian
-    if (!picked.length) { toast('Tidak ada baris yang cocok dengan pencarian.', 'warn'); return; }
-    var ix = function (n) { return hd.indexOf(n); }, iK = ix('KIKC');
-    var btn = $('#dlPlan'); btn.disabled = true;
-    toast('Menyiapkan file Excel...', 'ok', 8000);
-    Promise.all([loadExcelJs(), dbbFetchAll(picked.map(function (o) { return o.r[iK]; }))]).then(function (a) {
-      var EJ = a[0], wb = new EJ.Workbook(), ws = wb.addWorksheet('Plan');
-      var cols = [['No. Urut', 9], ['KIKC', 16], ['No Benang', 20], ['Supplier', 14], ['Warna', 14], ['Mesin', 9], ['Kg', 9], ['Cone', 9], ['Keterangan', 34], ['Celup', 13], ['No DBB', 30]];
-      ws.columns = cols.map(function (c) { return { header: c[0], width: c[1] }; });
-      var hr = ws.getRow(1); hr.font = { bold: true, color: { argb: 'FFFFFFFF' } }; hr.alignment = { vertical: 'middle', horizontal: 'center' };
-      hr.eachCell(function (c) { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }; });
-      ws.views = [{ state: 'frozen', ySplit: 1 }];
-      var GREEN = 'FF0C7D44', RED = 'FFC0173C';
-      var num = function (v) { var n = parseNum(v); return String(v === undefined || v === null ? '' : v).trim() === '' || isNaN(n) ? String(v === undefined || v === null ? '' : v).trim() : n; };
-      var val = function (r, n) { var j = ix(n); return j >= 0 && r[j] !== undefined && r[j] !== null ? String(r[j]).trim() : ''; };
-      picked.forEach(function (o) {
-        var r = o.r, e = DBB.map[dbbKey(r[iK])], bons = e && e[0] ? String(e[0]).split(', ') : [], sts = e && e[1] ? String(e[1]).split(', ') : [];
-        var dbb = bons.join(', ');
-        var row = ws.addRow([o.no, val(r, 'KIKC'), val(r, 'NO BENANG'), val(r, 'SUPPLIER'), val(r, 'WARNA'), val(r, 'MESIN'), num(val(r, 'KG')), num(val(r, 'CONE')), val(r, 'KETERANGAN'), val(r, 'CELUP'), dbb]);
-        if (bons.length > 1) {
-          var rt = [];
-          bons.forEach(function (b, bi) {
-            var st = sts[bi] || '', col = /^confirm/i.test(st) ? GREEN : /^cancel/i.test(st) ? RED : '';
-            rt.push({ text: b, font: col ? { bold: true, color: { argb: col } } : {} });
-            if (bi < bons.length - 1) rt.push({ text: ', ' });
-          });
-          row.getCell(11).value = { richText: rt };
-        }
-        row.getCell(1).alignment = { horizontal: 'center' };
-        row.getCell(9).alignment = { wrapText: true, vertical: 'top' };
-        row.getCell(11).alignment = { wrapText: true, vertical: 'top' };
-      });
-      ws.getColumn(7).numFmt = '#,##0.##'; ws.getColumn(8).numFmt = '#,##0';
-      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
-      var name = 'Plan_' + (m.date || planCur()).replace(/-/g, '') + (hist ? '_riwayat' : '') + '.xlsx';
-      return wb.xlsx.writeBuffer().then(function (buf) {
-        var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var l = document.createElement('a');
-        l.href = URL.createObjectURL(blob); l.download = name; l.style.display = 'none';
-        document.body.appendChild(l); l.click();
-        setTimeout(function () { URL.revokeObjectURL(l.href); l.remove(); }, 1500);
-        toast(picked.length + ' baris diunduh: ' + name, 'ok');
-      });
-    }).catch(function (e) {
-      toast('Excel gagal dibuat (' + (e && e.message || e) + '). Mengunduh CSV tanpa warna.', 'warn', 6000);
-      exportPlanCsv();
-    }).then(function () { btn.disabled = false; });
-  }
-  $('#dlPlan').addEventListener('click', exportPlanXlsx);
+  $('#dlPlan').addEventListener('click', exportPlanCsv);
   // Scorecard tab Plan: Total Lot (KIKC berbeda), Total Kg, Total Cone dari baris yang sedang tampil (ikut pencarian)
   function planStats(rows, hd) {
     var ids = ['#pLot', '#pKg', '#pCone', '#pReal', '#pSisa'];
@@ -4584,23 +4504,13 @@ var Code128 = (function () {
     if (!rows.length) { setTableState('<div class="state">Tidak ada data yang cocok dengan pencarian atau filter ini.</div>'); return; }
 
     /* Tgl Pack dari sheet DETIL (METAPACK): tanggal import terbaru; ada data DETIL = sudah terpacking/terkirim. Lot yang baru sebagian terpack diberi tanda Sebagian + Kg terpack, jumlah karung (baris DETIL), dan jumlah tanggal import */
-    /* Status packing menurut kg DAN cone (DETIL): 'part' = sebagian, 'full' = penuh (kg atau cone terpacking >= lot), 'over' = melebihi (> 100,5%) */
-    var packSt = function (r) {
-      if (!r.tglPack) return '';
-      var pk = parseNum(r.packKg), kg = parseNum(r.kg), pc = parseNum(r.packCone), cn = parseNum(r.cone);
-      var rk = pk > 0 && kg > 0 ? pk / kg : NaN, rc = pc > 0 && cn > 0 ? pc / cn : NaN;
-      if (isNaN(rk) && isNaN(rc)) return 'full';   // ada data DETIL tetapi jumlahnya tidak bisa dibandingkan: dianggap sudah pack
-      var mx = Math.max(isNaN(rk) ? 0 : rk, isNaN(rc) ? 0 : rc);
-      return mx > 1.005 ? 'over' : mx >= 0.995 ? 'full' : 'part';
-    };
-    var packPart = function (r) { return packSt(r) === 'part'; };
+    var packPart = function (r) { var pk = parseNum(r.packKg), kg = parseNum(r.kg); return !!r.tglPack && pk > 0 && kg > 0 && pk < kg * 0.995; };
     var packCell = function (r) {
       if (!r.tglPack) return '';
-      var pk = parseNum(r.packKg), kg = parseNum(r.kg), pc = parseNum(r.packCone), cn = parseNum(r.cone), n = Number(r.packN) || 0, t = Number(r.packTgl) || 0, st = packSt(r);
-      var tip = 'Sudah ada Tanggal Pack' + (pk > 0 || pc > 0 ? ': terpack ' + (pk > 0 ? fmtNum(pk) + ' kg' + (kg > 0 ? ' dari ' + fmtNum(kg) : '') : '') + (pk > 0 && pc > 0 ? ' / ' : '') + (pc > 0 ? fmtNum(pc) + ' cone' + (cn > 0 ? ' dari ' + fmtNum(cn) : '') : '') + (n ? ', ' + n + ' karung' : '') + (t ? ', ' + t + ' tanggal pack' : '') : '');
-      var tag = st === 'part' ? '<span class="tag part" title="' + esc(tip) + '">Sebagian</span>' : st === 'over' ? '<span class="tag over" title="' + esc(tip) + '">Lebih</span>' : (pk > 0 || pc > 0) ? '<span class="tag full" title="' + esc(tip) + '">Full</span>' : '';
-      return '<span class="tag fin" title="' + esc(tip) + '">' + esc(r.tglPack) + '</span>' + tag +
-        (pk > 0 || pc > 0 ? '<span class="packsub">' + (pk > 0 ? fmtNum(pk) + ' kg' : '') + (pc > 0 ? (pk > 0 ? ' \u00b7 ' : '') + fmtNum(pc) + ' cone' : '') + (n ? ' \u00b7 ' + n + ' karung' : '') + (t > 1 ? ' \u00b7 ' + t + ' tgl' : '') + '</span>' : '');
+      var pk = parseNum(r.packKg), kg = parseNum(r.kg), n = Number(r.packN) || 0, t = Number(r.packTgl) || 0, part = packPart(r);
+      var tip = 'Sudah ada Tanggal Pack' + (pk > 0 ? ': terpack ' + fmtNum(pk) + ' kg' + (kg > 0 ? ' dari ' + fmtNum(kg) + ' kg' : '') + (n ? ', ' + n + ' karung' : '') + (t ? ', ' + t + ' tanggal import' : '') : '');
+      return '<span class="tag fin" title="' + esc(tip) + '">' + esc(r.tglPack) + '</span>' + (part ? '<span class="tag part" title="' + esc(tip) + '">Sebagian</span>' : '') +
+        (pk > 0 ? '<span class="packsub">' + fmtNum(pk) + ' kg' + (n ? ' \u00b7 ' + n + ' karung' : '') + (t > 1 ? ' \u00b7 ' + t + ' tgl' : '') + '</span>' : '');
     };
     $('#tbody').innerHTML = rows.map(function (r) {
       var qc = qcClass(r.qc);
