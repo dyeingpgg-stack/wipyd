@@ -737,6 +737,7 @@
   .lotcard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px;margin-bottom:12px;border:1px solid var(--edge-strong);border-radius:16px;background:var(--surface)}
   .lotcard .lc small{display:block;color:var(--dim);font-size:12px;margin-bottom:2px}.lotcard .lc span{font-weight:700;font-size:16px}
   .dim{color:var(--dim)}
+.erpc{cursor:pointer;text-decoration:underline dotted}
 </style>
 <style id="grpnavcss">
   .grpnav{display:flex;gap:4px;padding:3px;border:1px solid var(--edge);border-radius:14px;background:rgba(var(--w-rgb),.04);min-width:0;flex:0 1 auto}
@@ -888,6 +889,25 @@
         <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
         <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="pg-info" id="piOpen" aria-live="polite"></div>
+        <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+      </div>
+    </section>
+    <section class="view list" id="viewFin" aria-label="Lot Fined">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="qFin" type="search" placeholder="Cari lot Finished" autocomplete="off" aria-label="Cari lot Finished"></div>
+      <div class="scrow c4 nogk" id="scFin">
+        <div class="sc"><small>JUMLAH LOT (KIKC)</small><b id="scLotsFin">0</b><span id="scItemFin"></span></div>
+        <div class="sc"><small>JUMLAH BON (NO DBB)</small><b id="scBonFin">0</b></div>
+        <div class="sc gk"><small>JUMLAH GRAM</small><b id="scGramFin">0</b></div>
+        <div class="sc gk"><small>JUMLAH KG</small><b id="scKgFin">0</b></div>
+      </div>
+      <div class="lnote" id="nFin"></div><div class="lstate" id="sFin"></div>
+      <div class="table-wrap hidden" id="wFin"><table><thead><tr id="hFin"></tr></thead><tbody id="bFin"></tbody></table></div>
+      <div class="pager" id="pFin" hidden>
+        <button type="button" class="pg-btn" data-pg="first" aria-label="Halaman pertama"><svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+        <button type="button" class="pg-btn" data-pg="prev" aria-label="Halaman sebelumnya"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="pg-info" id="piFin" aria-live="polite"></div>
         <button type="button" class="pg-btn" data-pg="next" aria-label="Halaman berikutnya"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
         <button type="button" class="pg-btn" data-pg="last" aria-label="Halaman terakhir"><svg viewBox="0 0 24 24"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
       </div>
@@ -1122,7 +1142,7 @@
     location.href = 'page2.html' + (q.length ? '?' + q.join('&') : '');
   }
   var TABS = [];
-  var PG = { resep: 1, conf: 1, open: 1, cek: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
+  var PG = { resep: 1, conf: 1, open: 1, cek: 1, fin: 1 }, PAGED = { resep: 1, conf: 1, open: 1, cek: 1, fin: 1 }, mqW = window.matchMedia ? window.matchMedia('(min-width: 900px)') : null;
   function pageSize() { return mqW && mqW.matches ? 100 : 50; }
   var KIM = { resep: null, conf: null, open: null, kamus: null, booking: null, mutasi: null, kritikal: null, cek: null, erp: null }, KQ = { lot: '' }, LOTSEL = '';
   var MAXROWS = 300;
@@ -1130,7 +1150,8 @@
   var LABEL = {
     resep: ['KIKC', 'NO DBB', 'KODE RESEP', 'KODE BRG', 'NAMA KIMIA', 'GRAM'],
     conf: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD'],
-    open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
+    open: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD'],
+    fin: ['KIKC', 'RECIPE', 'NO DBB', 'STATUS', 'TANGGAL WOD']
   };
   function relabel(k, h, i) { return LABEL[k] && LABEL[k][i] ? LABEL[k][i] : h; }
   var NET = 0;
@@ -1285,6 +1306,29 @@
     }
     return null;
   }
+  /* Klik sel Booking ERP: tampilkan baris StockBalance yang dijumlahkan, supaya angkanya bisa dicocokkan dengan sumbernya */
+  function erpDetail(n) {
+    var E = KIM.erp; if (!E || !E.idx) return;
+    var c = codeMap()[n] || {}, ks = [], used = '';
+    [c.e, c.y, c.k].forEach(function (x) { String(x || '').split(',').forEach(function (z) { if (key(z)) ks.push(key(z)); }); });
+    ks.push(key(n));
+    var tried = ks.map(function (k) { var has = Object.prototype.hasOwnProperty.call(E.idx, k); if (has && !used) used = k; return k + (has ? ' = ' + fmtId(E.idx[k], 3) : ' (tidak ada)'); });
+    var det = (E.det || []).filter(function (r) { for (var j = 1; j <= 5; j++) { if (key(r[j]) === used) return true; } return false; });
+    var tot = det.reduce(function (t, r) { return t + (Number(r[6]) || 0); }, 0);
+    var old = document.getElementById('erpDlg'); if (old) old.remove();
+    var d = document.createElement('div'); d.id = 'erpDlg';
+    d.style.cssText = 'position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    d.innerHTML = '<div style="background:var(--surface,#fff);color:var(--text,#111);border:1px solid var(--edge-strong,#888);border-radius:14px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:16px">' +
+      '<b style="font-size:16px">Booking ERP: ' + esc(n) + '</b>' +
+      '<div style="margin:8px 0;font-size:13px;color:var(--dim)">Sheet ' + esc(E.sheet || '') + ', judul kolom F: "' + esc(E.hdr || '') + '" (satuan ' + esc(E.unit) + '). Kunci yang dicoba: ' + esc(tried.join(' · ')) + '</div>' +
+      (used ? '<div style="margin:6px 0">Kunci dipakai: <b>' + esc(used) + '</b> &rarr; ' + det.length + ' baris dijumlahkan = <b>' + fmtId(tot, 3) + '</b> ' + esc(E.unit) + (E.unit === 'g' ? ' (' + fmtId(tot / 1000, 3) + ' kg)' : '') + '</div>' : '<div style="margin:6px 0">Tidak ada baris yang cocok di StockBalance.</div>') +
+      (det.length ? '<div style="overflow:auto"><table style="width:100%;font-size:13px"><thead><tr><th>Baris</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th style="text-align:right">F (Booking)</th></tr></thead><tbody>' +
+        det.map(function (r) { return '<tr>' + r.map(function (x, j) { return '<td' + (j === 6 ? ' style="text-align:right"' : '') + '>' + esc(j === 6 ? fmtId(x, 3) : x) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' : '') +
+      '<div style="margin-top:12px;text-align:right"><button type="button" class="btn-sm" id="erpClose">Tutup</button></div></div>';
+    document.body.appendChild(d);
+    d.addEventListener('click', function (e) { if (e.target === d || e.target.id === 'erpClose') d.remove(); });
+  }
+  document.addEventListener('click', function (e) { var t = e.target.closest ? e.target.closest('[data-erp]') : null; if (t) erpDetail(t.getAttribute('data-erp')); });
   function bkNum(x) { return String(Math.round(x * 1000) / 1000).replace('.', ','); }
   /* Kritikal / Booking: Rencana (kimia lot Plan yang BELUM terinput di WIP) dan Realisasi (lot Plan yang SUDAH terinput di WIP, hanya bon Confirmed).
      Realisasi memotong KG dan BOOKING di Kritikal serta Booking (gram/kg) di tab Booking. */
@@ -1391,7 +1435,8 @@
         var inner = i === 0 ? (o.tot ? esc(c) : '<span class="krname" data-krgo="booking" title="Buka di tab Booking">' + esc(c) + '</span><span class="krlot" data-krgo="conf" title="Buka di tab Lot Confirmed">Lot</span>' + (o.up ? '<span class="krup" title="Status naik sejak terakhir dibuka">&#9650; naik</span>' : '')) : (c ? esc(c) : '<span class="dim">-</span>');
         var oi = ori(i), isCut = oi >= 0 && o.r.cc && o.r.cc[oi];
         if (isCut) cls.push('kr-cut');
-        return '<td' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + (i === 0 && !o.tot ? ' data-krname="' + esc(c) + '"' : '') + (isCut ? ' title="Dipotong realisasi ' + krFmt(o.r.cut) + ' kg: kimia lot Plan yang sudah terinput di WIP"' : '') + '>' + inner + '</td>';
+        if (i === ins && !o.tot) cls.push('erpc');
+        return '<td' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + (i === 0 && !o.tot ? ' data-krname="' + esc(c) + '"' : '') + (i === ins && !o.tot ? ' data-erp="' + esc(o.nm) + '"' : '') + (isCut ? ' title="Dipotong realisasi ' + krFmt(o.r.cut) + ' kg: kimia lot Plan yang sudah terinput di WIP"' : '') + '>' + inner + '</td>';
       }).join('') + '<td class="r' + (o.saran > 0 ? ' kr-yel' : '') + '">' + (isNaN(o.saran) ? '<span class="dim">-</span>' : o.saran > 0 ? fmtId(o.saran, 2) : '0') + '</td></tr>';
     }).join('');
     var nShown = rows.length - (rows.length && rows[0].tot ? 1 : 0);
@@ -1466,8 +1511,8 @@
       rows.forEach(function (r) { if (kc(r[0])) cl[kc(r[0])] = 1; if (kc(r[3])) cb[kc(r[3])] = 1; });
       $('#scLotsCek').textContent = fmtId(Object.keys(cl).length, 0); $('#scBonCek').textContent = fmtId(Object.keys(cb).length, 0);
     }
-    if (k === 'conf' || k === 'open') {
-      cols = [0, 4, 5, 1, 2, 3].concat(info ? [6] : []); virt = true;
+    if (k === 'conf' || k === 'open' || k === 'fin') {
+      cols = [0, 4, 5, 1, 2, 3].concat(k === 'fin' ? [6] : info ? [6] : []); virt = true;
       var lotSet = {}, bonSet = {};
       rows.forEach(function (r) { if (kc(r[0])) lotSet[kc(r[0])] = 1; if (kc(r[2])) bonSet[kc(r[2])] = 1; });
       $('#sc' + id).classList.toggle('nogk', !info);
@@ -1534,7 +1579,7 @@
       }
     }
     $('#b' + id).innerHTML = rows.slice(from, to).map(function (r, n0) { var n = from + n0;
-      return '<tr>' + (virt ? '<td' + (k === 'mutasi' ? '' : ' class="l-s l-s0 l-last"') + '>' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (k === 'mutasi' ? (p === 2 ? ' class="l-s l-s0 l-last"' : '') : (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : '')) + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
+      return '<tr>' + (virt ? '<td' + (k === 'mutasi' ? '' : ' class="l-s l-s0 l-last"') + '>' + (n + 1) + '</td>' : '') + cols.map(function (i, p) { var c = i >= 0 ? (r[i] || '') : ''; return '<td' + (k === 'mutasi' ? (p === 2 ? ' class="l-s l-s0 l-last"' : '') : (!virt && p === 0 ? ' class="l-s l-s0 l-last"' : (k === 'booking' && i === ier ? ' class="erpc" data-erp="' + esc(key(r[it])) + '" title="Klik: rincian baris StockBalance"' : ''))) + '>' + (c ? esc(c) : '<span class="dim">-</span>') + '</td>'; }).join('') + '</tr>';
     }).join('');
     if (k === 'booking') {   // sel Booking yang dipotong realisasi diberi warna + keterangan
       rows.slice(from, to).forEach(function (r, n0) {
@@ -1712,7 +1757,7 @@
     loadKim(k).then(function () { showTable(k, id, $('#q' + id).value); })
       .catch(function (e) { $('#s' + id).innerHTML = '<div class="state">' + esc(errMsg(e)) + '<br><button type="button" class="btn-sm" data-retry="' + k + '">Coba lagi</button></div>'; });
   }
-  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal'], ['cek', 'Cek']].forEach(function (p) {
+  [['resep', 'Resep'], ['conf', 'Conf'], ['open', 'Open'], ['fin', 'Fin'], ['kamus', 'Kamus'], ['booking', 'Booking'], ['mutasi', 'Mutasi'], ['kritikal', 'Kritikal'], ['cek', 'Cek']].forEach(function (p) {
     var t = null;
     $('#q' + p[1]).addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () {
       PG[p[0]] = 1;
@@ -1760,7 +1805,7 @@
   document.addEventListener('click', function (e) {
     var pb = e.target.closest ? e.target.closest('.pager [data-pg]') : null;
     if (pb && !pb.disabled) {
-      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewCek' ? 'cek' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'cek' ? 'Cek' : 'Conf', g = pb.getAttribute('data-pg');
+      var sid = pb.closest('section').id, pk = sid === 'viewResep' ? 'resep' : sid === 'viewOpen' ? 'open' : sid === 'viewFin' ? 'fin' : sid === 'viewCek' ? 'cek' : 'conf', pid = pk === 'resep' ? 'Resep' : pk === 'open' ? 'Open' : pk === 'fin' ? 'Fin' : pk === 'cek' ? 'Cek' : 'Conf', g = pb.getAttribute('data-pg');
       PG[pk] = g === 'first' ? 1 : g === 'prev' ? PG[pk] - 1 : g === 'next' ? PG[pk] + 1 : 999999;
       showTable(pk, pid, $('#q' + pid).value);
       var wr = $('#w' + pid); if (wr) wr.scrollTop = 0;
@@ -1771,11 +1816,11 @@
     var r = e.target.closest ? e.target.closest('[data-retry]') : null;
     if (r) { var k = r.getAttribute('data-retry'); KIM.resep = KIM.conf = KIM.open = KIM.kamus = KIM.booking = null; showView(k); }
   });
-  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', real: 'Real', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
+  var VIEWS = { lot: 'Lot', resep: 'Resep', conf: 'Conf', open: 'Open', fin: 'Fin', kamus: 'Kamus', booking: 'Booking', rencana: 'Rencana', real: 'Real', mutasi: 'Mutasi', kritikal: 'Kritikal', cek: 'Cek' }, curView = 'booking';
   /* Tab bawah = 4 kelompok; tiap kelompok punya sub tab (Stok: Booking/Rencana/Kritikal, Lot & Bon: Confirmed/Opened/Multi-Bon, Resep: Per Item/Per Lot) */
   var GROUPS = {
     stok: { last: 'booking', subs: [['booking', 'Booking'], ['rencana', 'Rencana'], ['real', 'Realisasi'], ['kritikal', 'Kritikal']] },
-    lot: { last: 'conf', subs: [['conf', 'Confirmed'], ['open', 'Opened'], ['cek', 'Multi-Bon']] },
+    lot: { last: 'conf', subs: [['conf', 'Confirmed'], ['open', 'Opened'], ['fin', 'Finish'], ['cek', 'Multi-Bon']] },
     resep: { last: 'resep', subs: [['resep', 'Per Item'], ['lot', 'Per Lot']] },
     mutasi: { last: 'mutasi', subs: [['mutasi', 'Mutasi']] }
   };
